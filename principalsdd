@@ -1,0 +1,5 @@
+# Dentro de la carpeta del proyecto
+git remote remove origin
+git remote add origin https://github.com/enzoesp21/mirador-waikiki-app.git
+git checkout -b main
+git push -u origin main
