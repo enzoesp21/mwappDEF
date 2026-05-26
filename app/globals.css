@@ -1,12 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700&family=Playfair+Display+SC:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700;800&family=Paytone+One&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #1a1a1a;
-  --foreground: #F5F5F5;
+  --background: #F5EDE0;
+  --foreground: #1A0E08;
 }
 
 * {
@@ -14,8 +14,8 @@
 }
 
 body {
-  background-color: #1a1a1a;
-  color: #F5F5F5;
+  background-color: #F5EDE0;
+  color: #1A0E08;
   font-family: 'Karla', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -26,49 +26,50 @@ body {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #242424;
+  background: #EDE5D4;
 }
 ::-webkit-scrollbar-thumb {
-  background: #444;
+  background: #C4A882;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4A017;
+  background: #96543A;
 }
 
 /* Prose / Markdown */
 .prose {
-  color: #F5F5F5;
-  line-height: 1.7;
+  color: #1A0E08;
+  line-height: 1.75;
 }
 .prose h1 {
-  font-family: 'Playfair Display SC', serif;
-  color: #D4A017;
+  font-family: 'Paytone One', 'Arial Black', system-ui, sans-serif;
+  color: #96543A;
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 900;
   margin-bottom: 0.5rem;
   margin-top: 1.5rem;
 }
 .prose h2 {
-  color: #D4A017;
+  color: #96543A;
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 0.5rem;
   margin-top: 1.5rem;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #E8D5B8;
   padding-bottom: 0.25rem;
 }
 .prose h3 {
-  color: #E8B420;
+  color: #A86448;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 0.4rem;
   margin-top: 1.2rem;
 }
 .prose p {
   margin-bottom: 0.75rem;
 }
-.prose ul, .prose ol {
+.prose ul,
+.prose ol {
   padding-left: 1.5rem;
   margin-bottom: 0.75rem;
 }
@@ -76,26 +77,27 @@ body {
   margin-bottom: 0.25rem;
 }
 .prose strong {
-  color: #F5F5F5;
-  font-weight: 600;
+  color: #1A0E08;
+  font-weight: 700;
 }
 .prose em {
-  color: #A0A0A0;
+  color: #6A5A50;
 }
 .prose hr {
-  border-color: #333;
+  border-color: #E8D5B8;
   margin: 1.5rem 0;
 }
 .prose code {
-  background: #2a2a2a;
+  background: #EDE5D4;
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
+  color: #96543A;
 }
 .prose blockquote {
-  border-left: 3px solid #D4A017;
+  border-left: 3px solid #96543A;
   padding-left: 1rem;
-  color: #A0A0A0;
+  color: #8A7060;
   font-style: italic;
 }
 .prose table {
@@ -105,30 +107,32 @@ body {
   font-size: 0.875rem;
 }
 .prose th {
-  background: #2a2a2a;
-  color: #D4A017;
+  background: #EDE5D4;
+  color: #96543A;
   padding: 0.5rem;
   text-align: left;
-  border: 1px solid #333;
-  font-weight: 600;
+  border: 1px solid #E8D5B8;
+  font-weight: 700;
 }
 .prose td {
   padding: 0.5rem;
-  border: 1px solid #333;
+  border: 1px solid #E8D5B8;
 }
 .prose tr:nth-child(even) td {
-  background: #1f1f1f;
+  background: #FAF5EB;
 }
 .prose a {
-  color: #D4A017;
+  color: #96543A;
   text-decoration: underline;
 }
 
 /* Input focus ring */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
-  border-color: #D4A017 !important;
-  box-shadow: 0 0 0 2px rgba(212, 160, 23, 0.15);
+  border-color: #96543A !important;
+  box-shadow: 0 0 0 3px rgba(150, 84, 58, 0.15);
 }
 
 /* Bottom nav safe area */

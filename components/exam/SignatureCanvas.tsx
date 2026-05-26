@@ -31,7 +31,7 @@ export default function SignatureCanvas({ onSignature, className }: SignatureCan
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.strokeStyle = '#D4A017'
+    ctx.strokeStyle = '#3A2015'
     ctx.lineWidth = 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -88,12 +88,12 @@ export default function SignatureCanvas({ onSignature, className }: SignatureCan
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="relative border-2 border-brand-border rounded-xl overflow-hidden bg-[#0f0f0f]">
+      <div className="relative border-2 border-brand-border rounded-xl overflow-hidden bg-[#FAF5EB]">
         <canvas
           ref={canvasRef}
           width={600}
           height={200}
-          className="signature-canvas w-full h-40 touch-none"
+          className="signature-canvas w-full h-40 touch-none bg-[#FAF5EB]"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}

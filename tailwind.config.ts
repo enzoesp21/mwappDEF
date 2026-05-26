@@ -10,22 +10,33 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          dark: '#1a1a1a',
-          card: '#242424',
-          'card-hover': '#2a2a2a',
-          border: '#333333',
-          accent: '#D4A017',
-          'accent-hover': '#E8B420',
-          'accent-muted': '#D4A01720',
-          text: '#F5F5F5',
-          muted: '#A0A0A0',
-          error: '#EF4444',
-          success: '#22C55E',
+          // Light warm sandy background
+          dark: '#F5EDE0',
+          // Off-white card surface
+          card: '#FFFDF8',
+          'card-hover': '#FAF5EB',
+          // Warm sandy border
+          border: '#E8D5B8',
+          // Deep terracotta (coastal warm) — primary action
+          accent: '#96543A',
+          'accent-hover': '#A86448',
+          'accent-muted': '#96543A18',
+          // Warm dark text
+          text: '#1A0E08',
+          muted: '#8A7060',
+          // Sage green (success) from palette swatch
+          success: '#4E8A48',
+          // Red error
+          error: '#C83830',
+          // Muted teal (from swatch 4) — informational
+          teal: '#5A8A96',
+          // Sandy highlight (from swatch 3)
+          sand: '#C4A882',
         },
       },
       fontFamily: {
         sans: ['Karla', 'system-ui', 'sans-serif'],
-        display: ['"Playfair Display SC"', 'Georgia', 'serif'],
+        display: ['"Paytone One"', '"Arial Black"', 'system-ui', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',

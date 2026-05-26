@@ -6,55 +6,61 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 'md', className }: LogoProps) {
-  const sizes = {
-    sm: { wrapper: 'gap-1.5', icon: 'w-6 h-6', title: 'text-sm', sub: 'text-[9px]' },
-    md: { wrapper: 'gap-2', icon: 'w-8 h-8', title: 'text-base', sub: 'text-[10px]' },
-    lg: { wrapper: 'gap-3', icon: 'w-12 h-12', title: 'text-xl', sub: 'text-xs' },
-  }
+  const heights = { sm: 'h-9', md: 'h-14', lg: 'h-24' }
 
-  const s = sizes[size]
-
-  return (
-    <div className={cn('flex items-center', s.wrapper, className)}>
-      <WaveIcon className={cn(s.icon, 'text-brand-accent flex-shrink-0')} />
-      <div>
-        <div className={cn('font-display font-bold text-brand-accent leading-none', s.title)}>
-          MIRADOR
-        </div>
-        <div className={cn('font-display text-brand-text leading-none tracking-widest', s.sub)}>
-          WAIKIKI
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function WaveIcon({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 200 188"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden="true"
+      className={cn('text-brand-accent w-auto', heights[size], className)}
+      aria-label="Mirador Waikiki"
+      role="img"
     >
+      {/* Top peaked frame — left diagonal bar */}
+      <line x1="14" y1="64" x2="100" y2="14" stroke="currentColor" strokeWidth="9.5" strokeLinecap="round" />
+      {/* Top peaked frame — right diagonal bar */}
+      <line x1="186" y1="64" x2="100" y2="14" stroke="currentColor" strokeWidth="9.5" strokeLinecap="round" />
+      {/* Left vertical side */}
+      <line x1="14" y1="64" x2="14" y2="152" stroke="currentColor" strokeWidth="9.5" strokeLinecap="round" />
+      {/* Right vertical side */}
+      <line x1="186" y1="64" x2="186" y2="152" stroke="currentColor" strokeWidth="9.5" strokeLinecap="round" />
+
+      {/* MIRADOR */}
+      <text
+        x="100"
+        y="110"
+        textAnchor="middle"
+        fill="currentColor"
+        fontFamily='"Paytone One", "Arial Black", system-ui, sans-serif'
+        fontSize="46"
+        fontWeight="900"
+        letterSpacing="-0.5"
+      >
+        MIRADOR
+      </text>
+
+      {/* WAIKIKI */}
+      <text
+        x="100"
+        y="150"
+        textAnchor="middle"
+        fill="currentColor"
+        fontFamily='"Paytone One", "Arial Black", system-ui, sans-serif'
+        fontSize="46"
+        fontWeight="900"
+        letterSpacing="-0.5"
+      >
+        WAIKIKI
+      </text>
+
+      {/* Bottom wave */}
       <path
-        d="M2 17C3.5 15 5.5 14 7 14C8.5 14 9.5 15 11 16C12.5 17 13.5 18 15 18C16.5 18 18.5 17 20 15"
+        d="M14 156 Q57 180 100 156 Q143 132 186 156"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="9.5"
         strokeLinecap="round"
-      />
-      <path
-        d="M2 12C3.5 10 5.5 9 7 9C8.5 9 9.5 10 11 11C12.5 12 13.5 13 15 13C16.5 13 18.5 12 20 10"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7 7L7.5 4M12 6L12 3M17 7L16.5 4"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
+        fill="none"
       />
     </svg>
   )
