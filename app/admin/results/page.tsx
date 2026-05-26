@@ -25,8 +25,8 @@ export default async function ResultsPage() {
     .order('title', { ascending: true })
 
   const results = (rawResults ?? []).map((r) => {
-    const profile = r.profiles as { full_name: string; puesto: string } | null
-    const exam = r.exams as {
+    const profile = r.profiles as unknown as { full_name: string; puesto: string } | null
+    const exam = r.exams as unknown as {
       id: string
       title: string
       passing_score: number

@@ -169,8 +169,8 @@ export default async function AdminDashboard() {
               </thead>
               <tbody className="divide-y divide-brand-border">
                 {recentResults.map((result) => {
-                  const profile = result.profiles as { full_name: string } | null
-                  const exam = result.exams as { title: string; guides: { title: string } | null } | null
+                  const profile = result.profiles as unknown as { full_name: string } | null
+                  const exam = result.exams as unknown as { title: string; guides: { title: string } | null } | null
                   return (
                     <tr key={result.id} className="hover:bg-brand-card-hover transition-colors duration-200">
                       <td className="py-3 pr-4 text-brand-text">{profile?.full_name ?? '—'}</td>

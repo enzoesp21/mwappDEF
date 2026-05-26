@@ -20,8 +20,8 @@ export default function SignatureCanvas({ onSignature, className }: SignatureCan
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
     return {
-      x: (('clientX' in e ? e.clientX : e.clientX) - rect.left) * scaleX,
-      y: (('clientY' in e ? e.clientY : e.clientY) - rect.top) * scaleY,
+      x: ((e as MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as MouseEvent).clientY - rect.top) * scaleY,
     }
   }
 

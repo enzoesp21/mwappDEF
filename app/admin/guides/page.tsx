@@ -92,7 +92,7 @@ export default async function GuidesPage() {
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {(guide.puestos ?? []).slice(0, 3).map((p) => (
+                        {(guide.puestos ?? []).slice(0, 3).map((p: string) => (
                           <span
                             key={p}
                             className="px-2 py-0.5 text-xs bg-brand-accent/10 text-brand-accent rounded-full"
