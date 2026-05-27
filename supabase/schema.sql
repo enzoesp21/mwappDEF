@@ -4,25 +4,6 @@
 -- ============================================================
 
 -- ============================================================
--- HELPER FUNCTION: is_admin()
--- Returns true if the currently authenticated user has role='admin'
--- ============================================================
-CREATE OR REPLACE FUNCTION is_admin()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM profiles
-    WHERE id = auth.uid()
-      AND role = 'admin'
-  );
-$$;
-
-
--- ============================================================
 -- TABLE: profiles
 -- One row per auth.users entry; created automatically via trigger
 -- ============================================================
@@ -39,6 +20,25 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE INDEX IF NOT EXISTS idx_profiles_role   ON profiles (role);
 -- Index: look up profiles by puesto (guide visibility)
 CREATE INDEX IF NOT EXISTS idx_profiles_puesto ON profiles (puesto);
+
+
+-- ============================================================
+-- HELPER FUNCTION: is_admin()
+-- Returns true if the currently authenticated user has role='admin'
+-- ============================================================
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM profiles
+    WHERE id = auth.uid()
+      AND role = 'admin'
+  );
+$$;
 
 
 -- ============================================================
