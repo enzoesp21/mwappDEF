@@ -6,9 +6,9 @@ import { formatDateTime } from '@/lib/utils'
 export default async function ProgressPage() {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) redirect('/login')
 
   const { data: results } = await supabase
     .from('exam_results')
@@ -19,7 +19,7 @@ export default async function ProgressPage() {
         guides (title)
       )
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', session.user.id)
     .eq('passed', true)
     .order('completed_at', { ascending: false })
 

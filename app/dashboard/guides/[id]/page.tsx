@@ -12,9 +12,9 @@ interface Props {
 export default async function GuidePage({ params }: Props) {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) redirect('/login')
 
   const { data: guide } = await supabase
     .from('guides')
@@ -35,7 +35,7 @@ export default async function GuidePage({ params }: Props) {
     const { data: result } = await supabase
       .from('exam_results')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
       .eq('exam_id', exam.id)
       .eq('passed', true)
       .single()

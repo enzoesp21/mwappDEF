@@ -6,14 +6,14 @@ import type { GuideWithStatus } from '@/lib/types'
 export default async function GuidesPage() {
   const supabase = await createClient()
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) redirect('/login')
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('puesto')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .single()
   if (!profile) redirect('/login')
 
@@ -28,7 +28,7 @@ export default async function GuidesPage() {
   const { data: results } = await supabase
     .from('exam_results')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', session.user.id)
     .eq('passed', true)
 
   const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
