@@ -36,22 +36,8 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Use getSession() to avoid network call — JWT is validated locally
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user ?? null
-
-  const publicPaths = ['/login', '/register']
-
-  if (publicPaths.includes(path)) {
-    if (user) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    return supabaseResponse
-  }
-
-  if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
+  // Refresh session tokens — required by Supabase SSR
+  await supabase.auth.getSession()
 
   return supabaseResponse
 }

@@ -10,11 +10,27 @@ export default async function DashboardPage() {
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', session.user.id)
     .single()
+
+  if (!profile) {
+    // Profile missing — create from auth metadata (trigger may not have run)
+    await supabase.from('profiles').upsert({
+      id: session.user.id,
+      full_name: session.user.user_metadata?.full_name ?? 'Usuario',
+      puesto: session.user.user_metadata?.puesto ?? 'Sin puesto',
+      role: session.user.user_metadata?.role ?? 'staff',
+    })
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+    profile = newProfile
+  }
 
   if (!profile) redirect('/login')
 
