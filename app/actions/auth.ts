@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 export async function loginAction(formData: FormData) {
   const supabase = await createClient()
@@ -15,5 +14,5 @@ export async function loginAction(formData: FormData) {
     return { error: 'Email o contraseña incorrectos. Verificá tus datos.' }
   }
 
-  redirect('/dashboard')
+  return { success: true }
 }

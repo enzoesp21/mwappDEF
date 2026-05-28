@@ -1,15 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { loginAction } from '@/app/actions/auth'
 import Logo from '@/components/Logo'
 import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -21,17 +19,20 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const formData = new FormData()
+    formData.append('email', email)
+    formData.append('password', password)
 
-    if (authError) {
-      setError('Email o contraseña incorrectos. Verificá tus datos.')
+    const result = await loginAction(formData)
+
+    if (result?.error) {
+      setError(result.error)
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    // Server Action set the cookies — now do a hard reload so the server reads them
+    window.location.href = '/dashboard'
   }
 
   return (
