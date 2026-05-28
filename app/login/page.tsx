@@ -21,26 +21,14 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      setError(data.error ?? 'Error al iniciar sesión.')
+    if (authError) {
+      setError('Email o contraseña incorrectos. Verificá tus datos.')
       setLoading(false)
       return
     }
-
-    // Set session in browser client so cookies are stored natively
-    const supabase = createClient()
-    await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-    })
 
     router.push('/dashboard')
     router.refresh()
