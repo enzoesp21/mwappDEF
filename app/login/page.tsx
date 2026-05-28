@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
-import { loginAction } from '@/app/actions/auth'
 import Logo from '@/components/Logo'
 import { cn } from '@/lib/utils'
 
@@ -19,19 +18,20 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const formData = new FormData()
-    formData.append('email', email)
-    formData.append('password', password)
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-    const result = await loginAction(formData)
+    const data = await res.json()
 
-    if (result?.error) {
-      setError(result.error)
+    if (!res.ok) {
+      setError(data.error ?? 'Error al iniciar sesión.')
       setLoading(false)
       return
     }
 
-    // Server Action set the cookies — now do a hard reload so the server reads them
     window.location.href = '/dashboard'
   }
 
