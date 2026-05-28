@@ -38,8 +38,8 @@ export default function LoginPage() {
         .eq('id', user.id)
         .single()
 
-      router.push(profile?.role === 'admin' ? '/admin' : '/dashboard')
-      router.refresh()
+      const destination = profile?.role === 'admin' ? '/admin' : '/dashboard'
+      window.location.href = destination
     }
   }
 
