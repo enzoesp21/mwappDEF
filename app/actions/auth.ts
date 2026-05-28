@@ -9,17 +9,11 @@ export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error || !user) {
+  if (error) {
     return { error: 'Email o contraseña incorrectos. Verificá tus datos.' }
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  redirect(profile?.role === 'admin' ? '/admin' : '/dashboard')
+  redirect('/dashboard')
 }
