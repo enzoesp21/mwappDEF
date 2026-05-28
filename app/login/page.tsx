@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
 import { cn } from '@/lib/utils'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -32,7 +35,15 @@ export default function LoginPage() {
       return
     }
 
-    window.location.href = '/dashboard'
+    // Set session in browser client so cookies are stored natively
+    const supabase = createClient()
+    await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+
+    router.push('/dashboard')
+    router.refresh()
   }
 
   return (
