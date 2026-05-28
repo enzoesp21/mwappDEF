@@ -4,7 +4,6 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  // Skip preview routes entirely (demo only)
   if (path.startsWith('/preview')) {
     return NextResponse.next({ request })
   }
@@ -14,7 +13,6 @@ export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // If Supabase is not configured, allow through to auth pages; block protected routes
   if (!url || !key || url.includes('placeholder')) {
     const publicPaths = ['/login', '/register']
     if (!publicPaths.includes(path)) {
@@ -38,40 +36,21 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Use getSession() to avoid network call — JWT is validated locally
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user ?? null
 
   const publicPaths = ['/login', '/register']
 
   if (publicPaths.includes(path)) {
     if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      const destination = profile?.role === 'admin' ? '/admin' : '/'
-      return NextResponse.redirect(new URL(destination, request.url))
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
     return supabaseResponse
   }
 
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  if (path.startsWith('/admin')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
   }
 
   return supabaseResponse
