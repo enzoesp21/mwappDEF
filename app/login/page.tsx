@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, LogIn } from 'lucide-react'
-import { loginAction } from '@/app/actions/auth'
+import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
 import { cn } from '@/lib/utils'
 
@@ -19,15 +19,16 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const formData = new FormData()
-    formData.append('email', email)
-    formData.append('password', password)
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    const result = await loginAction(formData)
-    if (result?.error) {
-      setError(result.error)
+    if (authError) {
+      setError('Email o contraseña incorrectos. Verificá tus datos.')
       setLoading(false)
+      return
     }
+
+    window.location.href = '/dashboard'
   }
 
   return (
