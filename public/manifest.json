@@ -1,11 +1,11 @@
-{
+﻿{
   "name": "Mirador Waikiki App",
   "short_name": "Waikiki",
-  "description": "Plataforma de capacitación para el personal de Mirador Waikiki",
+  "description": "Plataforma de capacitaciÃ³n para el personal de Mirador Waikiki",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#D4A017",
+  "background_color": "#dbd2b5",
+  "theme_color": "#6e8f7a",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -19,3 +19,4 @@
     }
   ]
 }
+

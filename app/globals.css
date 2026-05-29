@@ -1,12 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700;800&family=Paytone+One&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700;800&family=Paytone+One&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #F5EDE0;
-  --foreground: #1A0E08;
+  --background: #dbd2b5;
+  --foreground: #1f2d27;
 }
 
 * {
@@ -14,8 +14,8 @@
 }
 
 body {
-  background-color: #F5EDE0;
-  color: #1A0E08;
+  background-color: #dbd2b5;
+  color: #1f2d27;
   font-family: 'Karla', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -26,40 +26,40 @@ body {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #EDE5D4;
+  background: #e8e0ca;
 }
 ::-webkit-scrollbar-thumb {
-  background: #C4A882;
+  background: #cab892;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #96543A;
+  background: #6e8f7a;
 }
 
 /* Prose / Markdown */
 .prose {
-  color: #1A0E08;
+  color: #1f2d27;
   line-height: 1.75;
 }
 .prose h1 {
   font-family: 'Paytone One', 'Arial Black', system-ui, sans-serif;
-  color: #96543A;
+  color: #6e8f7a;
   font-size: 1.5rem;
   font-weight: 900;
   margin-bottom: 0.5rem;
   margin-top: 1.5rem;
 }
 .prose h2 {
-  color: #96543A;
+  color: #6e8f7a;
   font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
   margin-top: 1.5rem;
-  border-bottom: 1px solid #E8D5B8;
+  border-bottom: 1px solid #cab892;
   padding-bottom: 0.25rem;
 }
 .prose h3 {
-  color: #A86448;
+  color: #5d7d6a;
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 0.4rem;
@@ -77,27 +77,27 @@ body {
   margin-bottom: 0.25rem;
 }
 .prose strong {
-  color: #1A0E08;
+  color: #1f2d27;
   font-weight: 700;
 }
 .prose em {
-  color: #6A5A50;
+  color: #6a7d72;
 }
 .prose hr {
-  border-color: #E8D5B8;
+  border-color: #cab892;
   margin: 1.5rem 0;
 }
 .prose code {
-  background: #EDE5D4;
+  background: #e8e0ca;
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
-  color: #96543A;
+  color: #6e8f7a;
 }
 .prose blockquote {
-  border-left: 3px solid #96543A;
+  border-left: 3px solid #6e8f7a;
   padding-left: 1rem;
-  color: #8A7060;
+  color: #6a7d72;
   font-style: italic;
 }
 .prose table {
@@ -107,22 +107,22 @@ body {
   font-size: 0.875rem;
 }
 .prose th {
-  background: #EDE5D4;
-  color: #96543A;
+  background: #e8e0ca;
+  color: #6e8f7a;
   padding: 0.5rem;
   text-align: left;
-  border: 1px solid #E8D5B8;
+  border: 1px solid #cab892;
   font-weight: 700;
 }
 .prose td {
   padding: 0.5rem;
-  border: 1px solid #E8D5B8;
+  border: 1px solid #cab892;
 }
 .prose tr:nth-child(even) td {
-  background: #FAF5EB;
+  background: #e0d8c0;
 }
 .prose a {
-  color: #96543A;
+  color: #6e8f7a;
   text-decoration: underline;
 }
 
@@ -131,8 +131,8 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: #96543A !important;
-  box-shadow: 0 0 0 3px rgba(150, 84, 58, 0.15);
+  border-color: #6e8f7a !important;
+  box-shadow: 0 0 0 3px rgba(110, 143, 122, 0.20);
 }
 
 /* Bottom nav safe area */
@@ -152,3 +152,4 @@ select:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
