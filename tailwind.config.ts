@@ -13,8 +13,8 @@ const config: Config = {
           // Light warm sandy background
           dark: '#dbd2b5',
           // Off-white card surface
-          card: '#e8e0ca',
-          'card-hover': '#e0d8c0',
+          card: '#ffffff',
+          'card-hover': '#f8f5f0',
           // Warm sandy border
           border: '#cab892',
           // Deep terracotta (coastal warm) â€” primary action
@@ -58,4 +58,5 @@ const config: Config = {
 }
 
 export default config
+
 

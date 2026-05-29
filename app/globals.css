@@ -26,7 +26,7 @@ body {
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #e8e0ca;
+  background: #f0ebe0;
 }
 ::-webkit-scrollbar-thumb {
   background: #cab892;
@@ -88,7 +88,7 @@ body {
   margin: 1.5rem 0;
 }
 .prose code {
-  background: #e8e0ca;
+  background: #f0ebe0;
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
@@ -107,7 +107,7 @@ body {
   font-size: 0.875rem;
 }
 .prose th {
-  background: #e8e0ca;
+  background: #f0ebe0;
   color: #6e8f7a;
   padding: 0.5rem;
   text-align: left;
@@ -119,7 +119,7 @@ body {
   border: 1px solid #cab892;
 }
 .prose tr:nth-child(even) td {
-  background: #e0d8c0;
+  background: #f8f5f0;
 }
 .prose a {
   color: #6e8f7a;
@@ -152,4 +152,5 @@ select:focus {
     transition-duration: 0.01ms !important;
   }
 }
+
 
