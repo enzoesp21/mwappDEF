@@ -48,7 +48,7 @@ export default async function AdminComidaPage() {
     .order('meal_date')
 
   const signups = (rawSignups ?? []).map((s) => {
-    const p = s.profiles as { full_name: string; puesto: string } | null
+    const p = s.profiles as unknown as { full_name: string; puesto: string } | null
     return {
       meal_date: s.meal_date as string,
       meal_type: s.meal_type as string,
@@ -128,3 +128,4 @@ export default async function AdminComidaPage() {
     </div>
   )
 }
+
