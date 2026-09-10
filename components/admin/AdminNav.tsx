@@ -25,7 +25,7 @@ const NAV_ITEMS = [
   { label: 'Guías', href: '/admin/guides', icon: BookOpen, exact: false },
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
-  { label: 'Ranking', href: '/dashboard/resultados', icon: BarChart2, exact: false },
+  { label: 'Ranking', href: '/admin/ranking', icon: BarChart2, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 
@@ -192,4 +192,5 @@ function MobileNavContent({
     </>
   )
 }
+
 
