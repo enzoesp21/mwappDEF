@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -8,6 +8,8 @@ import {
   Users,
   BookOpen,
   BarChart2,
+  MessageSquarePlus,
+  Utensils,
   LogOut,
   Menu,
   X,
@@ -22,6 +24,8 @@ const NAV_ITEMS = [
   { label: 'Usuarios', href: '/admin/users', icon: Users, exact: false },
   { label: 'Guías', href: '/admin/guides', icon: BookOpen, exact: false },
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },
+  { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
+  { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 
 interface AdminNavProps {
