@@ -32,7 +32,7 @@ export default async function AdminSugerenciasPage() {
     id: r.id as string,
     user_id: r.user_id as string,
     content: r.content as string,
-    category: r.category as string,
+    category: r.category as 'sugerencia' | 'reclamo',
     is_read: r.is_read as boolean,
     read_at: r.read_at as string | null,
     read_by: r.read_by as string | null,
@@ -43,4 +43,5 @@ export default async function AdminSugerenciasPage() {
 
   return <SugerenciasAdminClient suggestions={suggestions} />
 }
+
 
