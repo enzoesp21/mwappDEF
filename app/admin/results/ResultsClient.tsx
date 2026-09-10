@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Filter, PenLine } from 'lucide-react'
+import { X, Filter, PenLine, Clock } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,19 @@ interface ResultRow {
 interface ResultsClientProps {
   results: ResultRow[]
   guideOptions: { id: string; title: string }[]
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'recién'
+  if (min < 60) return 'hace ' + min + ' min'
+  const hours = Math.floor(min / 60)
+  if (hours < 24) return 'hace ' + hours + ' h'
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'ayer'
+  if (days < 30) return 'hace ' + days + ' días'
+  return formatDateTime(iso)
 }
 
 export default function ResultsClient({ results, guideOptions }: ResultsClientProps) {
@@ -67,6 +80,47 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
             {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} · {approvedCount} aprobado{approvedCount !== 1 ? 's' : ''}
           </p>
         </div>
+
+        {/* Actividad reciente */}
+        {results.length > 0 && (
+          <div className="bg-brand-card border border-brand-border rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-4 h-4 text-brand-accent" />
+              <span className="text-xs font-medium text-brand-muted uppercase tracking-wider">
+                Rindieron recientemente
+              </span>
+            </div>
+            <div className="divide-y divide-brand-border">
+              {results.slice(0, 8).map((r) => (
+                <div key={r.id} className="flex items-center gap-3 py-2">
+                  <span
+                    className={cn(
+                      'w-2 h-2 rounded-full flex-shrink-0',
+                      r.passed ? 'bg-brand-success' : 'bg-brand-error'
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-brand-text truncate">{r.user_name}</p>
+                    <p className="text-xs text-brand-muted truncate">{r.guide_title}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p
+                      className={cn(
+                        'text-sm font-bold',
+                        r.passed ? 'text-brand-success' : 'text-brand-error'
+                      )}
+                    >
+                      {r.score}%
+                    </p>
+                    <p className="text-[10px] text-brand-muted" suppressHydrationWarning>
+                      {timeAgo(r.completed_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-brand-card border border-brand-border rounded-xl p-4 space-y-3">
@@ -240,7 +294,7 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
             <div className="bg-white rounded-lg p-2 flex items-center justify-center min-h-[160px]">
               <img
                 src={signatureModal.signature_data!}
-                alt={`Firma de ${signatureModal.user_name}`}
+                alt={'Firma de ' + signatureModal.user_name}
                 className="max-w-full max-h-48 object-contain"
               />
             </div>
