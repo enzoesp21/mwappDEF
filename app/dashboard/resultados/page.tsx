@@ -26,19 +26,6 @@ export default async function ResultadosPage() {
     .eq('passed', true)
     .order('completed_at', { ascending: false })
 
-  const examIds = Array.from(new Set((rawResults ?? []).map((r) => r.exam_id as string).filter((x): x is string => Boolean(x))))
-
-  let examTitles: Record<string, string> = {}
-  if (examIds.length > 0) {
-    const { data: exams } = await supabase
-      .from('exams')
-      .select('id, title')
-      .in('id', examIds)
-    for (const e of exams ?? []) {
-      examTitles[e.id] = e.title
-    }
-  }
-
   const results = (rawResults ?? []).map((r) => {
     const profile = r.profiles as unknown as { full_name: string; puesto: string } | null
     return {
@@ -46,10 +33,8 @@ export default async function ResultadosPage() {
       score: r.score as number,
       completed_at: r.completed_at as string,
       user_id: r.user_id as string,
-      exam_id: r.exam_id as string,
       full_name: profile?.full_name ?? 'Usuario',
       puesto: profile?.puesto ?? '',
-      exam_title: examTitles[r.exam_id] ?? 'Examen',
     }
   })
 
@@ -102,7 +87,7 @@ export default async function ResultadosPage() {
         {ranking.length === 0 ? (
           <div className="text-center py-10 bg-brand-card border border-brand-border rounded-2xl">
             <Trophy className="w-8 h-8 text-brand-muted mx-auto mb-2" />
-            <p className="text-brand-muted text-sm">Todavía no hay resultados.</p>
+            <p className="text-brand-muted text-sm">Todavia no hay resultados.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -159,7 +144,7 @@ export default async function ResultadosPage() {
       {recentResults.length > 0 && (
         <div>
           <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">
-            Últimos resultados
+            Ultimos resultados
           </h2>
           <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
             <div className="divide-y divide-brand-border">
@@ -168,7 +153,6 @@ export default async function ResultadosPage() {
                   <CheckCircle className="w-4 h-4 text-brand-success flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-brand-text truncate">{r.full_name}</p>
-                    <p className="text-xs text-brand-muted truncate">{r.exam_title}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-brand-success">{r.score}%</p>
@@ -183,5 +167,3 @@ export default async function ResultadosPage() {
     </div>
   )
 }
-
-
