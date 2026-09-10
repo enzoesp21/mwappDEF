@@ -28,6 +28,21 @@ export default async function ResultadosPage() {
 
   const rows = rawResults ?? []
 
+  const examIds = rows
+    .map((r) => r.exam_id as string)
+    .filter((id, i, arr) => Boolean(id) && arr.indexOf(id) === i)
+
+  const examTitleMap: Record<string, string> = {}
+  if (examIds.length > 0) {
+    const { data: exams } = await supabase
+      .from('exams')
+      .select('id, title')
+      .in('id', examIds)
+    for (const e of exams ?? []) {
+      examTitleMap[e.id] = e.title ?? '
+    }
+  }
+
   const userIds = rows
     .map((r) => r.user_id as string)
     .filter((id, i, arr) => arr.indexOf(id) === i)
@@ -50,6 +65,7 @@ export default async function ResultadosPage() {
     user_id: r.user_id as string,
     full_name: profileMap[r.user_id]?.full_name ?? 'Usuario',
     puesto: profileMap[r.user_id]?.puesto ?? '',
+    exam_title: examTitleMap[r.exam_id as string] ?? 'Examen',
   }))
 
   const userMap = new Map<string, UserStat>()
@@ -167,6 +183,7 @@ export default async function ResultadosPage() {
                   <CheckCircle className="w-4 h-4 text-brand-success flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-brand-text truncate">{r.full_name}</p>
+                    <p className="text-xs text-brand-muted truncate">{r.exam_title}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-brand-success">{r.score}%</p>
@@ -181,3 +198,4 @@ export default async function ResultadosPage() {
     </div>
   )
 }
+
