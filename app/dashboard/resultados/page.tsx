@@ -22,21 +22,35 @@ export default async function ResultadosPage() {
 
   const { data: rawResults } = await supabase
     .from('exam_results')
-    .select('id, score, passed, completed_at, user_id, exam_id, profiles ( full_name, puesto )')
+    .select('id, score, completed_at, user_id')
     .eq('passed', true)
     .order('completed_at', { ascending: false })
 
-  const results = (rawResults ?? []).map((r) => {
-    const profile = r.profiles as unknown as { full_name: string; puesto: string } | null
-    return {
-      id: r.id as string,
-      score: r.score as number,
-      completed_at: r.completed_at as string,
-      user_id: r.user_id as string,
-      full_name: profile?.full_name ?? 'Usuario',
-      puesto: profile?.puesto ?? '',
+  const rows = rawResults ?? []
+
+  const userIds = rows
+    .map((r) => r.user_id as string)
+    .filter((id, i, arr) => arr.indexOf(id) === i)
+
+  const profileMap: Record<string, { full_name: string; puesto: string }> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, puesto')
+      .in('id', userIds)
+    for (const p of profiles ?? []) {
+      profileMap[p.id] = { full_name: p.full_name ?? 'Usuario', puesto: p.puesto ?? '' }
     }
-  })
+  }
+
+  const results = rows.map((r) => ({
+    id: r.id as string,
+    score: r.score as number,
+    completed_at: r.completed_at as string,
+    user_id: r.user_id as string,
+    full_name: profileMap[r.user_id]?.full_name ?? 'Usuario',
+    puesto: profileMap[r.user_id]?.puesto ?? '',
+  }))
 
   const userMap = new Map<string, UserStat>()
   for (const r of results) {
