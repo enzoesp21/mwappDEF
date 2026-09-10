@@ -26,7 +26,7 @@ export default async function ResultadosPage() {
     .eq('passed', true)
     .order('completed_at', { ascending: false })
 
-  const examIds = [...new Set((rawResults ?? []).map((r) => r.exam_id).filter(Boolean))]
+  const examIds = Array.from(new Set((rawResults ?? []).map((r) => r.exam_id as string).filter((x): x is string => Boolean(x))))
 
   let examTitles: Record<string, string> = {}
   if (examIds.length > 0) {
@@ -183,4 +183,5 @@ export default async function ResultadosPage() {
     </div>
   )
 }
+
 
