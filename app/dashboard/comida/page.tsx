@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Utensils } from 'lucide-react'
 import MealSignupForm from '@/components/MealSignupForm'
-import { getNextWeekStart } from '@/app/actions/meals'
+import { getNextWeekStart, formatWeekLabel } from '@/lib/meals-utils'
 
 function formatWeekLabel(dateStr: string): string {
   const date = new Date(dateStr + 'T00:00:00')

@@ -1,7 +1,7 @@
 ﻿import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Utensils, Leaf, Sprout, Wheat, Users } from 'lucide-react'
-import { getNextWeekStart } from '@/app/actions/meals'
+import { getNextWeekStart, formatWeekLabel } from '@/lib/meals-utils'
 import { cn } from '@/lib/utils'
 
 const PREFERENCES = [
