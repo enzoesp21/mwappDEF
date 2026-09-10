@@ -27,12 +27,7 @@ export default async function AdminComidaPage() {
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', session.user.id)
-    .single()
-
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
   if (profile?.role !== 'admin') redirect('/dashboard')
 
   const weekDays = getNextWeekDates()
@@ -42,21 +37,30 @@ export default async function AdminComidaPage() {
 
   const { data: rawSignups } = await supabase
     .from('meal_signups')
-    .select('meal_date, meal_type, preference, profiles(full_name, puesto)')
+    .select('meal_date, meal_type, preference, user_id')
     .gte('meal_date', weekStart)
     .lte('meal_date', weekEnd)
     .order('meal_date')
 
-  const signups = (rawSignups ?? []).map((s) => {
-    const p = s.profiles as unknown as { full_name: string; puesto: string } | null
-    return {
-      meal_date: s.meal_date as string,
-      meal_type: s.meal_type as string,
-      preference: s.preference as string,
-      full_name: p?.full_name ?? 'Usuario',
-      puesto: p?.puesto ?? '',
+  const rows = rawSignups ?? []
+  const userIds = rows.map((r) => r.user_id as string).filter((id, i, arr) => arr.indexOf(id) === i)
+
+  const profileMap: Record<string, { full_name: string; puesto: string }> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, puesto').in('id', userIds)
+    for (const p of profiles ?? []) {
+      profileMap[p.id] = { full_name: p.full_name ?? 'Usuario', puesto: p.puesto ?? '' }
     }
-  })
+  }
+
+  const signups = rows.map((r) => ({
+    meal_date: r.meal_date as string,
+    meal_type: r.meal_type as string,
+    preference: r.preference as string,
+    user_id: r.user_id as string,
+    full_name: profileMap[r.user_id]?.full_name ?? 'Usuario',
+    puesto: profileMap[r.user_id]?.puesto ?? '',
+  }))
 
   const total = signups.length
 
@@ -64,9 +68,7 @@ export default async function AdminComidaPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-brand-text">Comida Semanal</h1>
-        <p className="text-sm text-brand-muted mt-1">
-          Semana del {weekLabel} · {total} inscripcion{total !== 1 ? 'es' : ''}
-        </p>
+        <p className="text-sm text-brand-muted mt-1">Semana del {weekLabel} · {total} inscripcion{total !== 1 ? 'es' : ''}</p>
       </div>
 
       {weekDays.map((day) => {
@@ -75,8 +77,7 @@ export default async function AdminComidaPage() {
         return (
           <div key={day.date} className="bg-brand-card border border-brand-border rounded-2xl p-4 space-y-4">
             <h2 className="font-semibold text-brand-text">
-              {day.dayName}{' '}
-              <span className="text-brand-muted font-normal text-sm">— {daySignups.length} inscriptos</span>
+              {day.dayName} <span className="text-brand-muted font-normal text-sm">— {daySignups.length} inscriptos</span>
             </h2>
             {day.meals.map((meal) => {
               const mealSignups = daySignups.filter((s) => s.meal_type === meal)
@@ -128,4 +129,3 @@ export default async function AdminComidaPage() {
     </div>
   )
 }
-
