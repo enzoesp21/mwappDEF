@@ -14,7 +14,7 @@ export default async function AdminSugerenciasPage() {
 
   const { data: rawSuggestions } = await supabase
     .from('suggestions')
-    .select('id, user_id, content, category, is_read, read_at, created_at')
+    .select('id, user_id, content, category, is_read, read_at, read_by, created_at')
     .order('created_at', { ascending: false })
 
   const rows = rawSuggestions ?? []
@@ -35,6 +35,7 @@ export default async function AdminSugerenciasPage() {
     category: r.category as string,
     is_read: r.is_read as boolean,
     read_at: r.read_at as string | null,
+    read_by: r.read_by as string | null,
     created_at: r.created_at as string,
     full_name: profileMap[r.user_id]?.full_name ?? 'Usuario',
     puesto: profileMap[r.user_id]?.puesto ?? '',
@@ -42,3 +43,4 @@ export default async function AdminSugerenciasPage() {
 
   return <SugerenciasAdminClient suggestions={suggestions} />
 }
+
