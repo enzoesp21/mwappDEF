@@ -8,30 +8,15 @@ const PREFERENCES = [
   { key: 'tradicional', label: 'Tradicional', icon: Utensils, color: 'text-brand-accent', bg: 'bg-brand-accent/10' },
   { key: 'vegetariano', label: 'Vegetariano', icon: Leaf, color: 'text-green-600', bg: 'bg-green-50' },
   { key: 'vegano', label: 'Vegano', icon: Sprout, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { key: 'celiaco', label: 'Celíaco', icon: Wheat, color: 'text-amber-600', bg: 'bg-amber-50' },
+  { key: 'celiaco', label: 'Celiaco', icon: Wheat, color: 'text-amber-600', bg: 'bg-amber-50' },
 ] as const
-
-function formatWeekLabel(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00')
-  const end = new Date(date)
-  end.setDate(date.getDate() + 6)
-  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long' }
-  return `${date.toLocaleDateString('es-AR', opts)} al ${end.toLocaleDateString('es-AR', opts)}`
-}
 
 export default async function AdminComidaPage() {
   const supabase = await createClient()
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', session.user.id)
-    .single()
-
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
   if (profile?.role !== 'admin') redirect('/dashboard')
 
   const weekStart = getNextWeekStart()
@@ -45,21 +30,11 @@ export default async function AdminComidaPage() {
 
   const signups = (rawSignups ?? []).map((s) => {
     const p = s.profiles as { full_name: string; puesto: string } | null
-    return {
-      id: s.id as string,
-      preference: s.preference as string,
-      full_name: p?.full_name ?? 'Usuario',
-      puesto: p?.puesto ?? '',
-    }
+    return { id: s.id as string, preference: s.preference as string, full_name: p?.full_name ?? 'Usuario', puesto: p?.puesto ?? '' }
   })
 
   const counts = PREFERENCES.map(({ key, label, icon: Icon, color, bg }) => ({
-    key,
-    label,
-    Icon,
-    color,
-    bg,
-    count: signups.filter((s) => s.preference === key).length,
+    key, label, Icon, color, bg, count: signups.filter((s) => s.preference === key).length,
   }))
 
   const total = signups.length
@@ -68,12 +43,8 @@ export default async function AdminComidaPage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-brand-text">Comida Semanal</h1>
-        <p className="text-sm text-brand-muted mt-1">
-          Semana del {weekLabel} · {total} anotado{total !== 1 ? 's' : ''}
-        </p>
+        <p className="text-sm text-brand-muted mt-1">Semana del {weekLabel} · {total} anotado{total !== 1 ? 's' : ''}</p>
       </div>
-
-      {/* Totales */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {counts.map(({ key, label, Icon, color, bg, count }) => (
           <div key={key} className="bg-brand-card border border-brand-border rounded-2xl p-4">
@@ -85,17 +56,13 @@ export default async function AdminComidaPage() {
           </div>
         ))}
       </div>
-
-      {/* Lista */}
       <div>
         <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Users className="w-3.5 h-3.5" />
-          Detalle por persona
+          <Users className="w-3.5 h-3.5" />Detalle por persona
         </h2>
-
         {signups.length === 0 ? (
           <div className="text-center py-10 bg-brand-card border border-brand-border rounded-2xl text-brand-muted text-sm">
-            Nadie se anotó todavía para esta semana.
+            Nadie se anoto todavia para esta semana.
           </div>
         ) : (
           <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
@@ -110,11 +77,7 @@ export default async function AdminComidaPage() {
                       <p className="text-sm font-medium text-brand-text truncate">{s.full_name}</p>
                       <p className="text-xs text-brand-muted truncate">{s.puesto}</p>
                     </div>
-                    <span className={cn(
-                      'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
-                      pref?.bg ?? 'bg-brand-accent/10',
-                      pref?.color ?? 'text-brand-accent'
-                    )}>
+                    <span className={cn('text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full', pref?.bg ?? 'bg-brand-accent/10', pref?.color ?? 'text-brand-accent')}>
                       {pref?.label ?? s.preference}
                     </span>
                   </div>
