@@ -2,7 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { getNextWeekDates, isSignupOpen, isValidPreference, isValidMealType } from '@/lib/meals-utils'
+import {
+  getNextWeekDates,
+  isSignupOpen,
+  isValidPreference,
+  isValidMealType,
+  SIGNUP_CUTOFF_LABEL,
+} from '@/lib/meals-utils'
 
 export interface MealChange {
   mealDate: string
@@ -24,7 +30,7 @@ export async function saveMealSignupsAction(changes: MealChange[]): Promise<Save
   if (!isSignupOpen()) {
     return {
       ok: false,
-      error: 'Las inscripciones cerraron el sábado a las 22hs. Vas a poder anotarte de nuevo el lunes.',
+      error: 'Las inscripciones cerraron ' + SIGNUP_CUTOFF_LABEL + '. Vas a poder anotarte de nuevo el lunes.',
     }
   }
 

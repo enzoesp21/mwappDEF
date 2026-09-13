@@ -47,13 +47,16 @@ export function formatWeekLabel(dateStr: string): string {
   return date.toLocaleDateString('es-AR', opts) + ' al ' + end.toLocaleDateString('es-AR', opts)
 }
 
-// La inscripción para la semana siguiente cierra el sábado a las 22:00.
+// Cierre de inscripción para la semana siguiente.
+// Único lugar donde se define: día de la semana (0 = domingo) y hora.
+const CUTOFF_DAY = 0
+const CUTOFF_HOUR = 21
+
+export const SIGNUP_CUTOFF_LABEL = 'el domingo a las 21hs'
+
 export function isSignupOpen(): boolean {
   const ba = nowInBuenosAires()
-  const day = ba.getUTCDay()
-  if (day === 0) return false
-  if (day === 6 && ba.getUTCHours() >= 22) return false
-  return true
+  return !(ba.getUTCDay() === CUTOFF_DAY && ba.getUTCHours() >= CUTOFF_HOUR)
 }
 
 export function isValidPreference(value: string): value is MealPreference {

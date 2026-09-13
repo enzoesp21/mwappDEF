@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Utensils, Leaf, Sprout, Wheat, ShoppingBag, Check, Lock, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveMealSignupsAction, type MealChange } from '@/app/actions/meals'
+import { SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 
 const PREFS = [
   { key: 'tradicional', label: 'Tradicional', icon: Utensils, color: 'text-brand-accent', bg: 'bg-brand-accent/10 border-brand-accent/30', sel: 'bg-brand-accent border-brand-accent text-white' },
@@ -104,7 +105,7 @@ export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
           <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
-            Las inscripciones cerraron el sábado a las 22hs. Vas a poder anotarte para la semana
+            Las inscripciones cerraron {SIGNUP_CUTOFF_LABEL}. Vas a poder anotarte para la semana
             siguiente a partir del lunes.
           </span>
         </div>

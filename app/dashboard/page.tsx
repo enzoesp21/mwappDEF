@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Utensils, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import GuideCard from '@/components/GuideCard'
-import { getNextWeekDates, isSignupOpen } from '@/lib/meals-utils'
+import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import type { GuideWithStatus } from '@/lib/types'
 
 export default async function DashboardPage() {
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
               Te faltan elegir {missingMeals} comida{missingMeals !== 1 ? 's' : ''}
             </p>
             <p className="text-xs text-brand-muted">
-              Se cierra el sábado a las 22hs. Después no se puede cambiar.
+              Se cierra {SIGNUP_CUTOFF_LABEL}. Después no se puede cambiar.
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
