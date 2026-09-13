@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2 } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
+import { setUserStatusAction } from '@/app/actions/users'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -19,6 +20,8 @@ export default function UsersPage() {
   const [puestoFilter, setPuestoFilter] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [roleChanging, setRoleChanging] = useState<string | null>(null)
+  const [statusChanging, setStatusChanging] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
 
   const supabase = createClient()
 
@@ -73,6 +76,20 @@ export default function UsersPage() {
     setRoleChanging(null)
   }
 
+  async function decide(userId: string, status: 'approved' | 'rejected') {
+    setStatusChanging(userId)
+    setStatusError(null)
+    const result = await setUserStatusAction(userId, status)
+    setStatusChanging(null)
+    if (result.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status } : u)))
+    } else {
+      setStatusError(result.error)
+    }
+  }
+
+  const pending = users.filter((u) => u.status === 'pending')
+
   const filtered = users.filter((u) => {
     const matchName = u.full_name.toLowerCase().includes(search.toLowerCase())
     const matchPuesto = puestoFilter ? u.puesto === puestoFilter : true
@@ -85,6 +102,63 @@ export default function UsersPage() {
         <h1 className="text-2xl font-display font-bold text-brand-text">Usuarios</h1>
         <p className="text-sm text-brand-muted mt-1">Gestiona el personal registrado</p>
       </div>
+
+      {/* Solicitudes pendientes */}
+      {pending.length > 0 && (
+        <div className="bg-brand-card border-2 border-brand-error/40 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-brand-error" />
+            <h2 className="text-sm font-semibold text-brand-text">
+              {pending.length} {pending.length === 1 ? 'persona espera' : 'personas esperan'} aprobación
+            </h2>
+          </div>
+          <p className="text-xs text-brand-muted">
+            Cualquiera con el link puede registrarse. Aprobá solo a quien trabaje acá.
+          </p>
+
+          {statusError && (
+            <div className="flex items-start gap-2 text-xs text-brand-error bg-brand-error/10 border border-brand-error/30 rounded-lg px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>{statusError}</span>
+            </div>
+          )}
+
+          <div className="divide-y divide-brand-border">
+            {pending.map((u) => (
+              <div key={u.id} className="flex items-center gap-3 py-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-brand-text truncate">{u.full_name}</p>
+                  <p className="text-xs text-brand-muted">
+                    {u.puesto} · se registró {formatDate(u.created_at)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => decide(u.id, 'rejected')}
+                    disabled={statusChanging === u.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-muted hover:text-brand-error hover:bg-brand-error/10 transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Rechazar
+                  </button>
+                  <button
+                    onClick={() => decide(u.id, 'approved')}
+                    disabled={statusChanging === u.id}
+                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                  >
+                    {statusChanging === u.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    Aprobar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -144,6 +218,18 @@ export default function UsersPage() {
                     >
                       {user.role}
                     </span>
+                    {user.status !== 'approved' && (
+                      <span
+                        className={cn(
+                          'px-1.5 py-0.5 text-xs font-medium rounded',
+                          user.status === 'pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-brand-error/10 text-brand-error'
+                        )}
+                      >
+                        {user.status === 'pending' ? 'pendiente' : 'rechazado'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-brand-muted">{user.puesto}</span>

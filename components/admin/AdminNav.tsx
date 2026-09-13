@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -25,15 +25,24 @@ const NAV_ITEMS = [
   { label: 'Guías', href: '/admin/guides', icon: BookOpen, exact: false },
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
-  { label: 'Ranking', href: '/admin/ranking', icon: BarChart2, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 
 interface AdminNavProps {
   adminName: string
+  pendingCount?: number
 }
 
-export default function AdminNav({ adminName }: AdminNavProps) {
+function PendingBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-brand-error text-white text-[10px] font-bold flex items-center justify-center">
+      {count}
+    </span>
+  )
+}
+
+export default function AdminNav({ adminName, pendingCount = 0 }: AdminNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -90,6 +99,7 @@ export default function AdminNav({ adminName }: AdminNavProps) {
           isActive={isActive}
           loggingOut={loggingOut}
           onLogout={handleLogout}
+          pendingCount={pendingCount}
         />
       </aside>
 
@@ -121,6 +131,7 @@ export default function AdminNav({ adminName }: AdminNavProps) {
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
+              {href === '/admin/users' && <PendingBadge count={pendingCount} />}
             </Link>
           ))}
         </nav>
@@ -145,11 +156,13 @@ function MobileNavContent({
   isActive,
   loggingOut,
   onLogout,
+  pendingCount,
 }: {
   adminName: string
   isActive: (href: string, exact: boolean) => boolean
   loggingOut: boolean
   onLogout: () => void
+  pendingCount: number
 }) {
   return (
     <>
@@ -175,6 +188,7 @@ function MobileNavContent({
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
             {label}
+            {href === '/admin/users' && <PendingBadge count={pendingCount} />}
           </Link>
         ))}
       </nav>
@@ -192,5 +206,3 @@ function MobileNavContent({
     </>
   )
 }
-
-
