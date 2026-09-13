@@ -22,6 +22,28 @@ async function requireAdmin() {
   return { supabase, session }
 }
 
+export async function setExperienceAction(
+  experience: 'nuevo' | 'experimentado'
+): Promise<ApprovalResult> {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) return { ok: false, error: 'Se cerró tu sesión. Volvé a iniciar sesión.' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ experience, onboarded_at: new Date().toISOString() })
+    .eq('id', session.user.id)
+
+  if (error) return { ok: false, error: 'No se pudo guardar: ' + error.message }
+
+  // 'layout' para que también se invalide en las rutas anidadas, si no al
+  // navegar a la guía el layout seguiría mostrando el onboarding.
+  revalidatePath('/dashboard', 'layout')
+  return { ok: true }
+}
+
 export async function setUserStatusAction(
   userId: string,
   status: 'approved' | 'rejected'

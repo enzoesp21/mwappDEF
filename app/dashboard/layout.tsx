@@ -4,6 +4,7 @@ import BottomNav from '@/components/BottomNav'
 import Logo from '@/components/Logo'
 import NotificationBell from '@/components/NotificationBell'
 import PendingApproval from '@/components/PendingApproval'
+import Onboarding from '@/components/Onboarding'
 import type { Notification } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -16,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, full_name, status')
+    .select('role, full_name, status, experience')
     .eq('id', session.user.id)
     .single()
 
@@ -29,6 +30,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
         fullName={profile.full_name ?? ''}
       />
     )
+  }
+
+  if (profile && !profile.experience) {
+    const { data: guide } = await supabase
+      .from('guides')
+      .select('id')
+      .ilike('title', '%Nuevos y No Tan Nuevos%')
+      .limit(1)
+      .maybeSingle()
+
+    return <Onboarding fullName={profile.full_name ?? ''} guideId={guide?.id ?? null} />
   }
 
   const { data: rawNotifications } = await supabase
