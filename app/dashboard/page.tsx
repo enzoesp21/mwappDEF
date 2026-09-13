@@ -43,9 +43,11 @@ export default async function DashboardPage() {
     .or(`puestos.cs.{"${profile.puesto}"},puestos.cs.{"todos"}`)
     .order('created_at', { ascending: true })
 
+  // Sin join anidado a exam_questions: el personal ya no puede leer esa tabla
+  // (las respuestas correctas viven ahí) y el join anularía toda la consulta.
   const { data: exams } = await supabase
     .from('exams')
-    .select('*, exam_questions(count)')
+    .select('id, guide_id, title, passing_score')
 
   const { data: results } = await supabase
     .from('exam_results')
@@ -64,7 +66,7 @@ export default async function DashboardPage() {
 
     return {
       ...guide,
-      exam: exam ? { ...exam, questions_count: exam.exam_questions?.[0]?.count ?? 0 } : undefined,
+      exam: exam ?? undefined,
       result: result ?? undefined,
       status,
     }
