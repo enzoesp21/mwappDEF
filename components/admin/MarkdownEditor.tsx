@@ -3,8 +3,48 @@
 import { useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Check, AlertCircle } from 'lucide-react'
+import { Check, AlertCircle, ImagePlus, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+
+const MAX_WIDTH = 1400
+
+// Las fotos de celular pesan varios MB y la app se usa con datos móviles.
+// Se redimensionan y recomprimen en el navegador antes de subirlas.
+async function compressImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, MAX_WIDTH / bitmap.width)
+  const width = Math.round(bitmap.width * scale)
+  const height = Math.round(bitmap.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('No se pudo procesar la imagen')
+  ctx.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo procesar la imagen'))),
+      'image/jpeg',
+      0.82
+    )
+  })
+}
+
+function slugify(name: string) {
+  return name
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50) || 'imagen'
+}
 
 interface MarkdownEditorProps {
   value: string
@@ -29,6 +69,9 @@ const TOOLBAR_ACTIONS = [
 export default function MarkdownEditor({ value, onChange, saved, dirty }: MarkdownEditorProps) {
   const [activeTab, setActiveTab] = useState<Tab>('edit')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   function insertSyntax(syntax: string, cursorOffset: number) {
     const textarea = textareaRef.current
@@ -53,6 +96,46 @@ export default function MarkdownEditor({ value, onChange, saved, dirty }: Markdo
       const newCursor = start + insertion.length - (selected ? 0 : cursorOffset)
       textarea.setSelectionRange(newCursor, newCursor)
     })
+  }
+
+  function insertAtCursor(text: string) {
+    const textarea = textareaRef.current
+    const start = textarea ? textarea.selectionStart : value.length
+    const newValue = value.slice(0, start) + text + value.slice(start)
+    onChange(newValue)
+    requestAnimationFrame(() => {
+      if (!textarea) return
+      textarea.focus()
+      const pos = start + text.length
+      textarea.setSelectionRange(pos, pos)
+    })
+  }
+
+  async function handleFile(file: File) {
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const blob = await compressImage(file)
+      const path = Date.now() + '-' + slugify(file.name) + '.jpg'
+
+      const supabase = createClient()
+      const { error } = await supabase.storage
+        .from('guias')
+        .upload(path, blob, { contentType: 'image/jpeg', upsert: false })
+
+      if (error) throw new Error(error.message)
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('guias').getPublicUrl(path)
+
+      insertAtCursor('\n\n![' + slugify(file.name).replace(/-/g, ' ') + '](' + publicUrl + ')\n\n')
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'No se pudo subir la imagen')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
   }
 
   return (
@@ -107,7 +190,42 @@ export default function MarkdownEditor({ value, onChange, saved, dirty }: Markdo
                 {action.label}
               </button>
             ))}
+
+            <span className="w-px bg-brand-border mx-1 self-stretch" />
+
+            <button
+              type="button"
+              title="Subir imagen"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded text-brand-accent hover:bg-brand-accent/10 transition-colors duration-200 cursor-pointer min-h-[32px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {uploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <ImagePlus className="w-3.5 h-3.5" />
+              )}
+              {uploading ? 'Subiendo...' : 'Imagen'}
+            </button>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleFile(file)
+              }}
+            />
           </div>
+
+          {uploadError && (
+            <div className="flex items-start gap-2 text-xs text-brand-error bg-brand-error/10 border border-brand-error/30 rounded-lg px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <span>{uploadError}</span>
+            </div>
+          )}
 
           <textarea
             ref={textareaRef}
