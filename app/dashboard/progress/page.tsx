@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CheckCircle, Trophy } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
+import { fetchExams, uniqueIds } from '@/lib/lookups'
 
 export default async function ProgressPage() {
   const supabase = await createClient()
@@ -10,18 +11,24 @@ export default async function ProgressPage() {
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: results } = await supabase
+  const { data: rawResults } = await supabase
     .from('exam_results')
-    .select(`
-      *,
-      exams (
-        title,
-        guides (title)
-      )
-    `)
+    .select('id, score, completed_at, exam_id, signature_data')
     .eq('user_id', session.user.id)
     .eq('passed', true)
     .order('completed_at', { ascending: false })
+
+  const rows = rawResults ?? []
+  const examMap = await fetchExams(supabase, uniqueIds(rows.map((r) => r.exam_id as string)))
+
+  const results = rows.map((r) => ({
+    id: r.id as string,
+    score: r.score as number,
+    completed_at: r.completed_at as string,
+    signature_data: r.signature_data as string | null,
+    guide_title: examMap[r.exam_id as string]?.guide_title ?? 'Guía',
+    exam_title: examMap[r.exam_id as string]?.title ?? '',
+  }))
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -44,7 +51,6 @@ export default async function ProgressPage() {
       ) : (
         <div className="space-y-3">
           {results.map((result) => {
-            const exam = result.exams as { title: string; guides: { title: string } | null } | null
             return (
               <div
                 key={result.id}
@@ -57,9 +63,9 @@ export default async function ProgressPage() {
                       <p className="text-brand-success text-xs font-semibold">APROBADO</p>
                     </div>
                     <h3 className="font-semibold text-brand-text text-sm leading-tight">
-                      {exam?.guides?.title ?? 'Guía'}
+                      {result.guide_title}
                     </h3>
-                    <p className="text-brand-muted text-xs mt-0.5">{exam?.title}</p>
+                    <p className="text-brand-muted text-xs mt-0.5">{result.exam_title}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <span className="text-2xl font-bold text-brand-success">{result.score}%</span>

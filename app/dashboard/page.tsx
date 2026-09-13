@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Utensils, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import GuideCard from '@/components/GuideCard'
+import { getNextWeekDates, isSignupOpen } from '@/lib/meals-utils'
 import type { GuideWithStatus } from '@/lib/types'
 
 export default async function DashboardPage() {
@@ -70,6 +73,21 @@ export default async function DashboardPage() {
   const passedCount = guidesWithStatus.filter((g) => g.status === 'passed').length
   const totalCount = guidesWithStatus.length
 
+  // Aviso de comida: cuántas comidas de la semana que viene quedan sin elegir.
+  const mealsOpen = isSignupOpen()
+  let missingMeals = 0
+  if (mealsOpen) {
+    const weekDays = getNextWeekDates()
+    const totalSlots = weekDays.reduce((n, d) => n + d.meals.length, 0)
+    const { count: chosen } = await supabase
+      .from('meal_signups')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+      .gte('meal_date', weekDays[0].date)
+      .lte('meal_date', weekDays[weekDays.length - 1].date)
+    missingMeals = Math.max(0, totalSlots - (chosen ?? 0))
+  }
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
@@ -78,6 +96,26 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-brand-muted text-sm mt-0.5">{profile.puesto}</p>
       </div>
+
+      {missingMeals > 0 && (
+        <Link
+          href="/dashboard/comida"
+          className="flex items-center gap-3 bg-brand-card border border-brand-accent/40 rounded-2xl p-4 hover:border-brand-accent transition-colors cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <Utensils className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-brand-text">
+              Te faltan elegir {missingMeals} comida{missingMeals !== 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-brand-muted">
+              Se cierra el sábado a las 22hs. Después no se puede cambiar.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+        </Link>
+      )}
 
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
         <p className="text-brand-muted text-xs font-medium uppercase tracking-wider mb-3">

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Users, BookOpen, CheckCircle, TrendingUp } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { PUESTOS } from '@/lib/types'
+import { fetchProfiles, fetchExams, uniqueIds } from '@/lib/lookups'
 
 export default async function AdminDashboard() {
   const supabase = await createClient()
@@ -12,23 +13,38 @@ export default async function AdminDashboard() {
     { data: profiles },
     { data: guides },
     { data: recentResults },
+    { count: totalExams },
+    { count: totalApproved },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('puesto'),
     supabase.from('guides').select('id, title'),
     supabase
       .from('exam_results')
-      .select(`
-        id,
-        score,
-        passed,
-        completed_at,
-        profiles ( full_name ),
-        exams ( title, guide_id, guides ( title ) )
-      `)
+      .select('id, score, passed, completed_at, user_id, exam_id')
       .order('completed_at', { ascending: false })
       .limit(5),
+    supabase.from('exam_results').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('exam_results')
+      .select('*', { count: 'exact', head: true })
+      .eq('passed', true),
   ])
+
+  const recentRows = recentResults ?? []
+  const [recentProfiles, recentExams] = await Promise.all([
+    fetchProfiles(supabase, uniqueIds(recentRows.map((r) => r.user_id as string))),
+    fetchExams(supabase, uniqueIds(recentRows.map((r) => r.exam_id as string))),
+  ])
+
+  const recent = recentRows.map((r) => ({
+    id: r.id as string,
+    score: r.score as number,
+    passed: r.passed as boolean,
+    completed_at: r.completed_at as string,
+    full_name: recentProfiles[r.user_id as string]?.full_name ?? 'Usuario',
+    guide_title: recentExams[r.exam_id as string]?.guide_title ?? 'Examen',
+  }))
 
   const puestoCounts = PUESTOS.map((puesto) => ({
     puesto,
@@ -85,12 +101,12 @@ export default async function AdminDashboard() {
         <StatCard
           icon={<CheckCircle className="w-5 h-5" />}
           label="Aprobaciones"
-          value={String(recentResults?.filter((r) => r.passed).length ?? 0)}
+          value={String(totalApproved ?? 0)}
         />
         <StatCard
           icon={<TrendingUp className="w-5 h-5" />}
           label="Exámenes totales"
-          value={String(recentResults?.length ?? 0)}
+          value={String(totalExams ?? 0)}
         />
       </div>
 
@@ -154,7 +170,7 @@ export default async function AdminDashboard() {
       {/* Recent results */}
       <div className="bg-brand-card border border-brand-border rounded-xl p-5">
         <h2 className="text-base font-semibold text-brand-text mb-4">Últimos resultados</h2>
-        {!recentResults || recentResults.length === 0 ? (
+        {recent.length === 0 ? (
           <p className="text-sm text-brand-muted">Sin resultados aún.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -168,13 +184,11 @@ export default async function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border">
-                {recentResults.map((result) => {
-                  const profile = result.profiles as unknown as { full_name: string } | null
-                  const exam = result.exams as unknown as { title: string; guides: { title: string } | null } | null
+                {recent.map((result) => {
                   return (
                     <tr key={result.id} className="hover:bg-brand-card-hover transition-colors duration-200">
-                      <td className="py-3 pr-4 text-brand-text">{profile?.full_name ?? '—'}</td>
-                      <td className="py-3 pr-4 text-brand-muted">{exam?.guides?.title ?? exam?.title ?? '—'}</td>
+                      <td className="py-3 pr-4 text-brand-text">{result.full_name}</td>
+                      <td className="py-3 pr-4 text-brand-muted">{result.guide_title}</td>
                       <td className="py-3 pr-4">
                         <span
                           className={

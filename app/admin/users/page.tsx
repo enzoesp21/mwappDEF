@@ -42,14 +42,38 @@ export default function UsersPage() {
   async function loadResults(userId: string) {
     const { data: results } = await supabase
       .from('exam_results')
-      .select(`*, exams ( title, guides ( title ) )`)
+      .select('id, user_id, score, passed, completed_at, exam_id, signature_data')
       .eq('user_id', userId)
       .order('completed_at', { ascending: false })
 
-    const mapped = (results ?? []).map((r) => {
-      const exam = r.exams as { title: string; guides: { title: string } | null } | null
-      return { ...r, guide_title: exam?.guides?.title ?? exam?.title ?? '—' }
-    })
+    const rows = results ?? []
+    const examIds = rows
+      .map((r) => r.exam_id as string)
+      .filter((id, i, a) => Boolean(id) && a.indexOf(id) === i)
+
+    const titles: Record<string, string> = {}
+    if (examIds.length > 0) {
+      const { data: exams } = await supabase
+        .from('exams')
+        .select('id, title, guide_id')
+        .in('id', examIds)
+
+      const guideIds = (exams ?? [])
+        .map((e) => e.guide_id as string)
+        .filter((id, i, a) => Boolean(id) && a.indexOf(id) === i)
+
+      const guideTitles: Record<string, string> = {}
+      if (guideIds.length > 0) {
+        const { data: guides } = await supabase.from('guides').select('id, title').in('id', guideIds)
+        for (const g of guides ?? []) guideTitles[g.id] = g.title
+      }
+
+      for (const e of exams ?? []) {
+        titles[e.id] = guideTitles[e.guide_id as string] ?? e.title ?? '—'
+      }
+    }
+
+    const mapped = rows.map((r) => ({ ...r, guide_title: titles[r.exam_id as string] ?? '—' }))
 
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, results: mapped, resultsLoaded: true } : u))
