@@ -24,10 +24,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   if (!profile || profile.role !== 'admin') redirect('/dashboard')
 
-  const { count: pendingCount } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending')
+  const [{ count: pendingCount }, { count: pendingCorrections }] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase
+      .from('exam_results')
+      .select('id', { count: 'exact', head: true })
+      .eq('review_status', 'pending_review'),
+  ])
 
   const { data: rawNotifications } = await supabase
     .from('notifications')
@@ -44,7 +47,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="min-h-screen bg-brand-dark">
-      <AdminNav adminName={profile.full_name} pendingCount={pendingCount ?? 0} />
+      <AdminNav
+        adminName={profile.full_name}
+        pendingCount={pendingCount ?? 0}
+        pendingCorrections={pendingCorrections ?? 0}
+      />
       {/* Desktop: offset for sidebar. Mobile: offset for top bar */}
       <div className="lg:pl-60 pt-14 lg:pt-0">
         <div className="hidden lg:flex justify-end px-8 pt-6">

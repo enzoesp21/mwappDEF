@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  ClipboardCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { label: 'Usuarios', href: '/admin/users', icon: Users, exact: false },
   { label: 'Guías', href: '/admin/guides', icon: BookOpen, exact: false },
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },
+  { label: 'Correcciones', href: '/admin/correcciones', icon: ClipboardCheck, exact: false },
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
@@ -31,6 +33,7 @@ const NAV_ITEMS = [
 interface AdminNavProps {
   adminName: string
   pendingCount?: number
+  pendingCorrections?: number
 }
 
 function PendingBadge({ count }: { count: number }) {
@@ -42,7 +45,9 @@ function PendingBadge({ count }: { count: number }) {
   )
 }
 
-export default function AdminNav({ adminName, pendingCount = 0 }: AdminNavProps) {
+export default function AdminNav({ adminName, pendingCount = 0, pendingCorrections = 0 }: AdminNavProps) {
+  const badgeFor = (href: string) =>
+    href === '/admin/users' ? pendingCount : href === '/admin/correcciones' ? pendingCorrections : 0
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -100,6 +105,7 @@ export default function AdminNav({ adminName, pendingCount = 0 }: AdminNavProps)
           loggingOut={loggingOut}
           onLogout={handleLogout}
           pendingCount={pendingCount}
+          pendingCorrections={pendingCorrections}
         />
       </aside>
 
@@ -131,7 +137,7 @@ export default function AdminNav({ adminName, pendingCount = 0 }: AdminNavProps)
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
-              {href === '/admin/users' && <PendingBadge count={pendingCount} />}
+              <PendingBadge count={badgeFor(href)} />
             </Link>
           ))}
         </nav>
@@ -157,13 +163,17 @@ function MobileNavContent({
   loggingOut,
   onLogout,
   pendingCount,
+  pendingCorrections,
 }: {
   adminName: string
   isActive: (href: string, exact: boolean) => boolean
   loggingOut: boolean
   onLogout: () => void
   pendingCount: number
+  pendingCorrections: number
 }) {
+  const badgeFor = (href: string) =>
+    href === '/admin/users' ? pendingCount : href === '/admin/correcciones' ? pendingCorrections : 0
   return (
     <>
       <div className="px-4 py-3 border-b border-brand-border">
@@ -188,7 +198,7 @@ function MobileNavContent({
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
             {label}
-            {href === '/admin/users' && <PendingBadge count={pendingCount} />}
+            <PendingBadge count={badgeFor(href)} />
           </Link>
         ))}
       </nav>

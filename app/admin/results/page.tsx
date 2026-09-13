@@ -6,7 +6,7 @@ export default async function ResultsPage() {
 
   const { data: rawResults } = await supabase
     .from('exam_results')
-    .select('id, score, passed, completed_at, signature_data, user_id, exam_id')
+    .select('id, score, passed, completed_at, signature_data, user_id, exam_id, review_status')
     .order('completed_at', { ascending: false })
 
   const rows = rawResults ?? []
@@ -60,6 +60,7 @@ export default async function ResultsPage() {
       passed: r.passed as boolean,
       completed_at: r.completed_at as string,
       signature_data: r.signature_data as string | null,
+      pending_review: (r.review_status as string) === 'pending_review',
       user_name: profileMap[r.user_id as string]?.full_name ?? '—',
       user_puesto: profileMap[r.user_id as string]?.puesto ?? '',
       guide_title: guideMap[guideId] ?? exam?.title ?? '—',

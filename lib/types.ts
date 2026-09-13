@@ -44,12 +44,17 @@ export interface Exam {
   passing_score: number
 }
 
+export type QuestionType = 'multiple_choice' | 'open'
+
 export interface ExamQuestion {
   id: string
   exam_id: string
   question: string
   options: string[]
-  correct_option: number
+  // null en las preguntas abiertas: las corrige un admin a mano
+  correct_option: number | null
+  question_type: QuestionType
+  answer_guide?: string | null
   order: number
 }
 

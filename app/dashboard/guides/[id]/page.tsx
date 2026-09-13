@@ -31,15 +31,16 @@ export default async function GuidePage({ params }: Props) {
     .single()
 
   let hasPassed = false
+  let isPending = false
   if (exam) {
-    const { data: result } = await supabase
+    const { data: attempts } = await supabase
       .from('exam_results')
-      .select('id')
+      .select('id, passed, review_status')
       .eq('user_id', session.user.id)
       .eq('exam_id', exam.id)
-      .eq('passed', true)
-      .single()
-    hasPassed = !!result
+
+    hasPassed = (attempts ?? []).some((a) => a.passed === true)
+    isPending = (attempts ?? []).some((a) => a.review_status === 'pending_review')
   }
 
   return (
@@ -69,7 +70,17 @@ export default async function GuidePage({ params }: Props) {
         <MarkdownContent content={guide.content} />
       </div>
 
-      {exam && !hasPassed && (
+      {exam && !hasPassed && isPending && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+          <ClipboardList className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>
+            Ya rendiste este examen y tiene respuestas escritas esperando corrección. Te avisamos
+            con una notificación cuando esté la nota.
+          </span>
+        </div>
+      )}
+
+      {exam && !hasPassed && !isPending && (
         <div className="bg-brand-card border border-brand-accent/30 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-brand-accent" />

@@ -3,21 +3,27 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, PenLine } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, PenLine, Clock3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import SignatureCanvas from '@/components/exam/SignatureCanvas'
 import ProgressBar from '@/components/exam/ProgressBar'
 import { cn } from '@/lib/utils'
 
-type ExamState = 'loading' | 'taking' | 'passed' | 'failed' | 'signing' | 'done'
+type ExamState = 'loading' | 'taking' | 'signing' | 'passed' | 'failed' | 'pending'
 
-// Sin correct_option a propósito: la respuesta correcta no sale de la base,
-// la corrección la hace grade_exam() en el servidor.
+// Sin correct_option a propósito: la corrección vive en el servidor.
 interface PublicQuestion {
   id: string
   question: string
   options: string[]
+  question_type: 'multiple_choice' | 'open'
   order: number
+}
+
+interface Answer {
+  question_id: string
+  selected_option?: number
+  answer_text?: string
 }
 
 export default function ExamPage() {
@@ -27,14 +33,15 @@ export default function ExamPage() {
 
   const [state, setState] = useState<ExamState>('loading')
   const [questions, setQuestions] = useState<PublicQuestion[]>([])
-  const [grading, setGrading] = useState(false)
   const [examId, setExamId] = useState('')
   const [examTitle, setExamTitle] = useState('')
   const [passingScore, setPassingScore] = useState(70)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<number[]>([])
+  const [answers, setAnswers] = useState<Record<string, Answer>>({})
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
+  const [openText, setOpenText] = useState('')
   const [score, setScore] = useState(0)
+  const [pendingCount, setPendingCount] = useState(0)
   const [signature, setSignature] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -48,21 +55,21 @@ export default function ExamPage() {
       .single()
 
     if (!exam) {
-      router.push(`/dashboard/guides/${guideId}`)
+      router.push('/dashboard/guides/' + guideId)
       return
     }
 
     const { data: qs } = await supabase.rpc('get_exam_questions', { p_exam_id: exam.id })
 
     if (!qs || qs.length === 0) {
-      router.push(`/dashboard/guides/${guideId}`)
+      router.push('/dashboard/guides/' + guideId)
       return
     }
 
     setExamId(exam.id)
     setExamTitle(exam.title)
     setPassingScore(exam.passing_score)
-    setQuestions(qs)
+    setQuestions(qs as PublicQuestion[])
     setState('taking')
   }, [guideId, router])
 
@@ -70,47 +77,41 @@ export default function ExamPage() {
     loadExam()
   }, [loadExam])
 
-  const handleNext = async () => {
-    if (selectedOption === null || grading) return
-    const newAnswers = [...answers, selectedOption]
+  const question = questions[currentIndex]
+  const isOpen = question?.question_type === 'open'
+  const canAdvance = isOpen ? openText.trim().length > 0 : selectedOption !== null
 
-    if (currentIndex < questions.length - 1) {
-      setAnswers(newAnswers)
-      setSelectedOption(null)
-      setCurrentIndex((i) => i + 1)
-      return
-    }
+  const handleNext = () => {
+    if (!canAdvance || !question) return
 
-    setAnswers(newAnswers)
-    setGrading(true)
+    const answer: Answer = isOpen
+      ? { question_id: question.id, answer_text: openText.trim() }
+      : { question_id: question.id, selected_option: selectedOption as number }
+
+    setAnswers((prev) => ({ ...prev, [question.id]: answer }))
+    setSelectedOption(null)
+    setOpenText('')
     setError('')
 
-    const supabase = createClient()
-    const { data, error: gradeError } = await supabase.rpc('grade_exam', {
-      p_exam_id: examId,
-      p_answers: newAnswers,
-    })
-    setGrading(false)
-
-    if (gradeError || !data) {
-      setError('No se pudo corregir el examen. Revisá tu conexión e intentá de nuevo.')
-      return
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((i) => i + 1)
+    } else {
+      setState('signing')
     }
-
-    const result = data as { score: number; passed: boolean }
-    setScore(result.score)
-    setState(result.passed ? 'passed' : 'failed')
   }
 
   const handleRetry = () => {
     setCurrentIndex(0)
-    setAnswers([])
+    setAnswers({})
     setSelectedOption(null)
+    setOpenText('')
     setScore(0)
+    setSignature('')
+    setError('')
     setState('taking')
   }
 
-  const handleSaveResult = async () => {
+  const handleSubmit = async () => {
     if (!signature) {
       setError('Por favor, firmá antes de confirmar.')
       return
@@ -119,21 +120,36 @@ export default function ExamPage() {
     setError('')
 
     const supabase = createClient()
+    const payload = questions.map((q) => answers[q.id]).filter(Boolean)
 
-    const { error: saveError } = await supabase.rpc('save_exam_result', {
+    const { data, error: submitError } = await supabase.rpc('submit_exam', {
       p_exam_id: examId,
-      p_answers: answers,
+      p_answers: payload,
       p_signature: signature,
     })
 
-    if (saveError) {
-      setError('Error al guardar el resultado. Intentá de nuevo.')
-      setSaving(false)
+    setSaving(false)
+
+    if (submitError || !data) {
+      setError('No se pudo enviar el examen. Revisá tu conexión e intentá de nuevo.')
       return
     }
 
-    setState('done')
-    setSaving(false)
+    const result = data as {
+      review_status: string
+      score?: number
+      passed?: boolean
+      pending?: number
+    }
+
+    if (result.review_status === 'pending_review') {
+      setPendingCount(result.pending ?? 0)
+      setState('pending')
+      return
+    }
+
+    setScore(result.score ?? 0)
+    setState(result.passed ? 'passed' : 'failed')
   }
 
   if (state === 'loading') {
@@ -144,14 +160,19 @@ export default function ExamPage() {
     )
   }
 
-  if (state === 'done') {
+  if (state === 'pending') {
     return (
       <div className="text-center py-16 animate-slide-up space-y-4">
-        <div className="w-16 h-16 bg-brand-success/10 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle className="w-8 h-8 text-brand-success" />
+        <div className="w-16 h-16 bg-brand-accent/10 rounded-full flex items-center justify-center mx-auto">
+          <Clock3 className="w-8 h-8 text-brand-accent" />
         </div>
-        <h2 className="text-xl font-bold text-brand-text">¡Examen completado!</h2>
-        <p className="text-brand-muted text-sm">Tu firma fue guardada correctamente.</p>
+        <h2 className="text-xl font-bold text-brand-text">Examen enviado</h2>
+        <p className="text-brand-muted text-sm max-w-sm mx-auto leading-relaxed">
+          {pendingCount === 1
+            ? 'Tu examen tiene 1 respuesta escrita que un encargado tiene que corregir.'
+            : 'Tu examen tiene ' + pendingCount + ' respuestas escritas que un encargado tiene que corregir.'}{' '}
+          Te avisamos con una notificación cuando esté la nota.
+        </p>
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer"
@@ -162,51 +183,20 @@ export default function ExamPage() {
     )
   }
 
-  if (state === 'passed' || state === 'signing') {
+  if (state === 'passed') {
     return (
-      <div className="animate-slide-up space-y-6">
-        <div className="text-center space-y-3 py-4">
-          <div className="w-16 h-16 bg-brand-success/10 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-brand-success" />
-          </div>
-          <h2 className="text-2xl font-bold text-brand-success">{score}%</h2>
-          <p className="text-brand-text font-semibold">¡Aprobaste el examen!</p>
-          <p className="text-brand-muted text-sm">Respondiste correctamente {Math.round((score / 100) * questions.length)} de {questions.length} preguntas.</p>
+      <div className="text-center py-16 animate-slide-up space-y-4">
+        <div className="w-16 h-16 bg-brand-success/10 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle className="w-8 h-8 text-brand-success" />
         </div>
-
-        <div className="bg-brand-card border border-brand-accent/30 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <PenLine className="w-5 h-5 text-brand-accent" />
-            <h3 className="font-semibold text-brand-text">Firma tu conformidad</h3>
-          </div>
-          <p className="text-brand-muted text-sm">
-            Firmá con el dedo para confirmar que leíste la guía y aprobaste el examen.
-          </p>
-          <SignatureCanvas onSignature={setSignature} />
-
-          {error && (
-            <div className="bg-brand-error/10 border border-brand-error/30 rounded-lg px-4 py-3 text-brand-error text-sm">
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={handleSaveResult}
-            disabled={saving || !signature}
-            className={cn(
-              'w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-[48px]',
-              'bg-brand-accent text-brand-dark font-semibold text-sm',
-              'hover:bg-brand-accent-hover transition-colors cursor-pointer',
-              'disabled:opacity-60 disabled:cursor-not-allowed'
-            )}
-          >
-            {saving ? (
-              <div className="w-5 h-5 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
-            ) : (
-              'Confirmar firma'
-            )}
-          </button>
-        </div>
+        <h2 className="text-2xl font-bold text-brand-success">{score}%</h2>
+        <p className="text-brand-text font-semibold">¡Aprobaste el examen!</p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer"
+        >
+          Ir al inicio
+        </Link>
       </div>
     )
   }
@@ -221,7 +211,7 @@ export default function ExamPage() {
           <h2 className="text-2xl font-bold text-brand-error">{score}%</h2>
           <p className="text-brand-text font-semibold">No llegaste al puntaje mínimo</p>
           <p className="text-brand-muted text-sm">
-            Necesitás {passingScore}% para aprobar. Respondiste correctamente {Math.round((score / 100) * questions.length)} de {questions.length} preguntas.
+            Necesitás {passingScore}% para aprobar.
           </p>
           <p className="text-brand-muted text-xs">Revisá la guía y volvé a intentarlo cuando estés listo.</p>
         </div>
@@ -239,7 +229,7 @@ export default function ExamPage() {
             Reintentar examen
           </button>
           <Link
-            href={`/dashboard/guides/${guideId}`}
+            href={'/dashboard/guides/' + guideId}
             className={cn(
               'w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-[48px]',
               'bg-brand-card border border-brand-border text-brand-muted text-sm',
@@ -254,14 +244,63 @@ export default function ExamPage() {
     )
   }
 
-  const question = questions[currentIndex]
+  if (state === 'signing') {
+    const openCount = questions.filter((q) => q.question_type === 'open').length
+    return (
+      <div className="animate-slide-up space-y-6">
+        <div className="text-center space-y-2 py-4">
+          <h2 className="text-xl font-bold text-brand-text">Terminaste el examen</h2>
+          <p className="text-brand-muted text-sm">
+            {openCount > 0
+              ? 'Firmá para enviarlo. Un encargado va a corregir las respuestas escritas.'
+              : 'Firmá para enviarlo y ver tu resultado.'}
+          </p>
+        </div>
+
+        <div className="bg-brand-card border border-brand-accent/30 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <PenLine className="w-5 h-5 text-brand-accent" />
+            <h3 className="font-semibold text-brand-text">Firmá tu conformidad</h3>
+          </div>
+          <p className="text-brand-muted text-sm">
+            Firmá con el dedo para confirmar que leíste la guía y que estas son tus respuestas.
+          </p>
+          <SignatureCanvas onSignature={setSignature} />
+
+          {error && (
+            <div className="bg-brand-error/10 border border-brand-error/30 rounded-lg px-4 py-3 text-brand-error text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !signature}
+            className={cn(
+              'w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-[48px]',
+              'bg-brand-accent text-brand-dark font-semibold text-sm',
+              'hover:bg-brand-accent-hover transition-colors cursor-pointer',
+              'disabled:opacity-60 disabled:cursor-not-allowed'
+            )}
+          >
+            {saving ? (
+              <div className="w-5 h-5 border-2 border-brand-dark/30 border-t-brand-dark rounded-full animate-spin" />
+            ) : (
+              'Enviar examen'
+            )}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const optionLabels = ['A', 'B', 'C', 'D']
 
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={`/dashboard/guides/${guideId}`}
+          href={'/dashboard/guides/' + guideId}
           className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-card border border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer"
           aria-label="Salir del examen"
         >
@@ -275,46 +314,63 @@ export default function ExamPage() {
 
       <ProgressBar current={currentIndex + 1} total={questions.length} />
 
-      <div className="bg-brand-card border border-brand-border rounded-2xl p-5 animate-slide-up">
+      <div className="bg-brand-card border border-brand-border rounded-2xl p-5 animate-slide-up space-y-2">
+        {isOpen && (
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-brand-accent bg-brand-accent/10 px-2 py-0.5 rounded-full">
+            Respuesta escrita
+          </span>
+        )}
         <p className="text-brand-text font-medium leading-relaxed">{question.question}</p>
       </div>
 
-      <div className="space-y-3">
-        {(question.options as string[]).map((option, idx) => (
-          <button
-            key={idx}
-            onClick={() => setSelectedOption(idx)}
-            className={cn(
-              'w-full flex items-start gap-3 p-4 rounded-xl border text-left cursor-pointer',
-              'transition-all duration-200 min-h-[52px]',
-              selectedOption === idx
-                ? 'border-brand-accent bg-brand-accent/10 text-brand-text'
-                : 'border-brand-border bg-brand-card text-brand-text hover:border-brand-accent/40 hover:bg-brand-card-hover'
-            )}
-            aria-pressed={selectedOption === idx}
-          >
-            <span
+      {isOpen ? (
+        <div className="space-y-2">
+          <textarea
+            value={openText}
+            onChange={(e) => setOpenText(e.target.value)}
+            rows={6}
+            maxLength={1500}
+            placeholder="Escribí tu respuesta con tus palabras..."
+            className="w-full px-4 py-3 bg-brand-card border border-brand-border rounded-xl text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent transition-colors resize-y leading-relaxed"
+          />
+          <p className="text-xs text-brand-muted text-right">{openText.length}/1500</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {(question.options as string[]).map((option, idx) => (
+            <button
+              key={idx}
+              onClick={() => setSelectedOption(idx)}
               className={cn(
-                'flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-xs font-bold',
+                'w-full flex items-start gap-3 p-4 rounded-xl border text-left cursor-pointer',
+                'transition-all duration-200 min-h-[52px]',
                 selectedOption === idx
-                  ? 'border-brand-accent bg-brand-accent text-brand-dark'
-                  : 'border-brand-border text-brand-muted'
+                  ? 'border-brand-accent bg-brand-accent/10 text-brand-text'
+                  : 'border-brand-border bg-brand-card text-brand-text hover:border-brand-accent/40 hover:bg-brand-card-hover'
               )}
+              aria-pressed={selectedOption === idx}
             >
-              {optionLabels[idx]}
-            </span>
-            <span className="text-sm leading-relaxed pt-0.5">{option}</span>
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <p className="text-brand-error text-sm text-center mb-3">{error}</p>
+              <span
+                className={cn(
+                  'flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center text-xs font-bold',
+                  selectedOption === idx
+                    ? 'border-brand-accent bg-brand-accent text-brand-dark'
+                    : 'border-brand-border text-brand-muted'
+                )}
+              >
+                {optionLabels[idx]}
+              </span>
+              <span className="text-sm leading-relaxed pt-0.5">{option}</span>
+            </button>
+          ))}
+        </div>
       )}
+
+      {error && <p className="text-brand-error text-sm text-center">{error}</p>}
 
       <button
         onClick={handleNext}
-        disabled={selectedOption === null || grading}
+        disabled={!canAdvance}
         className={cn(
           'w-full py-3 px-4 rounded-xl font-semibold text-sm min-h-[48px]',
           'bg-brand-accent text-brand-dark hover:bg-brand-accent-hover',
@@ -322,11 +378,7 @@ export default function ExamPage() {
           'disabled:opacity-40 disabled:cursor-not-allowed'
         )}
       >
-        {grading
-          ? 'Corrigiendo...'
-          : currentIndex === questions.length - 1
-            ? 'Finalizar examen'
-            : 'Siguiente pregunta'}
+        {currentIndex === questions.length - 1 ? 'Terminar y firmar' : 'Siguiente pregunta'}
       </button>
     </div>
   )

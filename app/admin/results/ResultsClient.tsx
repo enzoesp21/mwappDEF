@@ -16,6 +16,7 @@ interface ResultRow {
   guide_title: string
   guide_id: string
   passing_score: number
+  pending_review: boolean
 }
 
 interface ResultsClientProps {
@@ -96,7 +97,11 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
                   <span
                     className={cn(
                       'w-2 h-2 rounded-full flex-shrink-0',
-                      r.passed ? 'bg-brand-success' : 'bg-brand-error'
+                      r.pending_review
+                        ? 'bg-amber-500'
+                        : r.passed
+                          ? 'bg-brand-success'
+                          : 'bg-brand-error'
                     )}
                   />
                   <div className="flex-1 min-w-0">
@@ -107,10 +112,14 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
                     <p
                       className={cn(
                         'text-sm font-bold',
-                        r.passed ? 'text-brand-success' : 'text-brand-error'
+                        r.pending_review
+                          ? 'text-amber-600'
+                          : r.passed
+                            ? 'text-brand-success'
+                            : 'text-brand-error'
                       )}
                     >
-                      {r.score}%
+                      {r.pending_review ? 'Sin corregir' : r.score + '%'}
                     </p>
                     <p className="text-[10px] text-brand-muted" suppressHydrationWarning>
                       {timeAgo(r.completed_at)}
@@ -226,20 +235,30 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
                           <span
                             className={cn(
                               'text-sm font-bold',
-                              result.passed ? 'text-brand-success' : 'text-brand-error'
+                              result.pending_review
+                                ? 'text-amber-600'
+                                : result.passed
+                                  ? 'text-brand-success'
+                                  : 'text-brand-error'
                             )}
                           >
-                            {result.score}%
+                            {result.pending_review ? '—' : result.score + '%'}
                           </span>
                           <span
                             className={cn(
                               'text-xs px-1.5 py-0.5 rounded-full hidden sm:inline-flex',
-                              result.passed
-                                ? 'bg-brand-success/10 text-brand-success'
-                                : 'bg-brand-error/10 text-brand-error'
+                              result.pending_review
+                                ? 'bg-amber-100 text-amber-700'
+                                : result.passed
+                                  ? 'bg-brand-success/10 text-brand-success'
+                                  : 'bg-brand-error/10 text-brand-error'
                             )}
                           >
-                            {result.passed ? 'Aprobado' : 'Reprobado'}
+                            {result.pending_review
+                              ? 'Sin corregir'
+                              : result.passed
+                                ? 'Aprobado'
+                                : 'Reprobado'}
                           </span>
                         </div>
                       </td>

@@ -144,6 +144,8 @@ export default function EditGuidePage() {
               question: q.question,
               options: q.options,
               correct_option: q.correct_option,
+              question_type: q.question_type ?? 'multiple_choice',
+              answer_guide: q.answer_guide ?? null,
               order: i,
             }))
           )

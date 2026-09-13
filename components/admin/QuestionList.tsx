@@ -74,22 +74,28 @@ export default function QuestionList({ questions, onReorder, onDelete, onEdit }:
                       <p className="text-sm text-brand-text font-medium line-clamp-2 mb-2">
                         {q.question}
                       </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {q.options.map((opt, i) => (
-                          <span
-                            key={i}
-                            className={cn(
-                              'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs max-w-[140px]',
-                              i === q.correct_option
-                                ? 'bg-brand-success/15 text-brand-success border border-brand-success/20'
-                                : 'bg-brand-card-hover text-brand-muted'
-                            )}
-                          >
-                            <span className="font-bold">{OPTION_LABELS[i]}.</span>
-                            <span className="truncate">{opt}</span>
-                          </span>
-                        ))}
-                      </div>
+                      {q.question_type === 'open' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-brand-accent/10 text-brand-accent border border-brand-accent/20">
+                          Respuesta escrita · la corregís a mano
+                        </span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {q.options.map((opt, i) => (
+                            <span
+                              key={i}
+                              className={cn(
+                                'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs max-w-[140px]',
+                                i === q.correct_option
+                                  ? 'bg-brand-success/15 text-brand-success border border-brand-success/20'
+                                  : 'bg-brand-card-hover text-brand-muted'
+                              )}
+                            >
+                              <span className="font-bold">{OPTION_LABELS[i]}.</span>
+                              <span className="truncate">{opt}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Actions */}
