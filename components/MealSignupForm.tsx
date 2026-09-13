@@ -100,7 +100,7 @@ export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
   }
 
   return (
-    <div className="space-y-3 pb-28">
+    <div className="space-y-3 pb-48">
       {!isOpen && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
           <Lock className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -164,7 +164,11 @@ export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
       ))}
 
       {isOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 bg-brand-dark/95 backdrop-blur-sm border-t border-brand-border">
+        <div
+          className="fixed left-0 right-0 z-30 bg-brand-dark/95 backdrop-blur-sm border-t border-brand-border"
+          // Apoyada justo encima del menú inferior (h-16), que va en z-40.
+          style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+        >
           <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
             {error && (
               <div className="flex items-start gap-2 text-xs text-brand-error bg-brand-error/10 border border-brand-error/30 rounded-lg px-3 py-2">
