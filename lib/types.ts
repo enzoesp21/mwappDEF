@@ -16,7 +16,7 @@ export const PUESTOS = [
 
 export type Puesto = (typeof PUESTOS)[number]
 
-export type UserStatus = 'pending' | 'approved' | 'rejected'
+export type UserStatus = 'pending' | 'approved' | 'rejected' | 'inactive'
 
 export interface Profile {
   id: string

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
 
 interface Props {
-  status: 'pending' | 'rejected'
+  status: 'pending' | 'rejected' | 'inactive'
   fullName: string
 }
 
@@ -23,7 +23,8 @@ export default function PendingApproval({ status, fullName }: Props) {
     router.refresh()
   }
 
-  const rejected = status === 'rejected'
+  const blocked = status === 'rejected' || status === 'inactive'
+  const inactive = status === 'inactive'
 
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center px-4">
@@ -36,10 +37,10 @@ export default function PendingApproval({ status, fullName }: Props) {
           <div
             className={
               'w-14 h-14 rounded-full flex items-center justify-center mx-auto ' +
-              (rejected ? 'bg-brand-error/10' : 'bg-brand-accent/10')
+              (blocked ? 'bg-brand-error/10' : 'bg-brand-accent/10')
             }
           >
-            {rejected ? (
+            {blocked ? (
               <XCircle className="w-7 h-7 text-brand-error" />
             ) : (
               <Clock className="w-7 h-7 text-brand-accent" />
@@ -48,10 +49,19 @@ export default function PendingApproval({ status, fullName }: Props) {
 
           <div className="space-y-2">
             <h1 className="text-lg font-bold text-brand-text">
-              {rejected ? 'Acceso no aprobado' : 'Tu cuenta está pendiente'}
+              {inactive
+                ? 'Tu cuenta fue dada de baja'
+                : blocked
+                  ? 'Acceso no aprobado'
+                  : 'Tu cuenta está pendiente'}
             </h1>
             <p className="text-sm text-brand-muted leading-relaxed">
-              {rejected ? (
+              {inactive ? (
+                <>
+                  Tu cuenta ya no tiene acceso a la aplicación. Si creés que es un error, hablá
+                  con Facundo o Enzo.
+                </>
+              ) : blocked ? (
                 <>
                   Tu solicitud de acceso fue rechazada. Si creés que es un error, hablá con
                   Facundo o Enzo.
@@ -65,7 +75,7 @@ export default function PendingApproval({ status, fullName }: Props) {
             </p>
           </div>
 
-          {!rejected && (
+          {!blocked && (
             <p className="text-xs text-brand-muted bg-brand-dark rounded-xl px-3 py-2">
               Si ya te avisaron que te aprobaron, cerrá sesión y volvé a entrar.
             </p>

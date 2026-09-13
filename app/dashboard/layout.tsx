@@ -26,7 +26,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (profile && profile.status !== 'approved') {
     return (
       <PendingApproval
-        status={profile.status === 'rejected' ? 'rejected' : 'pending'}
+        status={
+          profile.status === 'rejected' || profile.status === 'inactive'
+            ? profile.status
+            : 'pending'
+        }
         fullName={profile.full_name ?? ''}
       />
     )

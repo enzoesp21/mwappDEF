@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction } from '@/app/actions/users'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -22,6 +22,9 @@ export default function UsersPage() {
   const [roleChanging, setRoleChanging] = useState<string | null>(null)
   const [statusChanging, setStatusChanging] = useState<string | null>(null)
   const [statusError, setStatusError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<UserWithResults | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const supabase = createClient()
 
@@ -112,6 +115,35 @@ export default function UsersPage() {
     }
   }
 
+  async function deactivate(userId: string, status: 'inactive' | 'approved') {
+    setStatusChanging(userId)
+    setStatusError(null)
+    const result = await setUserStatusAction(userId, status)
+    setStatusChanging(null)
+    if (result.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status } : u)))
+    } else {
+      setStatusError(result.error)
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
+    setStatusError(null)
+    const result = await deleteUserAction(deleteTarget.id)
+    setDeleting(false)
+    if (result.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      setDeleteConfirm('')
+    } else {
+      setStatusError(result.error)
+      setDeleteTarget(null)
+      setDeleteConfirm('')
+    }
+  }
+
   const pending = users.filter((u) => u.status === 'pending')
 
   const filtered = users.filter((u) => {
@@ -184,6 +216,13 @@ export default function UsersPage() {
         </div>
       )}
 
+      {statusError && pending.length === 0 && (
+        <div className="flex items-start gap-2 text-sm text-brand-error bg-brand-error/10 border border-brand-error/30 rounded-lg px-3 py-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{statusError}</span>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -251,7 +290,11 @@ export default function UsersPage() {
                             : 'bg-brand-error/10 text-brand-error'
                         )}
                       >
-                        {user.status === 'pending' ? 'pendiente' : 'rechazado'}
+                        {user.status === 'pending'
+                          ? 'pendiente'
+                          : user.status === 'inactive'
+                            ? 'dado de baja'
+                            : 'rechazado'}
                       </span>
                     )}
                   </div>
@@ -280,6 +323,48 @@ export default function UsersPage() {
                     ) : (
                       'Cambiar a admin'
                     )}
+                  </button>
+
+                  {user.status === 'inactive' ? (
+                    <button
+                      onClick={() => deactivate(user.id, 'approved')}
+                      disabled={statusChanging === user.id}
+                      title="Reactivar"
+                      className="p-2 rounded-lg text-brand-muted hover:text-brand-success hover:bg-brand-success/10 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center disabled:opacity-50"
+                    >
+                      {statusChanging === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="w-4 h-4" />
+                      )}
+                    </button>
+                  ) : (
+                    user.status === 'approved' && (
+                      <button
+                        onClick={() => deactivate(user.id, 'inactive')}
+                        disabled={statusChanging === user.id}
+                        title="Dar de baja"
+                        className="p-2 rounded-lg text-brand-muted hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center disabled:opacity-50"
+                      >
+                        {statusChanging === user.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <UserMinus className="w-4 h-4" />
+                        )}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setDeleteTarget(user)
+                      setDeleteConfirm('')
+                      setStatusError(null)
+                    }}
+                    title="Borrar del todo"
+                    className="p-2 rounded-lg text-brand-muted hover:text-brand-error hover:bg-brand-error/10 transition-colors cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
 
                   <button
@@ -346,6 +431,68 @@ export default function UsersPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={() => !deleting && setDeleteTarget(null)}
+        >
+          <div
+            className="bg-brand-card border border-brand-error/40 rounded-xl p-5 max-w-md w-full space-y-4 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-brand-error/10 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-brand-error" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-brand-text">Borrar del todo</h2>
+                <p className="text-xs text-brand-muted mt-0.5">{deleteTarget.full_name}</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-brand-text leading-relaxed">
+              Se elimina la cuenta y con ella <strong>todo su historial</strong>: exámenes
+              rendidos, firmas e inscripciones de comida. Esto no se puede deshacer.
+            </p>
+
+            <p className="text-xs text-brand-muted">
+              Si la persona simplemente dejó de trabajar, conviene darla de baja en vez de
+              borrarla: pierde el acceso pero se conservan sus registros.
+            </p>
+
+            <div>
+              <label className="block text-xs font-medium text-brand-muted mb-1.5">
+                Escribí <span className="text-brand-text font-semibold">{deleteTarget.full_name}</span> para confirmar
+              </label>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                className="w-full px-3 py-2.5 bg-brand-dark border border-brand-border rounded-lg text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-error focus:border-transparent transition-colors min-h-[44px]"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium bg-brand-card-hover text-brand-muted hover:text-brand-text transition-colors cursor-pointer min-h-[44px] disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting || deleteConfirm.trim() !== deleteTarget.full_name.trim()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-lg text-sm font-semibold bg-brand-error text-white hover:opacity-90 transition-opacity cursor-pointer min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Borrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

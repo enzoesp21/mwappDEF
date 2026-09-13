@@ -44,9 +44,25 @@ export async function setExperienceAction(
   return { ok: true }
 }
 
+export async function deleteUserAction(userId: string): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  if (userId === session.user.id) {
+    return { ok: false, error: 'No podés eliminar tu propia cuenta.' }
+  }
+
+  const { error } = await supabase.rpc('delete_user_completely', { p_user_id: userId })
+  if (error) return { ok: false, error: 'No se pudo eliminar: ' + error.message }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/admin')
+  return { ok: true }
+}
+
 export async function setUserStatusAction(
   userId: string,
-  status: 'approved' | 'rejected'
+  status: 'approved' | 'rejected' | 'inactive'
 ): Promise<ApprovalResult> {
   const { supabase, session } = await requireAdmin()
   if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
@@ -58,12 +74,15 @@ export async function setUserStatusAction(
   const { error } = await supabase.from('profiles').update({ status }).eq('id', userId)
   if (error) return { ok: false, error: 'No se pudo guardar: ' + error.message }
 
-  const message =
-    status === 'approved'
-      ? 'Tu acceso fue aprobado. Ya podés usar la aplicación.'
-      : 'Tu solicitud de acceso fue rechazada. Consultá con el encargado.'
+  // Al dar de baja no se notifica: la persona ya no entra a la app.
+  if (status !== 'inactive') {
+    const message =
+      status === 'approved'
+        ? 'Tu acceso fue aprobado. Ya podés usar la aplicación.'
+        : 'Tu solicitud de acceso fue rechazada. Consultá con el encargado.'
 
-  await supabase.from('notifications').insert({ user_id: userId, message })
+    await supabase.from('notifications').insert({ user_id: userId, message })
+  }
 
   revalidatePath('/admin/users')
   revalidatePath('/admin')
