@@ -8,9 +8,17 @@ import { createClient } from '@/lib/supabase/client'
 import SignatureCanvas from '@/components/exam/SignatureCanvas'
 import ProgressBar from '@/components/exam/ProgressBar'
 import { cn } from '@/lib/utils'
-import type { ExamQuestion } from '@/lib/types'
 
 type ExamState = 'loading' | 'taking' | 'passed' | 'failed' | 'signing' | 'done'
+
+// Sin correct_option a propósito: la respuesta correcta no sale de la base,
+// la corrección la hace grade_exam() en el servidor.
+interface PublicQuestion {
+  id: string
+  question: string
+  options: string[]
+  order: number
+}
 
 export default function ExamPage() {
   const params = useParams()
@@ -18,7 +26,8 @@ export default function ExamPage() {
   const guideId = params.id as string
 
   const [state, setState] = useState<ExamState>('loading')
-  const [questions, setQuestions] = useState<ExamQuestion[]>([])
+  const [questions, setQuestions] = useState<PublicQuestion[]>([])
+  const [grading, setGrading] = useState(false)
   const [examId, setExamId] = useState('')
   const [examTitle, setExamTitle] = useState('')
   const [passingScore, setPassingScore] = useState(70)
@@ -43,11 +52,7 @@ export default function ExamPage() {
       return
     }
 
-    const { data: qs } = await supabase
-      .from('exam_questions')
-      .select('*')
-      .eq('exam_id', exam.id)
-      .order('order', { ascending: true })
+    const { data: qs } = await supabase.rpc('get_exam_questions', { p_exam_id: exam.id })
 
     if (!qs || qs.length === 0) {
       router.push(`/dashboard/guides/${guideId}`)
@@ -65,21 +70,36 @@ export default function ExamPage() {
     loadExam()
   }, [loadExam])
 
-  const handleNext = () => {
-    if (selectedOption === null) return
+  const handleNext = async () => {
+    if (selectedOption === null || grading) return
     const newAnswers = [...answers, selectedOption]
 
     if (currentIndex < questions.length - 1) {
       setAnswers(newAnswers)
       setSelectedOption(null)
       setCurrentIndex((i) => i + 1)
-    } else {
-      const correct = newAnswers.filter((a, i) => a === questions[i].correct_option).length
-      const finalScore = Math.round((correct / questions.length) * 100)
-      setAnswers(newAnswers)
-      setScore(finalScore)
-      setState(finalScore >= passingScore ? 'passed' : 'failed')
+      return
     }
+
+    setAnswers(newAnswers)
+    setGrading(true)
+    setError('')
+
+    const supabase = createClient()
+    const { data, error: gradeError } = await supabase.rpc('grade_exam', {
+      p_exam_id: examId,
+      p_answers: newAnswers,
+    })
+    setGrading(false)
+
+    if (gradeError || !data) {
+      setError('No se pudo corregir el examen. Revisá tu conexión e intentá de nuevo.')
+      return
+    }
+
+    const result = data as { score: number; passed: boolean }
+    setScore(result.score)
+    setState(result.passed ? 'passed' : 'failed')
   }
 
   const handleRetry = () => {
@@ -99,17 +119,11 @@ export default function ExamPage() {
     setError('')
 
     const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
 
-    const { error: saveError } = await supabase.from('exam_results').insert({
-      user_id: user.id,
-      exam_id: examId,
-      score,
-      passed: true,
-      signature_data: signature,
+    const { error: saveError } = await supabase.rpc('save_exam_result', {
+      p_exam_id: examId,
+      p_answers: answers,
+      p_signature: signature,
     })
 
     if (saveError) {
@@ -294,9 +308,13 @@ export default function ExamPage() {
         ))}
       </div>
 
+      {error && (
+        <p className="text-brand-error text-sm text-center mb-3">{error}</p>
+      )}
+
       <button
         onClick={handleNext}
-        disabled={selectedOption === null}
+        disabled={selectedOption === null || grading}
         className={cn(
           'w-full py-3 px-4 rounded-xl font-semibold text-sm min-h-[48px]',
           'bg-brand-accent text-brand-dark hover:bg-brand-accent-hover',
@@ -304,7 +322,11 @@ export default function ExamPage() {
           'disabled:opacity-40 disabled:cursor-not-allowed'
         )}
       >
-        {currentIndex === questions.length - 1 ? 'Finalizar examen' : 'Siguiente pregunta'}
+        {grading
+          ? 'Corrigiendo...'
+          : currentIndex === questions.length - 1
+            ? 'Finalizar examen'
+            : 'Siguiente pregunta'}
       </button>
     </div>
   )
