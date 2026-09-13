@@ -1,8 +1,10 @@
-﻿import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Utensils } from 'lucide-react'
 import MealSignupForm from '@/components/MealSignupForm'
 import { getNextWeekDates, formatWeekLabel, isSignupOpen } from '@/lib/meals-utils'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ComidaPage() {
   const supabase = await createClient()
@@ -26,8 +28,9 @@ export default async function ComidaPage() {
 
   const signups: Record<string, Record<string, string>> = {}
   for (const row of rows ?? []) {
-    if (!signups[row.meal_date]) signups[row.meal_date] = {}
-    signups[row.meal_date][row.meal_type] = row.preference
+    const date = row.meal_date as string
+    if (!signups[date]) signups[date] = {}
+    signups[date][row.meal_type as string] = row.preference as string
   }
 
   return (
@@ -38,9 +41,10 @@ export default async function ComidaPage() {
           Comida Semanal
         </h1>
         <p className="text-brand-muted text-sm mt-0.5">
-          Semana del {weekLabel}. Elegí tu opción por día y tipo de comida.
+          Semana del {weekLabel}. Elegí tu opción por día y tocá Guardar.
         </p>
       </div>
+
       <MealSignupForm weekDays={weekDays} signups={signups} isOpen={open} />
     </div>
   )
