@@ -33,6 +33,8 @@ export interface Guide {
   description: string
   content: string
   puestos: string[]
+  // Portada opcional. Sin ella se genera un fondo a partir del título.
+  cover_image: string | null
   created_at: string
   updated_by: string | null
 }

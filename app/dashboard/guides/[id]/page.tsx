@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import GuideReader from '@/components/GuideReader'
+import GuideCover from '@/components/GuideCover'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -45,19 +46,33 @@ export default async function GuidePage({ params }: Props) {
 
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="relative rounded-2xl overflow-hidden mb-5">
+        <GuideCover
+          title={guide.title}
+          coverImage={guide.cover_image}
+          className="h-40 sm:h-48 w-full"
+          overlay
+        />
+
         <Link
           href="/dashboard/guides"
-          className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-card border border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer"
+          className="absolute top-3 left-3 flex items-center justify-center w-9 h-9 rounded-xl bg-black/30 backdrop-blur-sm hover:bg-black/50 transition-colors cursor-pointer"
           aria-label="Volver a guías"
         >
-          <ArrowLeft className="w-4 h-4 text-brand-text" />
+          <ArrowLeft className="w-4 h-4 text-white" />
         </Link>
-        <div>
-          <p className="text-brand-muted text-xs uppercase tracking-wider">Guía</p>
-          <h1 className="text-lg font-bold text-brand-text leading-tight">{guide.title}</h1>
+
+        <div className="absolute bottom-4 left-4 right-4">
+          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">Guía</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight drop-shadow-sm">
+            {guide.title}
+          </h1>
         </div>
       </div>
+
+      {guide.description && (
+        <p className="text-brand-muted text-sm leading-relaxed mb-5">{guide.description}</p>
+      )}
 
       {hasPassed && (
         <div className="flex items-center gap-2 bg-brand-success/10 border border-brand-success/30 rounded-xl px-4 py-3 mb-6">

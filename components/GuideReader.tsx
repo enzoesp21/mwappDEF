@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ChevronDown, List, Maximize2, Minimize2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, List, Maximize2, Minimize2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -66,21 +66,31 @@ function parse(content: string): { intro: string; sections: Section[] } {
 export default function GuideReader({ content }: Props) {
   const { intro, sections } = useMemo(() => parse(content), [content])
   const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [seen, setSeen] = useState<Record<string, boolean>>({})
 
   const openCount = sections.filter((s) => open[s.id]).length
   const allOpen = openCount === sections.length && sections.length > 0
+  const seenCount = sections.filter((s) => seen[s.id]).length
+  const pct = sections.length > 0 ? Math.round((seenCount / sections.length) * 100) : 0
 
   function toggle(id: string) {
     setOpen((o) => ({ ...o, [id]: !o[id] }))
+    setSeen((s) => ({ ...s, [id]: true }))
   }
 
   function toggleAll() {
-    if (allOpen) setOpen({})
-    else setOpen(Object.fromEntries(sections.map((s) => [s.id, true])))
+    if (allOpen) {
+      setOpen({})
+    } else {
+      const all = Object.fromEntries(sections.map((s) => [s.id, true]))
+      setOpen(all)
+      setSeen(all)
+    }
   }
 
   function goTo(id: string) {
     setOpen((o) => ({ ...o, [id]: true }))
+    setSeen((s) => ({ ...s, [id]: true }))
     requestAnimationFrame(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
@@ -108,18 +118,36 @@ export default function GuideReader({ content }: Props) {
       )}
 
       <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-brand-border">
-          <List className="w-4 h-4 text-brand-accent flex-shrink-0" />
-          <span className="text-xs font-semibold text-brand-muted uppercase tracking-wider flex-1">
-            Contenido
-          </span>
-          <button
-            onClick={toggleAll}
-            className="flex items-center gap-1.5 text-xs font-medium text-brand-accent hover:text-brand-accent-hover transition-colors cursor-pointer px-2 py-1 min-h-[32px]"
-          >
-            {allOpen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            {allOpen ? 'Cerrar todo' : 'Abrir todo'}
-          </button>
+        <div className="px-4 pt-4 pb-3 border-b border-brand-border">
+          <div className="flex items-center gap-2 mb-3">
+            <List className="w-4 h-4 text-brand-accent flex-shrink-0" />
+            <span className="text-xs font-semibold text-brand-text uppercase tracking-wider flex-1">
+              Contenido
+            </span>
+            <button
+              onClick={toggleAll}
+              className="flex items-center gap-1.5 text-xs font-medium text-brand-accent hover:text-brand-accent-hover transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-brand-accent/10 min-h-[32px]"
+            >
+              {allOpen ? (
+                <Minimize2 className="w-3.5 h-3.5" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
+              {allOpen ? 'Cerrar todo' : 'Abrir todo'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-brand-dark rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-accent rounded-full transition-all duration-500"
+                style={{ width: pct + '%' }}
+              />
+            </div>
+            <span className="text-[10px] text-brand-muted font-medium whitespace-nowrap">
+              {seenCount} de {sections.length}
+            </span>
+          </div>
         </div>
 
         <div className="divide-y divide-brand-border">
@@ -127,10 +155,20 @@ export default function GuideReader({ content }: Props) {
             <button
               key={s.id}
               onClick={() => goTo(s.id)}
-              className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-brand-card-hover transition-colors cursor-pointer min-h-[44px]"
+              className="flex items-center gap-3 w-full text-left px-4 py-2.5 hover:bg-brand-card-hover transition-colors cursor-pointer min-h-[44px] group"
             >
-              <span className="text-xs font-bold text-brand-muted w-5 flex-shrink-0">{i + 1}</span>
+              <span
+                className={cn(
+                  'w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold transition-colors',
+                  seen[s.id]
+                    ? 'bg-brand-accent text-white'
+                    : 'bg-brand-dark text-brand-muted'
+                )}
+              >
+                {seen[s.id] ? <Check className="w-3 h-3" /> : i + 1}
+              </span>
               <span className="text-sm text-brand-text flex-1 min-w-0">{s.title}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-brand-border flex-shrink-0 group-hover:text-brand-accent transition-colors" />
             </button>
           ))}
         </div>
@@ -142,19 +180,32 @@ export default function GuideReader({ content }: Props) {
           <div
             key={s.id}
             id={s.id}
-            className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden scroll-mt-20"
+            className={cn(
+              'bg-brand-card border rounded-2xl overflow-hidden scroll-mt-4 transition-colors',
+              isOpen ? 'border-brand-accent/40' : 'border-brand-border'
+            )}
           >
             <button
               onClick={() => toggle(s.id)}
               aria-expanded={isOpen}
-              className="flex items-center gap-3 w-full text-left px-4 py-4 hover:bg-brand-card-hover transition-colors cursor-pointer"
+              className={cn(
+                'flex items-center gap-3 w-full text-left px-4 py-4 transition-colors cursor-pointer',
+                isOpen ? 'bg-brand-accent/5' : 'hover:bg-brand-card-hover'
+              )}
             >
-              <span className="text-xs font-bold text-brand-accent w-5 flex-shrink-0">{i + 1}</span>
+              <span
+                className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold transition-colors',
+                  isOpen ? 'bg-brand-accent text-white' : 'bg-brand-dark text-brand-muted'
+                )}
+              >
+                {i + 1}
+              </span>
               <span className="font-semibold text-brand-text flex-1 min-w-0">{s.title}</span>
               <ChevronDown
                 className={cn(
-                  'w-4 h-4 text-brand-muted flex-shrink-0 transition-transform duration-200',
-                  isOpen && 'rotate-180'
+                  'w-4 h-4 flex-shrink-0 transition-transform duration-200',
+                  isOpen ? 'rotate-180 text-brand-accent' : 'text-brand-muted'
                 )}
               />
             </button>

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { Save, Loader2, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
+import CoverUploader from '@/components/admin/CoverUploader'
 import type { ExamQuestion } from '@/lib/types'
 import MarkdownEditor from '@/components/admin/MarkdownEditor'
 import QuestionList from '@/components/admin/QuestionList'
@@ -20,6 +21,7 @@ export default function EditGuidePage() {
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [coverImage, setCoverImage] = useState<string | null>(null)
   const [selectedPuestos, setSelectedPuestos] = useState<string[]>([])
   const [content, setContent] = useState('')
   const [examId, setExamId] = useState<string | null>(null)
@@ -53,6 +55,7 @@ export default function EditGuidePage() {
 
       setTitle(guide.title)
       setDescription(guide.description ?? '')
+      setCoverImage(guide.cover_image ?? null)
       setSelectedPuestos(guide.puestos ?? [])
       setContent(guide.content ?? '')
 
@@ -108,6 +111,7 @@ export default function EditGuidePage() {
         .update({
           title: title.trim(),
           description: description.trim(),
+            cover_image: coverImage,
           puestos: selectedPuestos,
           content,
         })
@@ -160,7 +164,7 @@ export default function EditGuidePage() {
     } finally {
       setSaving(false)
     }
-  }, [guideId, title, description, selectedPuestos, content, examId, examTitle, passingScore, questions])
+  }, [guideId, title, description, coverImage, selectedPuestos, content, examId, examTitle, passingScore, questions])
 
   useEffect(() => {
     if (!dirty) return
@@ -281,6 +285,8 @@ export default function EditGuidePage() {
             className="w-full px-3 py-2.5 bg-brand-dark border border-brand-border rounded-lg text-sm text-brand-text placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent transition-colors duration-200 min-h-[44px]"
           />
         </div>
+
+        <CoverUploader title={title} value={coverImage} onChange={setCoverImage} />
 
         <div>
           <label className="block text-xs font-medium text-brand-muted mb-1.5">Descripción</label>
