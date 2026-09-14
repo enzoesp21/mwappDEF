@@ -2,7 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import MarkdownContent from '@/components/MarkdownContent'
+import GuideReader from '@/components/GuideReader'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -66,8 +66,8 @@ export default async function GuidePage({ params }: Props) {
         </div>
       )}
 
-      <div className="bg-brand-card border border-brand-border rounded-2xl p-5 mb-6">
-        <MarkdownContent content={guide.content} />
+      <div className="mb-6">
+        <GuideReader content={guide.content} />
       </div>
 
       {exam && !hasPassed && isPending && (

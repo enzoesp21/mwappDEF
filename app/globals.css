@@ -135,6 +135,22 @@ body {
   margin: 1rem 0;
 }
 
+/* Etiquetas de dieta dentro de las guías: `SIN TACC`, `VEGETARIANO`, `VEGANO` */
+.prose code {
+  display: inline-block;
+  background: #6e8f7a1a;
+  border: 1px solid #6e8f7a40;
+  color: #4f6b59;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  margin-right: 0.25rem;
+}
+
 /* Input focus ring */
 input:focus,
 textarea:focus,
