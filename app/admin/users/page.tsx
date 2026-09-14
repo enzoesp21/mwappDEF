@@ -188,11 +188,11 @@ export default function UsersPage() {
                     {u.puesto} · se registró {formatDate(u.created_at)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
                   <button
                     onClick={() => decide(u.id, 'rejected')}
                     disabled={statusChanging === u.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-muted hover:text-brand-error hover:bg-brand-error/10 transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-muted hover:text-brand-error hover:bg-brand-error/10 transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
                   >
                     <X className="w-3.5 h-3.5" />
                     Rechazar
@@ -200,7 +200,7 @@ export default function UsersPage() {
                   <button
                     onClick={() => decide(u.id, 'approved')}
                     disabled={statusChanging === u.id}
-                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
                   >
                     {statusChanging === u.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -259,7 +259,8 @@ export default function UsersPage() {
         <div className="space-y-2">
           {filtered.map((user) => (
             <div key={user.id} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
-              <div className="flex items-center gap-3 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
+                <div className="flex items-center gap-3 min-w-0 sm:flex-1">
                 <div className="w-9 h-9 rounded-full bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
                   {user.role === 'admin' ? (
                     <ShieldCheck className="w-4 h-4 text-brand-accent" />
@@ -268,7 +269,7 @@ export default function UsersPage() {
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-brand-text">{user.full_name}</span>
                     <span
@@ -299,29 +300,36 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-brand-muted">{user.puesto}</span>
+                    <span className="text-xs text-brand-muted truncate">{user.puesto}</span>
                     <span className="text-brand-border text-xs">·</span>
-                    <span className="text-xs text-brand-muted">{formatDate(user.created_at)}</span>
+                    <span className="text-xs text-brand-muted whitespace-nowrap">{formatDate(user.created_at)}</span>
                   </div>
                 </div>
+                </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:flex-shrink-0">
                   <button
                     onClick={() => toggleRole(user)}
                     disabled={roleChanging === user.id}
                     className={cn(
                       'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 cursor-pointer min-h-[36px] disabled:opacity-50',
+                      'whitespace-nowrap',
                       user.role === 'admin'
                         ? 'bg-brand-card-hover text-brand-muted hover:text-brand-error hover:bg-brand-error/10'
                         : 'bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10'
                     )}
                   >
                     {roleChanging === user.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : user.role === 'admin' ? (
-                      'Cambiar a staff'
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
                     ) : (
-                      'Cambiar a admin'
+                      <>
+                        <span className="hidden sm:inline">
+                          {user.role === 'admin' ? 'Cambiar a staff' : 'Cambiar a admin'}
+                        </span>
+                        <span className="sm:hidden">
+                          {user.role === 'admin' ? 'A staff' : 'A admin'}
+                        </span>
+                      </>
                     )}
                   </button>
 
@@ -369,9 +377,10 @@ export default function UsersPage() {
 
                   <button
                     onClick={() => toggleExpand(user.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand-card-hover text-brand-muted hover:text-brand-text rounded-lg transition-colors duration-200 cursor-pointer min-h-[36px]"
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-brand-card-hover text-brand-muted hover:text-brand-text rounded-lg transition-colors duration-200 cursor-pointer min-h-[36px] whitespace-nowrap"
                   >
-                    Ver resultados
+                    <span className="hidden sm:inline">Ver resultados</span>
+                    <span className="sm:hidden">Resultados</span>
                     {expandedId === user.id ? (
                       <ChevronUp className="w-3.5 h-3.5" />
                     ) : (
@@ -401,8 +410,8 @@ export default function UsersPage() {
                           key={r.id}
                           className="flex items-center gap-3 py-2 border-b border-brand-border last:border-0"
                         >
-                          <div className="flex-1">
-                            <p className="text-sm text-brand-text">{r.guide_title}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-brand-text truncate">{r.guide_title}</p>
                             <p className="text-xs text-brand-muted">{formatDateTime(r.completed_at)}</p>
                           </div>
                           <span
