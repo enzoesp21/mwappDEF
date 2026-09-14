@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, PenLine, Clock3 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, PenLine, Clock3, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import SignatureCanvas from '@/components/exam/SignatureCanvas'
 import ProgressBar from '@/components/exam/ProgressBar'
@@ -42,6 +42,7 @@ export default function ExamPage() {
   const [openText, setOpenText] = useState('')
   const [score, setScore] = useState(0)
   const [pendingCount, setPendingCount] = useState(0)
+  const [resultId, setResultId] = useState<string | null>(null)
   const [signature, setSignature] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -140,7 +141,10 @@ export default function ExamPage() {
       score?: number
       passed?: boolean
       pending?: number
+      result_id?: string
     }
+
+    setResultId(result.result_id ?? null)
 
     if (result.review_status === 'pending_review') {
       setPendingCount(result.pending ?? 0)
@@ -173,12 +177,23 @@ export default function ExamPage() {
             : 'Tu examen tiene ' + pendingCount + ' respuestas escritas que un encargado tiene que corregir.'}{' '}
           Te avisamos con una notificación cuando esté la nota.
         </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer"
-        >
-          Ir al inicio
-        </Link>
+        <div className="max-w-xs mx-auto space-y-2 pt-2">
+        {resultId && (
+          <Link
+            href={'/dashboard/revision/' + resultId}
+            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-brand-card border border-brand-border text-brand-text font-medium text-sm hover:border-brand-accent/50 transition-colors cursor-pointer min-h-[48px]"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Ver en qué me equivoqué
+          </Link>
+        )}
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center gap-2 w-full bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[48px]"
+          >
+            Ir al inicio
+          </Link>
+        </div>
       </div>
     )
   }
@@ -191,12 +206,23 @@ export default function ExamPage() {
         </div>
         <h2 className="text-2xl font-bold text-brand-success">{score}%</h2>
         <p className="text-brand-text font-semibold">¡Aprobaste el examen!</p>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer"
-        >
-          Ir al inicio
-        </Link>
+        <div className="max-w-xs mx-auto space-y-2 pt-2">
+        {resultId && (
+          <Link
+            href={'/dashboard/revision/' + resultId}
+            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-brand-card border border-brand-border text-brand-text font-medium text-sm hover:border-brand-accent/50 transition-colors cursor-pointer min-h-[48px]"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Ver en qué me equivoqué
+          </Link>
+        )}
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center gap-2 w-full bg-brand-accent text-brand-dark font-semibold px-6 py-3 rounded-xl hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[48px]"
+          >
+            Ir al inicio
+          </Link>
+        </div>
       </div>
     )
   }
@@ -217,6 +243,15 @@ export default function ExamPage() {
         </div>
 
         <div className="flex flex-col gap-3">
+        {resultId && (
+          <Link
+            href={'/dashboard/revision/' + resultId}
+            className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-brand-card border border-brand-border text-brand-text font-medium text-sm hover:border-brand-accent/50 transition-colors cursor-pointer min-h-[48px]"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Ver en qué me equivoqué
+          </Link>
+        )}
           <button
             onClick={handleRetry}
             className={cn(

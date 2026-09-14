@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { CheckCircle, Trophy } from 'lucide-react'
+import { CheckCircle, Trophy, XCircle, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { formatDateTime } from '@/lib/utils'
 import { fetchExams, uniqueIds } from '@/lib/lookups'
 
@@ -13,22 +14,26 @@ export default async function ProgressPage() {
 
   const { data: rawResults } = await supabase
     .from('exam_results')
-    .select('id, score, completed_at, exam_id, signature_data')
+    .select('id, score, passed, completed_at, exam_id, signature_data, review_status')
     .eq('user_id', session.user.id)
-    .eq('passed', true)
     .order('completed_at', { ascending: false })
 
   const rows = rawResults ?? []
   const examMap = await fetchExams(supabase, uniqueIds(rows.map((r) => r.exam_id as string)))
 
-  const results = rows.map((r) => ({
+  const todos = rows.map((r) => ({
     id: r.id as string,
+    passed: r.passed as boolean,
+    pending: (r.review_status as string) === 'pending_review',
     score: r.score as number,
     completed_at: r.completed_at as string,
     signature_data: r.signature_data as string | null,
     guide_title: examMap[r.exam_id as string]?.guide_title ?? 'Guía',
     exam_title: examMap[r.exam_id as string]?.title ?? '',
   }))
+
+  const results = todos.filter((r) => r.passed)
+  const fallidos = todos.filter((r) => !r.passed && !r.pending)
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -72,6 +77,14 @@ export default async function ProgressPage() {
                   </div>
                 </div>
 
+                <Link
+                  href={'/dashboard/revision/' + result.id}
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-accent hover:text-brand-accent-hover transition-colors cursor-pointer"
+                >
+                  Ver en qué me equivoqué
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+
                 <div className="flex items-center justify-between text-xs text-brand-muted border-t border-brand-border pt-3">
                   <span>{formatDateTime(result.completed_at)}</span>
                   {result.signature_data && (
@@ -93,6 +106,31 @@ export default async function ProgressPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {fallidos.length > 0 && (
+        <div className="pt-2">
+          <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-3">
+            Intentos no aprobados
+          </h2>
+          <div className="space-y-2">
+            {fallidos.map((r) => (
+              <Link
+                key={r.id}
+                href={'/dashboard/revision/' + r.id}
+                className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+              >
+                <XCircle className="w-4 h-4 text-brand-error flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-brand-text truncate">{r.guide_title}</p>
+                  <p className="text-xs text-brand-muted">{formatDateTime(r.completed_at)}</p>
+                </div>
+                <span className="text-sm font-bold text-brand-error flex-shrink-0">{r.score}%</span>
+                <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+              </Link>
+            ))}
+          </div>
         </div>
       )}
     </div>
