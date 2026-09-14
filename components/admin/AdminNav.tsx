@@ -15,6 +15,7 @@ import {
   X,
   ShieldCheck,
   ClipboardCheck,
+  Trophy,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },
   { label: 'Correcciones', href: '/admin/correcciones', icon: ClipboardCheck, exact: false },
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
+  { label: 'Empleado del mes', href: '/admin/empleado-del-mes', icon: Trophy, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 

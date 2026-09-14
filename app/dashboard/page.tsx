@@ -4,6 +4,8 @@ import { Utensils, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import GuideCard from '@/components/GuideCard'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
+import { currentPeriod } from '@/lib/month-utils'
+import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
 import type { GuideWithStatus } from '@/lib/types'
 
 export default async function DashboardPage() {
@@ -75,6 +77,25 @@ export default async function DashboardPage() {
   const passedCount = guidesWithStatus.filter((g) => g.status === 'passed').length
   const totalCount = guidesWithStatus.length
 
+  // Empleado del mes vigente, para que lo vea todo el equipo al entrar.
+  const { data: eom } = await supabase
+    .from('employee_of_month')
+    .select('period, user_id, photo_url, message')
+    .eq('period', currentPeriod())
+    .maybeSingle()
+
+  let eomProfile: { full_name: string; puesto: string } | null = null
+  if (eom) {
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('full_name, puesto')
+      .eq('id', eom.user_id as string)
+      .maybeSingle()
+    eomProfile = p
+      ? { full_name: (p.full_name as string) ?? 'Usuario', puesto: (p.puesto as string) ?? '' }
+      : null
+  }
+
   // Aviso de comida: cuántas comidas de la semana que viene quedan sin elegir.
   const mealsOpen = isSignupOpen()
   let missingMeals = 0
@@ -98,6 +119,19 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-brand-muted text-sm mt-0.5">{profile.puesto}</p>
       </div>
+
+      {eom && eomProfile && (
+        <Link href="/dashboard/empleado-del-mes" className="block">
+          <EmployeeOfMonthCard
+            period={eom.period as string}
+            fullName={eomProfile.full_name}
+            puesto={eomProfile.puesto}
+            photoUrl={(eom.photo_url as string) ?? null}
+            message={(eom.message as string) ?? null}
+            compact
+          />
+        </Link>
+      )}
 
       {missingMeals > 0 && (
         <Link
