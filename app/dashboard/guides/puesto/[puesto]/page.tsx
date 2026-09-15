@@ -2,10 +2,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import GuideCard from '@/components/GuideCard'
 import GuidePath, { type PathStep } from '@/components/GuidePath'
 import { buscarPuesto } from '@/lib/puestos'
-import type { GuideWithStatus } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,60 +30,56 @@ export default async function PuestoGuidesPage({ params }: Props) {
 
   const esTuPuesto = buscarPuesto(profile.puesto as string)?.valor === info.valor
 
-  const [{ data: guides }, { data: exams }, { data: results }, { data: rawPath }] =
-    await Promise.all([
-      supabase
-        .from('guides')
-        .select('*')
-        .or(`puestos.cs.{"${info.valor}"},puestos.cs.{"todos"}`)
-        .order('is_primary', { ascending: false })
-        .order('created_at', { ascending: true }),
-      supabase.from('exams').select('*'),
-      supabase
-        .from('exam_results')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .eq('passed', true),
-      supabase
-        .from('guide_paths')
-        .select('guide_id, orden, etiqueta')
-        .eq('puesto', info.valor)
-        .order('orden', { ascending: true }),
-    ])
+  // Lo que ve este puesto lo decide guide_paths, que es lo que el admin arma.
+  // No se filtra además por guides.puestos: si lo hiciera, una guía asignada
+  // desde el panel podría no aparecer y no habría forma de darse cuenta.
+  const { data: rawPath } = await supabase
+    .from('guide_paths')
+    .select('guide_id, orden, etiqueta')
+    .eq('puesto', info.valor)
+    .order('orden', { ascending: true })
 
-  const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
-    const exam = exams?.find((e) => e.guide_id === guide.id)
-    const result = results?.find((r) => r.exam_id === exam?.id)
-    return {
-      ...guide,
-      exam,
-      result: result ?? undefined,
-      status: result ? 'passed' : exam ? 'exam_pending' : 'not_started',
-    }
-  })
+  const ids = (rawPath ?? []).map((p) => p.guide_id as string)
 
-  const porId = new Map(guidesWithStatus.map((g) => [g.id, g]))
+  // Consultas sueltas, sin joins anidados: en este proyecto los joins
+  // anidados de PostgREST vienen anulando consultas enteras.
+  const [{ data: guides }, { data: exams }, { data: results }] = await Promise.all([
+    ids.length
+      ? supabase.from('guides').select('id, title, description').in('id', ids)
+      : Promise.resolve({ data: [] as { id: string; title: string; description: string }[] }),
+    supabase.from('exams').select('id, guide_id'),
+    supabase
+      .from('exam_results')
+      .select('exam_id, score')
+      .eq('user_id', session.user.id)
+      .eq('passed', true),
+  ])
 
-  // Si una guía de la ruta ya no existe o dejó de ser visible para el puesto,
-  // se saltea el paso en lugar de romper la pantalla.
+  const porId = new Map((guides ?? []).map((g) => [g.id as string, g]))
+  const examPorGuia = new Map((exams ?? []).map((e) => [e.guide_id as string, e.id as string]))
+  const notaPorExamen = new Map(
+    (results ?? []).map((r) => [r.exam_id as string, r.score as number])
+  )
+
+  // Si el recorrido apunta a una guía borrada, se saltea el paso.
   const steps: PathStep[] = (rawPath ?? []).flatMap((row) => {
     const g = porId.get(row.guide_id as string)
     if (!g) return []
+    const examId = examPorGuia.get(g.id as string)
+    const nota = examId ? notaPorExamen.get(examId) : undefined
     return [
       {
-        guide_id: g.id,
+        guide_id: g.id as string,
         etiqueta: row.etiqueta as string,
-        title: g.title,
-        description: g.description ?? null,
-        passed: g.status === 'passed',
-        score: g.result?.score ?? null,
-        hasExam: Boolean(g.exam),
+        title: g.title as string,
+        description: (g.description as string) ?? null,
+        passed: nota !== undefined,
+        score: nota ?? null,
+        hasExam: Boolean(examId),
       },
     ]
   })
 
-  const enLaRuta = new Set(steps.map((s) => s.guide_id))
-  const otras = guidesWithStatus.filter((g) => !enLaRuta.has(g.id))
   const Icono = info.icono
 
   return (
@@ -121,30 +115,12 @@ export default async function PuestoGuidesPage({ params }: Props) {
       ) : (
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 text-center">
           <p className="text-brand-text text-sm font-medium">
-            Todavía no hay un recorrido armado para este puesto
+            Todavía no hay guías asignadas a este puesto
           </p>
           <p className="text-brand-muted text-xs mt-1 leading-relaxed">
-            Abajo están las guías que igual le corresponden.
+            Cuando los encargados armen el recorrido, va a aparecer acá.
           </p>
         </div>
-      )}
-
-      {otras.length > 0 && (
-        <section>
-          <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider mb-1">
-            {steps.length > 0 ? 'Otras guías' : 'Guías'}
-          </h2>
-          {steps.length > 0 && (
-            <p className="text-brand-muted text-xs mb-3 leading-relaxed">
-              No están en el recorrido, pero se pueden leer y rendir igual.
-            </p>
-          )}
-          <div className="space-y-3">
-            {otras.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} />
-            ))}
-          </div>
-        </section>
       )}
     </div>
   )

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import GuidesClientActions from './GuidesClientActions'
+import { PUESTOS_INFO } from '@/lib/puestos'
 
 export default async function GuidesPage() {
   const supabase = await createClient()
@@ -12,6 +13,13 @@ export default async function GuidesPage() {
     .select('id, title, description, puestos, created_at, updated_by, is_primary')
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: false })
+
+  const { data: paths } = await supabase.from('guide_paths').select('puesto')
+  const porPuesto = new Map<string, number>()
+  for (const row of paths ?? []) {
+    const k = row.puesto as string
+    porPuesto.set(k, (porPuesto.get(k) ?? 0) + 1)
+  }
 
   const guidesWithCounts = await Promise.all(
     (guides ?? []).map(async (guide) => {
@@ -48,6 +56,64 @@ export default async function GuidesPage() {
           <Plus className="w-4 h-4" />
           Nueva guía
         </Link>
+      </div>
+
+      <section>
+        <h2 className="text-sm font-semibold text-brand-text">Qué ve cada puesto</h2>
+        <p className="text-xs text-brand-muted mt-0.5 mb-3 leading-relaxed">
+          Entrá a un puesto para elegir qué guías le aparecen y en qué orden.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {PUESTOS_INFO.map((info) => {
+            const cantidad = porPuesto.get(info.valor) ?? 0
+            const Icono = info.icono
+            return (
+              <Link
+                key={info.valor}
+                href={'/admin/guides/puesto/' + encodeURIComponent(info.valor)}
+                className="relative block rounded-xl overflow-hidden transition-transform active:scale-[0.99] cursor-pointer"
+                style={{
+                  background:
+                    'linear-gradient(135deg, ' + info.desde + ', ' + info.hasta + ')',
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="absolute inset-0 opacity-15"
+                  style={{
+                    backgroundImage: 'url(/logo.png)',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right -20% center',
+                    backgroundSize: 'auto 160%',
+                    mixBlendMode: 'multiply',
+                  }}
+                />
+                <div className="relative p-4 flex items-center gap-3 min-h-[80px]">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <Icono className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-bold text-sm leading-tight break-words">
+                      {info.nombre}
+                    </p>
+                    <p className="text-white/70 text-xs mt-0.5">
+                      {cantidad === 0
+                        ? 'Sin guías asignadas'
+                        : cantidad + (cantidad === 1 ? ' guía' : ' guías')}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      <div>
+        <h2 className="text-sm font-semibold text-brand-text">Todas las guías</h2>
+        <p className="text-xs text-brand-muted mt-0.5 mb-3 leading-relaxed">
+          Acá se edita el contenido y el examen de cada una.
+        </p>
       </div>
 
       {guidesWithCounts.length === 0 ? (
