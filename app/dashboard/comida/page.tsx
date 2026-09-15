@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { Utensils } from 'lucide-react'
+import { Utensils, Info } from 'lucide-react'
 import MealSignupForm from '@/components/MealSignupForm'
 import { getNextWeekDates, formatWeekLabel, isSignupOpen } from '@/lib/meals-utils'
 import { menuPorFecha, semanaDelCiclo, hoyEnArgentina, platoDe } from '@/lib/menu-semanal'
@@ -55,6 +55,16 @@ export default async function ComidaPage() {
         almuerzo={platoDe(hoy, 'almuerzo')}
         cena={platoDe(hoy, 'cena')}
       />
+
+      <div className="flex items-start gap-2.5 bg-brand-card border border-brand-border rounded-2xl px-4 py-3">
+        <Info className="w-4 h-4 text-brand-accent flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-brand-muted leading-relaxed">
+          <span className="font-semibold text-brand-text">El menú puede cambiar.</span> En
+          feriados, cuando queda comida de un evento —que aprovechamos y comemos— o ante
+          cualquier imprevisto, se cocina otra cosa. Lo que figura acá es lo planificado, no una
+          promesa.
+        </p>
+      </div>
 
       <div>
         <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
