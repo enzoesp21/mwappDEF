@@ -164,8 +164,14 @@ export default async function RevisionPage({ params }: Props) {
                         <p className="text-sm text-brand-text leading-relaxed">
                           {r.selected_option !== null && r.options[r.selected_option]
                             ? LABELS[r.selected_option] + '. ' + r.options[r.selected_option]
-                            : 'Sin responder'}
+                            : 'No quedó guardada'}
                         </p>
+                        {r.selected_option === null && (
+                          <p className="text-xs text-brand-muted leading-relaxed mt-1">
+                            Este examen se rindió antes de que revisáramos las preguntas, así
+                            que no podemos mostrarte cuál habías elegido.
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -13,6 +13,7 @@ export function uniqueIds(values: (string | null | undefined)[]): string[] {
 export interface ProfileLite {
   full_name: string
   puesto: string
+  avatar_url: string | null
 }
 
 export async function fetchProfiles(
@@ -24,13 +25,14 @@ export async function fetchProfiles(
 
   const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, puesto')
+    .select('id, full_name, puesto, avatar_url')
     .in('id', userIds)
 
   for (const p of data ?? []) {
     map[p.id as string] = {
       full_name: (p.full_name as string) ?? 'Usuario',
       puesto: (p.puesto as string) ?? '',
+      avatar_url: (p.avatar_url as string) ?? null,
     }
   }
   return map

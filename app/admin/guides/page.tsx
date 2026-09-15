@@ -9,7 +9,8 @@ export default async function GuidesPage() {
 
   const { data: guides } = await supabase
     .from('guides')
-    .select('id, title, description, puestos, created_at, updated_by')
+    .select('id, title, description, puestos, created_at, updated_by, is_primary')
+    .order('is_primary', { ascending: false })
     .order('created_at', { ascending: false })
 
   const guidesWithCounts = await Promise.all(

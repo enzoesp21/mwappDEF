@@ -1,4 +1,4 @@
-﻿import type { Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss'
 
 const config: Config = {
   content: [
@@ -10,27 +10,18 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          // Light warm sandy background
           dark: '#dbd2b5',
-          // Off-white card surface
           card: '#ffffff',
           'card-hover': '#f8f5f0',
-          // Warm sandy border
           border: '#cab892',
-          // Deep terracotta (coastal warm) â€” primary action
           accent: '#6e8f7a',
           'accent-hover': '#5d7d6a',
           'accent-muted': '#6e8f7a1a',
-          // Warm dark text
           text: '#1f2d27',
           muted: '#6a7d72',
-          // Sage green (success) from palette swatch
           success: '#4E8A48',
-          // Red error
           error: '#C83830',
-          // Muted teal (from swatch 4) â€” informational
           teal: '#6e8f7a',
-          // Sandy highlight (from swatch 3)
           sand: '#cab892',
         },
       },
@@ -58,5 +49,3 @@ const config: Config = {
 }
 
 export default config
-
-

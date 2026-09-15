@@ -51,7 +51,7 @@ export default async function ResultadosPage() {
                 <div
                   key={user.user_id}
                   className={cn(
-                    'bg-brand-card border rounded-2xl p-4 flex items-center gap-4',
+                    'bg-brand-card border rounded-2xl p-4 flex items-center gap-3',
                     isMe ? 'border-brand-accent/40 ring-1 ring-brand-accent/20' : 'border-brand-border'
                   )}
                 >
@@ -62,6 +62,20 @@ export default async function ResultadosPage() {
                       </div>
                     ) : (
                       <span className="text-sm font-bold text-brand-muted">#{index + 1}</span>
+                    )}
+                  </div>
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-brand-dark flex-shrink-0">
+                    {user.avatar_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={user.avatar_url}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="w-full h-full flex items-center justify-center text-brand-muted text-sm font-bold">
+                        {user.full_name.trim().charAt(0).toUpperCase() || 'U'}
+                      </span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

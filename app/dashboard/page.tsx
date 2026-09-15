@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Utensils, ChevronRight } from 'lucide-react'
+import InstallPrompt from '@/components/InstallPrompt'
+import { Utensils, ChevronRight, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import GuideCard from '@/components/GuideCard'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
 import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
@@ -43,6 +43,8 @@ export default async function DashboardPage() {
     .from('guides')
     .select('*')
     .or(`puestos.cs.{"${profile.puesto}"},puestos.cs.{"todos"}`)
+    // La guía principal va siempre primera, sin importar cuándo se creó.
+    .order('is_primary', { ascending: false })
     .order('created_at', { ascending: true })
 
   // Sin join anidado a exam_questions: el personal ya no puede leer esa tabla
@@ -120,6 +122,8 @@ export default async function DashboardPage() {
         <p className="text-brand-muted text-sm mt-0.5">{profile.puesto}</p>
       </div>
 
+      <InstallPrompt dismissible />
+
       {eom && eomProfile && (
         <Link href="/dashboard/empleado-del-mes" className="block">
           <EmployeeOfMonthCard
@@ -174,22 +178,21 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div>
-        <h2 className="text-sm font-semibold text-brand-muted uppercase tracking-wider mb-3">
-          Guías disponibles
-        </h2>
-        {guidesWithStatus.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-brand-muted text-sm">No hay guías disponibles para tu puesto todavía.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {guidesWithStatus.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} />
-            ))}
-          </div>
-        )}
-      </div>
+      <Link
+        href="/dashboard/guides"
+        className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+      >
+        <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+          <BookOpen className="w-5 h-5 text-brand-accent" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-brand-text">Ver las guías</p>
+          <p className="text-xs text-brand-muted leading-relaxed">
+            Tu recorrido y el de cada sector
+          </p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+      </Link>
     </div>
   )
 }

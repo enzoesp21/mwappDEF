@@ -37,6 +37,9 @@ export default function EditGuidePage() {
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirtyRef = useRef(false)
+  // Qué preguntas existían en la base al abrir. Sirve para borrar solo las que
+  // el admin sacó de verdad, y no todas en cada guardado.
+  const idsEnLaBase = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     async function loadData() {
@@ -77,6 +80,7 @@ export default function EditGuidePage() {
           .order('order', { ascending: true })
 
         setQuestions(qs ?? [])
+        idsEnLaBase.current = new Set((qs ?? []).map((q) => q.id as string))
       }
 
       setLoading(false)
@@ -139,11 +143,26 @@ export default function EditGuidePage() {
             .eq('id', currentExamId)
         }
 
-        await supabase.from('exam_questions').delete().eq('exam_id', currentExamId)
+        // OJO: no borrar y volver a crear las preguntas. exam_answers apunta a
+        // exam_questions con borrado en cascada, así que hacer eso borraría las
+        // respuestas de todos los exámenes ya rendidos (y el detalle de "en qué
+        // me equivoqué"). Se conservan los ids: se actualiza lo que sigue, se
+        // agrega lo nuevo y se borra solo lo que el admin sacó.
+        const idsActuales = new Set(questions.map((q) => q.id))
+        const aBorrar = Array.from(idsEnLaBase.current).filter((id) => !idsActuales.has(id))
+
+        if (aBorrar.length > 0) {
+          const { error: delErr } = await supabase
+            .from('exam_questions')
+            .delete()
+            .in('id', aBorrar)
+          if (delErr) throw new Error(delErr.message)
+        }
 
         if (questions.length > 0) {
-          await supabase.from('exam_questions').insert(
+          const { error: qErr } = await supabase.from('exam_questions').upsert(
             questions.map((q, i) => ({
+              id: q.id,
               exam_id: currentExamId,
               question: q.question,
               options: q.options,
@@ -151,9 +170,13 @@ export default function EditGuidePage() {
               question_type: q.question_type ?? 'multiple_choice',
               answer_guide: q.answer_guide ?? null,
               order: i,
-            }))
+            })),
+            { onConflict: 'id' }
           )
+          if (qErr) throw new Error(qErr.message)
         }
+
+        idsEnLaBase.current = idsActuales
       }
 
       setSaved(true)

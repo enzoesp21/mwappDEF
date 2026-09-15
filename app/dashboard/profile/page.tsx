@@ -6,6 +6,8 @@ import { LogOut, User, Briefcase, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
 import type { Profile } from '@/lib/types'
+import AvatarUploader from '@/components/AvatarUploader'
+import InstallPrompt from '@/components/InstallPrompt'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -59,16 +61,17 @@ export default function ProfilePage() {
       <h1 className="text-xl font-bold text-brand-text">Mi Perfil</h1>
 
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5 space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-brand-accent/20 border border-brand-accent/30 flex items-center justify-center flex-shrink-0">
-            <span className="text-brand-accent text-xl font-bold">
-              {profile.full_name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <h2 className="font-bold text-brand-text text-lg">{profile.full_name}</h2>
-            <p className="text-brand-muted text-sm">{email}</p>
-          </div>
+        <AvatarUploader
+          userId={profile.id}
+          fullName={profile.full_name}
+          initialUrl={profile.avatar_url ?? null}
+        />
+
+        <div className="border-t border-brand-border pt-4">
+          <h2 className="font-bold text-brand-text text-lg leading-tight break-words">
+            {profile.full_name}
+          </h2>
+          <p className="text-brand-muted text-sm break-all">{email}</p>
         </div>
 
         <div className="border-t border-brand-border pt-4 space-y-3">
@@ -97,6 +100,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <InstallPrompt />
 
       <button
         onClick={handleLogout}

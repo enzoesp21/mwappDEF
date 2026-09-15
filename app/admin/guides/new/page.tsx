@@ -111,9 +111,13 @@ export default function NewGuidePage() {
         }
 
         if (examId && questions.length > 0) {
-          await supabase.from('exam_questions').delete().eq('exam_id', examId)
-          await supabase.from('exam_questions').insert(
+          // Igual que en la pantalla de edición: se conservan los ids en lugar
+          // de borrar y recrear, porque exam_answers cuelga de exam_questions
+          // con borrado en cascada. Acá la guía es nueva, pero el autoguardado
+          // vuelve a pasar por acá cada vez.
+          const { error: qErr } = await supabase.from('exam_questions').upsert(
             questions.map((q, i) => ({
+              id: q.id,
               exam_id: examId,
               question: q.question,
               options: q.options,
@@ -121,8 +125,10 @@ export default function NewGuidePage() {
               question_type: q.question_type ?? 'multiple_choice',
               answer_guide: q.answer_guide ?? null,
               order: i,
-            }))
+            })),
+            { onConflict: 'id' }
           )
+          if (qErr) throw new Error(qErr.message)
         }
       }
 

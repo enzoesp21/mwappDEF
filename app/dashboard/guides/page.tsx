@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import GuideCard from '@/components/GuideCard'
-import type { GuideWithStatus } from '@/lib/types'
+import PuestoCard from '@/components/PuestoCard'
+import { PUESTOS_INFO, buscarPuesto } from '@/lib/puestos'
+
+export const dynamic = 'force-dynamic'
 
 export default async function GuidesPage() {
   const supabase = await createClient()
@@ -17,52 +19,69 @@ export default async function GuidesPage() {
     .single()
   if (!profile) redirect('/login')
 
-  const { data: guides } = await supabase
-    .from('guides')
-    .select('*')
-    .or(`puestos.cs.{"${profile.puesto}"},puestos.cs.{"todos"}`)
-    .order('created_at', { ascending: true })
+  const miPuesto = buscarPuesto(profile.puesto as string)?.valor ?? null
 
-  const { data: exams } = await supabase.from('exams').select('*')
+  // Consultas sueltas, sin joins anidados: en este proyecto los joins
+  // anidados de PostgREST vienen anulando consultas enteras.
+  const [{ data: paths }, { data: exams }, { data: results }] = await Promise.all([
+    supabase.from('guide_paths').select('puesto, guide_id'),
+    supabase.from('exams').select('id, guide_id'),
+    supabase
+      .from('exam_results')
+      .select('exam_id')
+      .eq('user_id', session.user.id)
+      .eq('passed', true),
+  ])
 
-  const { data: results } = await supabase
-    .from('exam_results')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .eq('passed', true)
+  // Qué guías tiene aprobadas quien está mirando.
+  const examenesAprobados = new Set((results ?? []).map((r) => r.exam_id as string))
+  const guiasAprobadas = new Set(
+    (exams ?? [])
+      .filter((e) => examenesAprobados.has(e.id as string))
+      .map((e) => e.guide_id as string)
+  )
 
-  const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
-    const exam = exams?.find((e) => e.guide_id === guide.id)
-    const result = results?.find((r) => r.exam_id === exam?.id)
-    return {
-      ...guide,
-      exam,
-      result: result ?? undefined,
-      status: result ? 'passed' : exam ? 'exam_pending' : 'not_started',
-    }
+  // Por puesto: cuántas guías tiene la ruta y cuántas de esas aprobó.
+  const conteo = new Map<string, { total: number; aprobadas: number }>()
+  for (const row of paths ?? []) {
+    const p = row.puesto as string
+    const actual = conteo.get(p) ?? { total: 0, aprobadas: 0 }
+    actual.total++
+    if (guiasAprobadas.has(row.guide_id as string)) actual.aprobadas++
+    conteo.set(p, actual)
+  }
+
+  // El puesto propio primero, el resto en el orden del catálogo.
+  const ordenados = [...PUESTOS_INFO].sort((a, b) => {
+    if (a.valor === miPuesto) return -1
+    if (b.valor === miPuesto) return 1
+    return 0
   })
 
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
         <h1 className="text-xl font-bold text-brand-text">Guías</h1>
-        <p className="text-brand-muted text-sm mt-0.5">
-          {guidesWithStatus.length} guía{guidesWithStatus.length !== 1 ? 's' : ''} disponible
-          {guidesWithStatus.length !== 1 ? 's' : ''} para tu puesto
+        <p className="text-brand-muted text-sm mt-0.5 leading-relaxed">
+          Entrá a tu puesto para ver tu recorrido. También podés mirar el de cualquier otro
+          sector.
         </p>
       </div>
 
-      {guidesWithStatus.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-brand-muted">No hay guías disponibles todavía.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {guidesWithStatus.map((guide) => (
-            <GuideCard key={guide.id} guide={guide} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-3">
+        {ordenados.map((info) => {
+          const c = conteo.get(info.valor) ?? { total: 0, aprobadas: 0 }
+          return (
+            <PuestoCard
+              key={info.valor}
+              info={info}
+              total={c.total}
+              aprobadas={c.aprobadas}
+              esTuPuesto={info.valor === miPuesto}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }

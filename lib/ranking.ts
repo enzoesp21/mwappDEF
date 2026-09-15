@@ -8,6 +8,7 @@ export interface OverallStat {
   user_id: string
   full_name: string
   puesto: string
+  avatar_url: string | null
   passed_count: number
   avg_score: number
 }
@@ -50,6 +51,7 @@ export async function buildRanking(supabase: Client): Promise<RankingData> {
       user_id: r.user_id as string,
       full_name: profileMap[r.user_id as string]?.full_name ?? 'Usuario',
       puesto: profileMap[r.user_id as string]?.puesto ?? '',
+      avatar_url: profileMap[r.user_id as string]?.avatar_url ?? null,
       guide_id: exam?.guide_id ?? (r.exam_id as string),
       guide_title: exam?.guide_title ?? 'Examen',
     }
@@ -68,6 +70,7 @@ export async function buildRanking(supabase: Client): Promise<RankingData> {
         user_id: r.user_id,
         full_name: r.full_name,
         puesto: r.puesto,
+        avatar_url: r.avatar_url,
         passed_count: 1,
         sum: r.score,
         avg_score: r.score,

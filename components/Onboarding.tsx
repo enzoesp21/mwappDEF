@@ -23,6 +23,7 @@ type Choice = 'nuevo' | 'experimentado'
 interface Props {
   fullName: string
   guideId: string | null
+  guideTitle: string
 }
 
 const HIGHLIGHTS = [
@@ -31,7 +32,7 @@ const HIGHLIGHTS = [
   { icon: ClipboardCheck, title: 'Cómo se evalúa', desc: 'Los 21 criterios del día a día, con ejemplos de qué suma y qué no.' },
 ]
 
-export default function Onboarding({ fullName, guideId }: Props) {
+export default function Onboarding({ fullName, guideId, guideTitle }: Props) {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2>(1)
   const [choice, setChoice] = useState<Choice | null>(null)
@@ -164,8 +165,8 @@ export default function Onboarding({ fullName, guideId }: Props) {
                     <BookOpen className="w-6 h-6 text-brand-accent" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-display font-bold text-brand-text leading-tight">
-                      Guía para Nuevos y No Tan Nuevos
+                    <h2 className="text-xl font-display font-bold text-brand-text leading-tight break-words">
+                      {guideTitle}
                     </h2>
                     <p className="text-xs text-brand-muted mt-0.5">
                       Mozos · Runners · Comisses

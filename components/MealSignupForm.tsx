@@ -5,6 +5,7 @@ import { Utensils, Leaf, Sprout, Wheat, ShoppingBag, Check, Lock, AlertCircle, L
 import { cn } from '@/lib/utils'
 import { saveMealSignupsAction, type MealChange } from '@/app/actions/meals'
 import { SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
+import type { MenuDia } from '@/lib/menu-semanal'
 
 const PREFS = [
   { key: 'tradicional', label: 'Tradicional', icon: Utensils, color: 'text-brand-accent', bg: 'bg-brand-accent/10 border-brand-accent/30', sel: 'bg-brand-accent border-brand-accent text-white' },
@@ -27,6 +28,8 @@ interface Props {
   weekDays: Day[]
   signups: Record<string, Record<string, string>>
   isOpen: boolean
+  /** Qué se cocina cada día, para elegir sabiendo. */
+  menu: Record<string, MenuDia>
 }
 
 function slotKey(date: string, meal: string) {
@@ -47,7 +50,7 @@ function fmtDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
+export default function MealSignupForm({ weekDays, signups, isOpen, menu }: Props) {
   const initial = useMemo(() => flatten(signups), [signups])
   const [saved, setSaved] = useState<Sel>(initial)
   const [draft, setDraft] = useState<Sel>(initial)
@@ -122,6 +125,7 @@ export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
             const k = slotKey(day.date, meal)
             const selected = draft[k] as Pref | undefined
             const isDirty = (saved[k] ?? '') !== (draft[k] ?? '')
+            const plato = menu[day.date]?.[meal] ?? null
             return (
               <div key={meal}>
                 <div className="flex items-center gap-2 mb-2">
@@ -134,6 +138,23 @@ export default function MealSignupForm({ weekDays, signups, isOpen }: Props) {
                     </span>
                   )}
                 </div>
+
+                {plato && (
+                  <div className="bg-brand-dark/60 rounded-xl px-3 py-2 mb-2 space-y-1">
+                    <p className="text-sm text-brand-text leading-snug">
+                      {plato.principal}
+                      {plato.nota && (
+                        <span className="text-brand-muted"> · {plato.nota}</span>
+                      )}
+                    </p>
+                    {plato.vegetariano && (
+                      <p className="flex items-start gap-1.5 text-xs text-green-700 leading-snug">
+                        <Leaf className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        {plato.vegetariano}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {PREFS.map(({ key, label, icon: Icon, color, bg, sel }) => {
                     const isSel = selected === key

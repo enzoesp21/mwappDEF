@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Utensils } from 'lucide-react'
 import MealSignupForm from '@/components/MealSignupForm'
 import { getNextWeekDates, formatWeekLabel, isSignupOpen } from '@/lib/meals-utils'
+import { menuPorFecha, semanaDelCiclo, hoyEnArgentina, platoDe } from '@/lib/menu-semanal'
+import MenuDeHoy from '@/components/MenuDeHoy'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +20,9 @@ export default async function ComidaPage() {
   const weekEnd = weekDays[weekDays.length - 1].date
   const weekLabel = formatWeekLabel(weekStart)
   const open = isSignupOpen()
+
+  const menu = menuPorFecha(weekDays.map((d) => d.date))
+  const hoy = hoyEnArgentina()
 
   const { data: rows } = await supabase
     .from('meal_signups')
@@ -41,11 +46,26 @@ export default async function ComidaPage() {
           Comida Semanal
         </h1>
         <p className="text-brand-muted text-sm mt-0.5">
-          Semana del {weekLabel}. Elegí tu opción por día y tocá Guardar.
+          Qué se cocina y qué elegís para la semana que viene.
         </p>
       </div>
 
-      <MealSignupForm weekDays={weekDays} signups={signups} isOpen={open} />
+      <MenuDeHoy
+        fecha={hoy}
+        almuerzo={platoDe(hoy, 'almuerzo')}
+        cena={platoDe(hoy, 'cena')}
+      />
+
+      <div>
+        <h2 className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+          Anotate para la semana que viene
+        </h2>
+        <p className="text-brand-muted text-sm mt-0.5 mb-3 leading-relaxed">
+          Semana del {weekLabel} · Menú de la Semana {semanaDelCiclo(weekDays[0].date)}. Elegí tu
+          opción por día y tocá Guardar.
+        </p>
+        <MealSignupForm weekDays={weekDays} signups={signups} isOpen={open} menu={menu} />
+      </div>
     </div>
   )
 }

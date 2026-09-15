@@ -1,6 +1,9 @@
-﻿import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SugerenciasAdminClient from '@/components/admin/SugerenciasAdminClient'
+import { fetchProfiles, uniqueIds } from '@/lib/lookups'
+
+export const dynamic = 'force-dynamic'
 
 export default async function AdminSugerenciasPage() {
   const supabase = await createClient()
@@ -9,7 +12,11 @@ export default async function AdminSugerenciasPage() {
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single()
   if (profile?.role !== 'admin') redirect('/dashboard')
 
   const { data: rawSuggestions } = await supabase
@@ -18,15 +25,7 @@ export default async function AdminSugerenciasPage() {
     .order('created_at', { ascending: false })
 
   const rows = rawSuggestions ?? []
-  const userIds = rows.map((r) => r.user_id as string).filter((id, i, arr) => arr.indexOf(id) === i)
-
-  const profileMap: Record<string, { full_name: string; puesto: string }> = {}
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase.from('profiles').select('id, full_name, puesto').in('id', userIds)
-    for (const p of profiles ?? []) {
-      profileMap[p.id] = { full_name: p.full_name ?? 'Usuario', puesto: p.puesto ?? '' }
-    }
-  }
+  const profileMap = await fetchProfiles(supabase, uniqueIds(rows.map((r) => r.user_id as string)))
 
   const suggestions = rows.map((r) => ({
     id: r.id as string,
@@ -37,11 +36,9 @@ export default async function AdminSugerenciasPage() {
     read_at: r.read_at as string | null,
     read_by: r.read_by as string | null,
     created_at: r.created_at as string,
-    full_name: profileMap[r.user_id]?.full_name ?? 'Usuario',
-    puesto: profileMap[r.user_id]?.puesto ?? '',
+    full_name: profileMap[r.user_id as string]?.full_name ?? 'Usuario',
+    puesto: profileMap[r.user_id as string]?.puesto ?? '',
   }))
 
   return <SugerenciasAdminClient suggestions={suggestions} />
 }
-
-

@@ -24,6 +24,7 @@ export interface Profile {
   role: UserRole
   puesto: string
   status: UserStatus
+  avatar_url: string | null
   created_at: string
 }
 

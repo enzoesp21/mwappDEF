@@ -37,14 +37,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   if (profile && !profile.experience) {
+    // Por la marca, no por el título: así el renombre de una guía no deja
+    // la pantalla de bienvenida sin destino.
     const { data: guide } = await supabase
       .from('guides')
-      .select('id')
-      .ilike('title', '%Nuevos y No Tan Nuevos%')
+      .select('id, title')
+      .eq('is_primary', true)
       .limit(1)
       .maybeSingle()
 
-    return <Onboarding fullName={profile.full_name ?? ''} guideId={guide?.id ?? null} />
+    return (
+      <Onboarding
+        fullName={profile.full_name ?? ''}
+        guideId={(guide?.id as string) ?? null}
+        guideTitle={(guide?.title as string) ?? 'MIRADOR WAIKIKI - CONOCIMIENTOS BÁSICOS'}
+      />
+    )
   }
 
   const { data: rawNotifications } = await supabase
