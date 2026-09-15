@@ -39,6 +39,8 @@ export interface Person {
   full_name: string
   puesto: string
   votes: number
+  /** Su foto de perfil, que se usa si no subís una acá. */
+  avatar_url: string | null
 }
 
 interface Props {
@@ -58,6 +60,9 @@ export default function PublishForm({ period, periodLabel, people, current }: Pr
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+
+  // Si no subís una foto acá, se muestra la de perfil de esa persona.
+  const avatarElegido = people.find((p) => p.id === selected)?.avatar_url ?? null
 
   async function handleFile(file: File) {
     setUploading(true)
@@ -170,9 +175,13 @@ export default function PublishForm({ period, periodLabel, people, current }: Pr
         <label className="block text-xs font-medium text-brand-muted mb-2">Foto (opcional)</label>
         <div className="flex items-center gap-3">
           <div className="w-16 h-16 rounded-full overflow-hidden bg-brand-dark flex-shrink-0 border border-brand-border">
-            {photo ? (
+            {photo || avatarElegido ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={photo} alt="" className="w-full h-full object-cover" />
+              <img
+                src={(photo ?? avatarElegido) as string}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-brand-muted text-xs">
                 sin foto
@@ -202,6 +211,17 @@ export default function PublishForm({ period, periodLabel, people, current }: Pr
             </button>
           )}
         </div>
+        {!photo && avatarElegido && (
+          <p className="text-xs text-brand-muted mt-2 leading-relaxed">
+            Se va a usar su foto de perfil. Subí una acá solo si querés otra distinta.
+          </p>
+        )}
+        {!photo && !avatarElegido && selected && (
+          <p className="text-xs text-brand-muted mt-2 leading-relaxed">
+            Esta persona no tiene foto de perfil, así que va a salir con la inicial de su
+            nombre. Subí una si querés que se vea su cara.
+          </p>
+        )}
         <input
           ref={fileRef}
           type="file"

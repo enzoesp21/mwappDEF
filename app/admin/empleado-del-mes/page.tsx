@@ -27,7 +27,7 @@ export default async function AdminEmpleadoDelMesPage() {
   const [{ data: staff }, { data: votes }, { data: current }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, full_name, puesto')
+      .select('id, full_name, puesto, avatar_url')
       .eq('status', 'approved')
       .order('full_name'),
     supabase
@@ -54,6 +54,7 @@ export default async function AdminEmpleadoDelMesPage() {
     full_name: (p.full_name as string) ?? 'Usuario',
     puesto: (p.puesto as string) ?? '',
     votes: tally[p.id as string] ?? 0,
+    avatar_url: (p.avatar_url as string) ?? null,
   }))
 
   const ranked = [...people].filter((p) => p.votes > 0).sort((a, b) => b.votes - a.votes)

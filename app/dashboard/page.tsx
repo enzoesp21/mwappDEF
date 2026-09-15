@@ -86,15 +86,19 @@ export default async function DashboardPage() {
     .eq('period', currentPeriod())
     .maybeSingle()
 
-  let eomProfile: { full_name: string; puesto: string } | null = null
+  let eomProfile: { full_name: string; puesto: string; avatar_url: string | null } | null = null
   if (eom) {
     const { data: p } = await supabase
       .from('profiles')
-      .select('full_name, puesto')
+      .select('full_name, puesto, avatar_url')
       .eq('id', eom.user_id as string)
       .maybeSingle()
     eomProfile = p
-      ? { full_name: (p.full_name as string) ?? 'Usuario', puesto: (p.puesto as string) ?? '' }
+      ? {
+          full_name: (p.full_name as string) ?? 'Usuario',
+          puesto: (p.puesto as string) ?? '',
+          avatar_url: (p.avatar_url as string) ?? null,
+        }
       : null
   }
 
@@ -130,7 +134,8 @@ export default async function DashboardPage() {
             period={eom.period as string}
             fullName={eomProfile.full_name}
             puesto={eomProfile.puesto}
-            photoUrl={(eom.photo_url as string) ?? null}
+            // Si el encargado no subió una foto, se usa la del perfil.
+            photoUrl={(eom.photo_url as string) ?? eomProfile.avatar_url}
             message={(eom.message as string) ?? null}
             compact
           />

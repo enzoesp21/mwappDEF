@@ -72,7 +72,12 @@ export default async function EmpleadoDelMesPage() {
             period={current.period as string}
             fullName={winnerProfiles[current.user_id as string]?.full_name ?? 'Usuario'}
             puesto={winnerProfiles[current.user_id as string]?.puesto ?? ''}
-            photoUrl={(current.photo_url as string) ?? null}
+            // Si el encargado no subió una foto, se usa la del perfil.
+            photoUrl={
+              ((current.photo_url as string) ??
+                winnerProfiles[current.user_id as string]?.avatar_url) ??
+              null
+            }
             message={(current.message as string) ?? null}
           />
         ) : (
@@ -122,14 +127,15 @@ export default async function EmpleadoDelMesPage() {
             <div className="divide-y divide-brand-border">
               {past.map((w) => {
                 const p = winnerProfiles[w.user_id as string]
+                const foto = ((w.photo_url as string) ?? p?.avatar_url) ?? null
                 return (
                   <div key={w.period as string} className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-brand-dark flex-shrink-0">
-                        {w.photo_url ? (
+                        {foto ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
-                            src={w.photo_url as string}
+                            src={foto}
                             alt=""
                             className="w-full h-full object-cover"
                           />
