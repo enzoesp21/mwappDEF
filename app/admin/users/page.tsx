@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction } from '@/app/actions/users'
+import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -41,6 +42,44 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+  // Edición del nombre: qué fila está abierta y qué se escribió.
+  const [editandoNombre, setEditandoNombre] = useState<string | null>(null)
+  const [borradorNombre, setBorradorNombre] = useState('')
+  const [guardandoNombre, setGuardandoNombre] = useState(false)
+  const [errorNombre, setErrorNombre] = useState<string | null>(null)
+
+  function abrirEdicion(user: UserWithResults) {
+    setEditandoNombre(user.id)
+    setBorradorNombre(user.full_name)
+    setErrorNombre(null)
+  }
+
+  function cerrarEdicion() {
+    setEditandoNombre(null)
+    setBorradorNombre('')
+    setErrorNombre(null)
+  }
+
+  async function guardarNombre(userId: string) {
+    const limpio = borradorNombre.replace(/\s+/g, ' ').trim()
+    if (limpio.length < 2) {
+      setErrorNombre('El nombre es demasiado corto.')
+      return
+    }
+    setGuardandoNombre(true)
+    setErrorNombre(null)
+    const res = await updateUserNameAction(userId, limpio)
+    setGuardandoNombre(false)
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, full_name: limpio } : u))
+      )
+      cerrarEdicion()
+    } else {
+      setErrorNombre(res.error)
+    }
+  }
 
   async function loadResults(userId: string) {
     const { data: results } = await supabase
@@ -270,8 +309,81 @@ export default function UsersPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
+                  {editandoNombre === user.id ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={borradorNombre}
+                        onChange={(e) => setBorradorNombre(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') guardarNombre(user.id)
+                          if (e.key === 'Escape') cerrarEdicion()
+                        }}
+                        autoFocus
+                        aria-label="Nombre de la persona"
+                        className="w-full px-3 py-2 text-sm bg-brand-dark/40 border border-brand-accent rounded-lg text-brand-text focus:outline-none"
+                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => guardarNombre(user.id)}
+                          disabled={guardandoNombre}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                        >
+                          {guardandoNombre ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          Guardar
+                        </button>
+                        {necesitaFormato(borradorNombre) && (
+                          <button
+                            type="button"
+                            onClick={() => setBorradorNombre(formatearNombre(borradorNombre))}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-accent hover:bg-brand-accent/10 transition-colors cursor-pointer min-h-[36px]"
+                            title={'Quedaría: ' + formatearNombre(borradorNombre)}
+                          >
+                            <Wand2 className="w-3.5 h-3.5" />
+                            Acomodar mayúsculas
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={cerrarEdicion}
+                          disabled={guardandoNombre}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg text-brand-muted hover:bg-brand-card-hover transition-colors cursor-pointer min-h-[36px] disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                      {errorNombre && (
+                        <p className="flex items-start gap-1.5 text-xs text-brand-error">
+                          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                          {errorNombre}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-semibold text-brand-text">{user.full_name}</span>
+                    <button
+                      type="button"
+                      onClick={() => abrirEdicion(user)}
+                      aria-label={'Corregir el nombre de ' + user.full_name}
+                      title="Corregir el nombre"
+                      className="w-6 h-6 rounded flex items-center justify-center text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10 transition-colors cursor-pointer flex-shrink-0"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    {necesitaFormato(user.full_name) && (
+                      <span
+                        className="px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700"
+                        title={'Quedaría mejor como: ' + formatearNombre(user.full_name)}
+                      >
+                        revisar
+                      </span>
+                    )}
                     <span
                       className={cn(
                         'px-1.5 py-0.5 text-xs font-medium rounded',
@@ -299,6 +411,7 @@ export default function UsersPage() {
                       </span>
                     )}
                   </div>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-brand-muted truncate">{user.puesto}</span>
                     <span className="text-brand-border text-xs">·</span>

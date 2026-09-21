@@ -88,3 +88,35 @@ export async function setUserStatusAction(
   revalidatePath('/admin')
   return { ok: true }
 }
+
+/**
+ * Corrige el nombre de una persona desde el panel.
+ *
+ * Solo el nombre: el rol, el estado y el puesto siguen protegidos por el
+ * trigger de la base, y esta acción no los toca.
+ */
+export async function updateUserNameAction(
+  userId: string,
+  fullName: string
+): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  // Se guarda sin espacios de sobra, aunque el admin no haya usado el botón
+  // de sugerencia: un nombre con espacios al final desordena el ranking.
+  const limpio = fullName.replace(/\s+/g, ' ').trim()
+
+  if (limpio.length < 2) return { ok: false, error: 'El nombre es demasiado corto.' }
+  if (limpio.length > 80) return { ok: false, error: 'El nombre es demasiado largo.' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ full_name: limpio })
+    .eq('id', userId)
+  if (error) return { ok: false, error: 'No se pudo guardar: ' + error.message }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/admin')
+  revalidatePath('/dashboard/resultados')
+  return { ok: true }
+}
