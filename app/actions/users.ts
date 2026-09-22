@@ -120,3 +120,25 @@ export async function updateUserNameAction(
   revalidatePath('/dashboard/resultados')
   return { ok: true }
 }
+
+/**
+ * Pasa a alguien de "nuevo" a "del equipo", o al revés.
+ *
+ * Hace falta: mientras alguien figura como nuevo solo ve las guías de su
+ * puesto, y sin esto quedaría encerrado ahí para siempre — la persona solo
+ * puede elegirlo una vez, en la pantalla de bienvenida.
+ */
+export async function setUserExperienceAction(
+  userId: string,
+  experience: 'nuevo' | 'experimentado'
+): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  const { error } = await supabase.from('profiles').update({ experience }).eq('id', userId)
+  if (error) return { ok: false, error: 'No se pudo guardar: ' + error.message }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/dashboard/guides', 'layout')
+  return { ok: true }
+}

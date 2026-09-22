@@ -25,6 +25,8 @@ export interface Profile {
   puesto: string
   status: UserStatus
   avatar_url: string | null
+  /** 'nuevo' mientras esté en período de prueba; null si nunca pasó la bienvenida. */
+  experience: 'nuevo' | 'experimentado' | null
   created_at: string
 }
 

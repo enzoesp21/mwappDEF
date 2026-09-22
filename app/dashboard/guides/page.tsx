@@ -14,12 +14,18 @@ export default async function GuidesPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('puesto')
+    .select('puesto, experience')
     .eq('id', session.user.id)
     .single()
   if (!profile) redirect('/login')
 
   const miPuesto = buscarPuesto(profile.puesto as string)?.valor ?? null
+
+  // Mientras está en período de prueba solo ve las guías de su puesto: recién
+  // arrancó y la información del resto del complejo no le suma todavía.
+  if (profile.experience === 'nuevo' && miPuesto) {
+    redirect('/dashboard/guides/puesto/' + encodeURIComponent(miPuesto))
+  }
 
   // Consultas sueltas, sin joins anidados: en este proyecto los joins
   // anidados de PostgREST vienen anulando consultas enteras.

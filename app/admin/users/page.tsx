@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2 } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction, updateUserNameAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 
 type UserWithResults = Profile & {
@@ -78,6 +78,20 @@ export default function UsersPage() {
       cerrarEdicion()
     } else {
       setErrorNombre(res.error)
+    }
+  }
+
+  const [cambiandoNivel, setCambiandoNivel] = useState<string | null>(null)
+
+  async function cambiarNivel(user: UserWithResults) {
+    const destino = user.experience === 'nuevo' ? 'experimentado' : 'nuevo'
+    setCambiandoNivel(user.id)
+    const res = await setUserExperienceAction(user.id, destino)
+    setCambiandoNivel(null)
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, experience: destino } : u))
+      )
     }
   }
 
@@ -384,6 +398,14 @@ export default function UsersPage() {
                         revisar
                       </span>
                     )}
+                    {user.experience === 'nuevo' && (
+                      <span
+                        className="px-1.5 py-0.5 text-xs font-medium rounded bg-brand-accent/15 text-brand-accent"
+                        title="Solo ve las guías de su puesto"
+                      >
+                        en prueba
+                      </span>
+                    )}
                     <span
                       className={cn(
                         'px-1.5 py-0.5 text-xs font-medium rounded',
@@ -421,6 +443,32 @@ export default function UsersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:flex-shrink-0">
+                  <button
+                    onClick={() => cambiarNivel(user)}
+                    disabled={cambiandoNivel === user.id}
+                    title={
+                      user.experience === 'nuevo'
+                        ? 'Pasarlo al equipo: va a ver las guías de todos los puestos'
+                        : 'Ponerlo en prueba: solo va a ver las guías de su puesto'
+                    }
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10 transition-colors cursor-pointer min-h-[36px] whitespace-nowrap disabled:opacity-50"
+                  >
+                    {cambiandoNivel === user.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+                    ) : user.experience === 'nuevo' ? (
+                      <>
+                        <GraduationCap className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Pasar al equipo</span>
+                        <span className="sm:hidden">Al equipo</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sprout className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Poner en prueba</span>
+                        <span className="sm:hidden">En prueba</span>
+                      </>
+                    )}
+                  </button>
                   <button
                     onClick={() => toggleRole(user)}
                     disabled={roleChanging === user.id}
