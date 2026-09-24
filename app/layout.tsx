@@ -12,9 +12,15 @@ export const metadata: Metadata = {
     title: 'Waikiki',
     statusBarStyle: 'default',
   },
+  // Todos salen del logo real. La pestaña usa el logo recortado al ras y sin
+  // fondo, para que a 16 px se vea lo más grande posible. El de iPhone lleva
+  // fondo crema porque iOS pinta de negro lo transparente.
   icons: {
-    icon: '/icon-192.png',
-    apple: '/icon-192.png',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180' },
   },
 }
 
