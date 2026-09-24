@@ -5,12 +5,14 @@ import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DIAS_CORTOS,
+  esFeriado,
   normalizarNombre,
   numeroDeDia,
+  pintaComoFinde,
   totalesDelSector,
   type DatosHorario,
 } from '@/lib/horarios'
-import { claseCelda, claseColumna, REFERENCIAS } from '@/components/horario/estilos'
+import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/components/horario/estilos'
 
 interface Props {
   datos: DatosHorario
@@ -25,6 +27,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const aResaltar = useMemo(() => new Set(resaltar.map(normalizarNombre)), [resaltar])
 
+  const findes = Array.from({ length: 7 }, (_, i) => pintaComoFinde(datos, i))
   const filtro = normalizarNombre(busqueda)
   const sectores = useMemo(() => {
     if (!filtro) return datos.sectores
@@ -94,11 +97,14 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                         key={d}
                         className={cn(
                           'font-semibold px-1 py-1.5 text-center whitespace-nowrap',
-                          hoy === i ? 'text-brand-accent' : 'text-brand-muted',
-                          claseColumna(i)
+                          claseEncabezadoDia(findes[i]),
+                          hoy === i && !findes[i] && 'text-brand-accent'
                         )}
                       >
                         {hoy === i ? 'Hoy' : d} {numeroDeDia(lunes, i)}
+                        {esFeriado(datos, i) && (
+                          <span className="block text-[8px] font-bold uppercase tracking-wider">Feriado</span>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -118,11 +124,11 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                           {esVos && <span className="ml-1 text-[9px] text-brand-accent font-bold">VOS</span>}
                         </td>
                         {p.dias.map((valor, i) => (
-                          <td key={i} className={cn('p-0.5', claseColumna(i))}>
+                          <td key={i} className={cn('p-0.5', claseColumna(findes[i]))}>
                             <div
                               className={cn(
                                 'rounded px-1 py-1 text-center whitespace-nowrap',
-                                claseCelda(valor, i),
+                                claseCelda(valor, i, findes[i]),
                                 hoy === i && 'ring-1 ring-brand-accent/60'
                               )}
                             >
@@ -139,7 +145,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                         Trabajan
                       </td>
                       {totales.map((t, i) => (
-                        <td key={i} className={cn('px-1 py-1 text-center text-[10px] font-semibold text-brand-text', claseColumna(i))}>
+                        <td key={i} className={cn('px-1 py-1 text-center text-[10px] font-semibold text-brand-text', claseColumna(findes[i]))}>
                           {t.total}
                           {t.noche > 0 && <span className="text-brand-accent"> ({t.noche}N)</span>}
                         </td>

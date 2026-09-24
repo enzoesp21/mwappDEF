@@ -4,10 +4,10 @@ import { esNoche, tipoCelda } from '@/lib/horarios'
  * Color de cada celda según lo que dice. Sirve para leer la planilla de un
  * vistazo: quién está libre, de vacaciones o hace noche.
  */
-export function claseCelda(valor: string, indiceDia: number): string {
+export function claseCelda(valor: string, indiceDia: number, finde = false): string {
   switch (tipoCelda(valor)) {
     case 'vacio':
-      return 'bg-transparent text-brand-muted'
+      return finde ? 'bg-[#d6e7cf]/60 text-brand-muted' : 'bg-transparent text-brand-muted'
     case 'libre':
       return 'bg-brand-dark/50 text-brand-muted'
     case 'vacaciones':
@@ -17,19 +17,25 @@ export function claseCelda(valor: string, indiceDia: number): string {
     case 'otro_lugar':
       return 'bg-violet-100 text-violet-800'
     case 'turno':
-      return esNoche(valor, indiceDia)
-        ? 'bg-brand-accent/20 text-brand-text font-semibold'
-        : 'bg-brand-card text-brand-text'
+      if (esNoche(valor, indiceDia)) return 'bg-brand-accent/20 text-brand-text font-semibold'
+      // Mismo verde que el fin de semana del PDF y de la planilla de Excel.
+      return finde ? 'bg-[#d6e7cf] text-brand-text' : 'bg-brand-card text-brand-text'
   }
 }
 
-/** Fondo de las columnas de fin de semana, como en la planilla. */
-export function claseColumna(indiceDia: number): string {
-  return indiceDia >= 5 ? 'bg-brand-accent/5' : ''
+/** Fondo de las columnas de fin de semana y feriados, como en la planilla. */
+export function claseColumna(finde: boolean): string {
+  return finde ? 'bg-[#d6e7cf]/40' : ''
+}
+
+/** Encabezado del día: verde lleno en fin de semana y feriado, como en el PDF. */
+export function claseEncabezadoDia(finde: boolean): string {
+  return finde ? 'bg-brand-accent text-white' : 'text-brand-muted'
 }
 
 export const REFERENCIAS = [
   { etiqueta: 'Turno', clase: 'bg-brand-card' },
+  { etiqueta: 'Finde o feriado', clase: 'bg-[#d6e7cf]' },
   { etiqueta: 'Hace noche', clase: 'bg-brand-accent/20' },
   { etiqueta: 'Libre (X)', clase: 'bg-brand-dark/50' },
   { etiqueta: 'Vacaciones', clase: 'bg-sky-100' },

@@ -120,7 +120,9 @@ export default async function HorarioPage({ searchParams }: Props) {
         </p>
       )}
 
-      {misFilas.length > 0 && <MiSemana lunes={lunes} filas={misFilas} hoy={indiceHoy} />}
+      {misFilas.length > 0 && (
+        <MiSemana lunes={lunes} filas={misFilas} hoy={indiceHoy} feriados={datos.feriados ?? []} />
+      )}
 
       <TablaHorario
         datos={datos}

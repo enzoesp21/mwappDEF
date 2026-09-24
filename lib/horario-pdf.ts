@@ -2,9 +2,11 @@ import { jsPDF } from 'jspdf'
 import { autoTable, type CellHookData } from 'jspdf-autotable'
 import {
   DIAS,
+  esFeriado,
   esNoche,
   etiquetaSemana,
   numeroDeDia,
+  pintaComoFinde,
   tipoCelda,
   totalesDelSector,
   type DatosHorario,
@@ -33,7 +35,7 @@ const BLANCO: RGB = [255, 255, 255]
 const TEXTO: RGB = [31, 45, 39]
 const GRIS: RGB = [106, 125, 114]
 
-function fondoDeCelda(valor: string, dia: number): RGB {
+function fondoDeCelda(valor: string, dia: number, finde: boolean): RGB {
   switch (tipoCelda(valor)) {
     case 'libre':
       return LIBRE
@@ -45,9 +47,9 @@ function fondoDeCelda(valor: string, dia: number): RGB {
       return MIRADOR_9
     case 'turno':
       if (esNoche(valor, dia)) return NOCHE
-      return dia >= 5 ? FIN_DE_SEMANA : BLANCO
+      return finde ? FIN_DE_SEMANA : BLANCO
     default:
-      return dia >= 5 ? FIN_DE_SEMANA : BLANCO
+      return finde ? FIN_DE_SEMANA : BLANCO
   }
 }
 
@@ -73,7 +75,11 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
     doc.text('Mirador Waikiki', anchoPagina - margen, 13, { align: 'right' })
   }
 
-  const encabezadoDias = DIAS.map((d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i))
+  // Sábado, domingo y feriados van en verde, como en la planilla.
+  const findes = DIAS.map((_, i) => pintaComoFinde(datos, i))
+  const encabezadoDias = DIAS.map(
+    (d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i) + (esFeriado(datos, i) ? '\nFERIADO' : '')
+  )
   // Alto real de una fila con letra de 6.8 y 0.5 mm de relleno vertical.
   const altoFila = 3.8
   // Anchos fijos: si no, cada sector se acomoda solo y no se alinean entre sí.
@@ -142,12 +148,12 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
           return
         }
         const dia = col - 1
-        if (data.section === 'head' && dia >= 5) {
+        if (data.section === 'head' && findes[dia]) {
           data.cell.styles.fillColor = VERDE
         }
         if (data.section === 'body') {
           const valor = String(data.cell.raw ?? '')
-          data.cell.styles.fillColor = fondoDeCelda(valor, dia)
+          data.cell.styles.fillColor = fondoDeCelda(valor, dia, findes[dia])
           if (tipoCelda(valor) !== 'turno') data.cell.styles.textColor = GRIS
           if (esNoche(valor, dia)) data.cell.styles.fontStyle = 'bold'
         }
@@ -161,6 +167,7 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
   // Referencias al final, como en la planilla.
   const referencias: [string, RGB][] = [
     ['Turno', BLANCO],
+    ['Finde o feriado', FIN_DE_SEMANA],
     ['Hace noche', NOCHE],
     ['Libre (X)', LIBRE],
     ['Vacaciones', VACACIONES],

@@ -20,6 +20,8 @@ export interface SectorHorario {
 
 export interface DatosHorario {
   sectores: SectorHorario[]
+  /** Días de la semana que son feriado (0 = lunes ... 6 = domingo). */
+  feriados?: number[]
 }
 
 export type EstadoSemana = 'draft' | 'published'
@@ -209,7 +211,19 @@ export function semanaVacia(): DatosHorario {
   return { sectores: [] }
 }
 
-/** Copia una semana dejando la estructura y los horarios, para editar encima. */
+export function esFeriado(datos: DatosHorario, indiceDia: number): boolean {
+  return (datos.feriados ?? []).includes(indiceDia)
+}
+
+/** Se pinta como fin de semana: sábado, domingo o feriado. */
+export function pintaComoFinde(datos: DatosHorario, indiceDia: number): boolean {
+  return indiceDia >= 5 || esFeriado(datos, indiceDia)
+}
+
+/**
+ * Copia una semana dejando la estructura y los horarios, para editar encima.
+ * Los feriados no se copian: son de una fecha puntual, no de la semana.
+ */
 export function copiarDatos(datos: DatosHorario): DatosHorario {
   return {
     sectores: datos.sectores.map((s) => ({
@@ -227,6 +241,15 @@ export function validarDatos(datos: unknown): datos is DatosHorario {
   if (!datos || typeof datos !== 'object') return false
   const d = datos as DatosHorario
   if (!Array.isArray(d.sectores)) return false
+  if (
+    d.feriados !== undefined &&
+    !(
+      Array.isArray(d.feriados) &&
+      d.feriados.every((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    )
+  ) {
+    return false
+  }
   return d.sectores.every(
     (s) =>
       typeof s?.nombre === 'string' &&

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus,
@@ -20,12 +20,13 @@ import { cn } from '@/lib/utils'
 import {
   DIAS_CORTOS,
   numeroDeDia,
+  pintaComoFinde,
   totalesDelSector,
   type DatosHorario,
   type PersonaHorario,
   type SectorHorario,
 } from '@/lib/horarios'
-import { claseCelda, claseColumna, REFERENCIAS } from '@/components/horario/estilos'
+import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/components/horario/estilos'
 import { guardarSemanaAction, publicarSemanaAction } from '@/app/actions/horarios'
 
 interface Props {
@@ -134,7 +135,7 @@ export default function EditorHorario({
 
   const conSector = useCallback(
     (si: number, fn: (s: SectorHorario) => SectorHorario) =>
-      aplicar((d) => ({ sectores: d.sectores.map((s, i) => (i === si ? fn(s) : s)) })),
+      aplicar((d) => ({ ...d, sectores: d.sectores.map((s, i) => (i === si ? fn(s) : s)) })),
     [aplicar]
   )
 
@@ -199,7 +200,7 @@ export default function EditorHorario({
       if (j < 0 || j >= d.sectores.length) return d
       const sectores = [...d.sectores]
       ;[sectores[si], sectores[j]] = [sectores[j], sectores[si]]
-      return { sectores }
+      return { ...d, sectores }
     })
   }
 
@@ -210,11 +211,29 @@ export default function EditorHorario({
         ? '¿Sacar el sector ' + s.nombre + ' con sus ' + s.personas.length + ' personas?'
         : '¿Sacar el sector ' + s.nombre + '?'
     if (!confirm(aviso)) return
-    aplicar((d) => ({ sectores: d.sectores.filter((_, i) => i !== si) }))
+    aplicar((d) => ({ ...d, sectores: d.sectores.filter((_, i) => i !== si) }))
   }
 
+  function alternarFeriado(dia: number) {
+    aplicar((d) => {
+      const actuales = d.feriados ?? []
+      const feriados = actuales.includes(dia)
+        ? actuales.filter((x) => x !== dia)
+        : [...actuales, dia].sort((a, b) => a - b)
+      return { ...d, feriados }
+    })
+  }
+
+  // Qué días se pintan como fin de semana. Depende solo de los feriados, así que
+  // se memoriza por ellos: si no, cada tecla redibujaría todas las filas.
+  const claveFeriados = (datos.feriados ?? []).join(',')
+  const findes = useMemo(() => {
+    const feriados = claveFeriados ? claveFeriados.split(',').map(Number) : []
+    return Array.from({ length: 7 }, (_, i) => pintaComoFinde({ sectores: [], feriados }, i))
+  }, [claveFeriados])
+
   function agregarSector() {
-    aplicar((d) => ({ sectores: [...d.sectores, { nombre: 'NUEVO SECTOR', personas: [] }] }))
+    aplicar((d) => ({ ...d, sectores: [...d.sectores, { nombre: 'NUEVO SECTOR', personas: [] }] }))
   }
 
   async function alternarPublicacion() {
@@ -342,6 +361,39 @@ export default function EditorHorario({
         </p>
       )}
 
+      <div className="bg-brand-card border border-brand-border rounded-xl p-3">
+        <p className="text-xs font-semibold text-brand-text mb-2">
+          ¿Hay algún feriado esta semana? Tocá el día y se pinta como sábado y domingo.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {DIAS_CORTOS.map((d, i) => {
+            const esFinde = i >= 5
+            const marcado = (datos.feriados ?? []).includes(i)
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => alternarFeriado(i)}
+                disabled={esFinde}
+                aria-pressed={marcado}
+                title={esFinde ? 'Ya se pinta como fin de semana' : marcado ? 'Sacar el feriado' : 'Marcar como feriado'}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[36px]',
+                  esFinde
+                    ? 'bg-[#d6e7cf] border-transparent text-brand-muted cursor-not-allowed'
+                    : marcado
+                      ? 'bg-brand-accent border-brand-accent text-white cursor-pointer'
+                      : 'bg-brand-card border-brand-border text-brand-text hover:border-brand-accent cursor-pointer'
+                )}
+              >
+                {d} {numeroDeDia(lunes, i)}
+                {marcado && ' · feriado'}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-x-3 gap-y-1.5">
         {REFERENCIAS.map((r) => (
           <span key={r.etiqueta} className="flex items-center gap-1.5 text-[11px] text-brand-muted">
@@ -390,8 +442,11 @@ export default function EditorHorario({
                       Persona
                     </th>
                     {DIAS_CORTOS.map((d, i) => (
-                      <th key={d} className={cn('font-semibold text-brand-muted px-1 py-2 text-center', claseColumna(i))}>
+                      <th key={d} className={cn('font-semibold px-1 py-2 text-center', claseEncabezadoDia(findes[i]))}>
                         {d} {numeroDeDia(lunes, i)}
+                        {(datos.feriados ?? []).includes(i) && (
+                          <span className="block text-[9px] font-bold uppercase tracking-wider">Feriado</span>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -414,6 +469,7 @@ export default function EditorHorario({
                         onQuitar={quitarPersona}
                         onRellenar={rellenarFila}
                         onTecla={alPresionar}
+                        findes={findes}
                       />
                     )
                   })}
@@ -422,7 +478,7 @@ export default function EditorHorario({
                       Trabajan
                     </td>
                     {totales.map((t, i) => (
-                      <td key={i} className={cn('px-1 py-1.5 text-center text-[11px] font-semibold text-brand-text', claseColumna(i))}>
+                      <td key={i} className={cn('px-1 py-1.5 text-center text-[11px] font-semibold text-brand-text', claseColumna(findes[i]))}>
                         {t.total}
                         {t.noche > 0 && <span className="text-brand-accent"> ({t.noche}N)</span>}
                       </td>
@@ -471,6 +527,7 @@ interface FilaProps {
   onQuitar: (si: number, pi: number) => void
   onRellenar: (si: number, pi: number, valor: string) => void
   onTecla: (e: React.KeyboardEvent<HTMLInputElement>) => void
+  findes: boolean[]
 }
 
 // Memorizada: con 400 celdas, redibujar todo en cada tecla se nota en el celular.
@@ -487,6 +544,7 @@ const FilaPersona = memo(function FilaPersona({
   onQuitar,
   onRellenar,
   onTecla,
+  findes,
 }: FilaProps) {
   const [menu, setMenu] = useState(false)
 
@@ -559,7 +617,7 @@ const FilaPersona = memo(function FilaPersona({
         </div>
       </td>
       {persona.dias.map((valor, dia) => (
-        <td key={dia} className={cn('p-0.5', claseColumna(dia))}>
+        <td key={dia} className={cn('p-0.5', claseColumna(findes[dia]))}>
           <input
             type="text"
             value={valor}
@@ -572,7 +630,7 @@ const FilaPersona = memo(function FilaPersona({
             aria-label={(persona.nombre || 'Persona') + ', ' + DIAS_CORTOS[dia]}
             className={cn(
               'w-full min-w-[78px] px-1.5 py-1.5 rounded text-center text-[11px] border border-transparent focus:border-brand-accent focus:outline-none',
-              claseCelda(valor, dia)
+              claseCelda(valor, dia, findes[dia])
             )}
           />
         </td>
