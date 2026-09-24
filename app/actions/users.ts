@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { PUESTOS } from '@/lib/types'
 
 export type ApprovalResult = { ok: true } | { ok: false; error: string }
 
@@ -167,6 +168,31 @@ export async function setCargaPropinasAction(
         : 'No se pudo guardar: ' + error.message,
     }
   }
+  if (!data || data.length === 0) return { ok: false, error: 'No se guardó: no se encontró el usuario.' }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/dashboard', 'layout')
+  return { ok: true }
+}
+
+/**
+ * Corrige el puesto de alguien (hay quien se registra en el que no es).
+ * Cambia las guías que ve: su recorrido sale de guide_paths según el puesto.
+ */
+export async function setUserPuestoAction(userId: string, puesto: string): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  if (!(PUESTOS as readonly string[]).includes(puesto)) {
+    return { ok: false, error: 'Ese puesto no existe.' }
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ puesto })
+    .eq('id', userId)
+    .select('id')
+  if (error) return { ok: false, error: 'No se pudo cambiar el puesto: ' + error.message }
   if (!data || data.length === 0) return { ok: false, error: 'No se guardó: no se encontró el usuario.' }
 
   revalidatePath('/admin/users')

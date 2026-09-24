@@ -6,8 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setUserPuestoAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
+import { buscarPuesto } from '@/lib/puestos'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -93,6 +94,23 @@ export default function UsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, experience: destino } : u))
       )
+    } else {
+      setStatusError(res.error)
+    }
+  }
+
+  const [cambiandoPuesto, setCambiandoPuesto] = useState<string | null>(null)
+
+  async function cambiarPuesto(user: UserWithResults, puesto: string) {
+    if (puesto === user.puesto) return
+    const nombre = buscarPuesto(puesto)?.nombre ?? puesto
+    if (!confirm(`¿Pasar a ${user.full_name} a ${nombre}? Va a ver las guías de ese puesto.`)) return
+    setCambiandoPuesto(user.id)
+    setStatusError(null)
+    const res = await setUserPuestoAction(user.id, puesto)
+    setCambiandoPuesto(null)
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, puesto } : u)))
     } else {
       setStatusError(res.error)
     }
@@ -455,9 +473,31 @@ export default function UsersPage() {
                   </div>
                   )}
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-brand-muted truncate">{user.puesto}</span>
+                    <label className="relative flex items-center flex-shrink-0" title="Cambiar el puesto">
+                      <span className="sr-only">Puesto de {user.full_name}</span>
+                      <select
+                        value={user.puesto}
+                        onChange={(e) => cambiarPuesto(user, e.target.value)}
+                        disabled={cambiandoPuesto === user.id}
+                        className="appearance-none max-w-[11rem] truncate pl-1.5 pr-5 py-0.5 -ml-1.5 rounded text-xs text-brand-muted bg-transparent hover:bg-brand-accent/10 hover:text-brand-accent focus:outline-none focus:ring-1 focus:ring-brand-accent cursor-pointer disabled:opacity-50"
+                      >
+                        {!(PUESTOS as readonly string[]).includes(user.puesto) && (
+                          <option value={user.puesto}>{user.puesto || 'Sin puesto'}</option>
+                        )}
+                        {PUESTOS.map((p) => (
+                          <option key={p} value={p}>
+                            {buscarPuesto(p)?.nombre ?? p}
+                          </option>
+                        ))}
+                      </select>
+                      {cambiandoPuesto === user.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-brand-muted absolute right-1 pointer-events-none" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-brand-muted absolute right-1 pointer-events-none" />
+                      )}
+                    </label>
                     <span className="text-brand-border text-xs">·</span>
-                    <span className="text-xs text-brand-muted whitespace-nowrap">{formatDate(user.created_at)}</span>
+                    <span className="text-xs text-brand-muted truncate min-w-0">{formatDate(user.created_at)}</span>
                   </div>
                 </div>
                 </div>
