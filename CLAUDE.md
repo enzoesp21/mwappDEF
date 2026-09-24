@@ -88,6 +88,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   `new Date()`**, perdería los microsegundos y la comparación nunca daría igual.
 - Lógica de totales y búsqueda en `lib/horarios.ts`; el PDF en `lib/horario-pdf.ts`.
 
+## Propinas
+
+- Reemplaza la calculadora vieja (prueba77enzo.vercel.app) con la misma cuenta: salón =
+  total − general; por hora = salón ÷ (horas completas + 75 % de reducidos + 50 % de
+  prueba). Lógica y mensaje de WhatsApp en `lib/propinas.ts`.
+- Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
+  `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
+- Cada mozo ve SOLO sus filas (`tip_entries.user_id`, RLS). El vínculo nombre → usuario es
+  estricto (`vincularUsuario`): ante la duda no se vincula, mejor que mostrar la plata de otro.
+- Se guarda con la RPC `guardar_propinas` (todo el día en una operación, con versión).
+- Pantallas compartidas en `components/propinas/`, montadas en `/admin/propinas` y
+  `/dashboard/propinas` (los admin no pueden entrar a `/dashboard`).
+
 ## Seguridad
 
 - RLS en todas las tablas. Función `is_admin()` en la base.

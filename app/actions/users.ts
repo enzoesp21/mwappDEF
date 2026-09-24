@@ -142,3 +142,34 @@ export async function setUserExperienceAction(
   revalidatePath('/dashboard/guides', 'layout')
   return { ok: true }
 }
+
+/**
+ * Da o saca el permiso de cargar propinas. Lo usan los cajeros; los admin
+ * pueden siempre, sin necesidad de tildarlo.
+ */
+export async function setCargaPropinasAction(
+  userId: string,
+  valor: boolean
+): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ carga_propinas: valor })
+    .eq('id', userId)
+    .select('id')
+  if (error) {
+    return {
+      ok: false,
+      error: /carga_propinas/.test(error.message)
+        ? 'Falta correr el SQL de propinas (supabase/add_propinas.sql) en Supabase.'
+        : 'No se pudo guardar: ' + error.message,
+    }
+  }
+  if (!data || data.length === 0) return { ok: false, error: 'No se guardó: no se encontró el usuario.' }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/dashboard', 'layout')
+  return { ok: true }
+}

@@ -27,6 +27,8 @@ export interface Profile {
   avatar_url: string | null
   /** 'nuevo' mientras esté en período de prueba; null si nunca pasó la bienvenida. */
   experience: 'nuevo' | 'experimentado' | null
+  /** Puede cargar propinas (cajeros). Undefined hasta que se corra add_propinas.sql. */
+  carga_propinas?: boolean
   created_at: string
 }
 

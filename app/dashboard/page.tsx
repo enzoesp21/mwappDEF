@@ -2,12 +2,14 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
 import FaltasGraves from '@/components/FaltasGraves'
-import { Utensils, ChevronRight, BookOpen } from 'lucide-react'
+import { Utensils, ChevronRight, BookOpen, Banknote } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
 import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
 import type { GuideWithStatus } from '@/lib/types'
+import { misPropinas } from '@/lib/propinas-datos'
+import { fechaConDia, pesos } from '@/lib/propinas'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -121,6 +123,11 @@ export default async function DashboardPage() {
     missingMeals = Math.max(0, totalSlots - (chosen ?? 0))
   }
 
+  // Propinas: quien las carga tiene el acceso a mano; el resto ve la última suya.
+  const cargaPropinas = profile.carga_propinas === true
+  const { propinas } = await misPropinas(supabase, session.user.id)
+  const ultimaPropina = propinas[0] ?? null
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
@@ -164,6 +171,37 @@ export default async function DashboardPage() {
             <p className="text-xs text-brand-muted">
               Se cierra {SIGNUP_CUTOFF_LABEL}. Después no se puede cambiar.
             </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+        </Link>
+      )}
+
+      {(cargaPropinas || ultimaPropina) && (
+        <Link
+          href="/dashboard/propinas"
+          className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <Banknote className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="min-w-0 flex-1">
+            {cargaPropinas ? (
+              <>
+                <p className="text-sm font-semibold text-brand-text">Cargar propinas</p>
+                <p className="text-xs text-brand-muted">El reparto del salón y el reporte para el grupo</p>
+              </>
+            ) : (
+              ultimaPropina && (
+                <>
+                  <p className="text-sm font-semibold text-brand-text">
+                    Tu propina: {pesos(ultimaPropina.monto)}
+                  </p>
+                  <p className="text-xs text-brand-muted">
+                    Del {fechaConDia(ultimaPropina.fecha)} · ver todas
+                  </p>
+                </>
+              )
+            )}
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
         </Link>

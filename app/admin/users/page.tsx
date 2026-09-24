@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 
 type UserWithResults = Profile & {
@@ -86,12 +86,32 @@ export default function UsersPage() {
   async function cambiarNivel(user: UserWithResults) {
     const destino = user.experience === 'nuevo' ? 'experimentado' : 'nuevo'
     setCambiandoNivel(user.id)
+    setStatusError(null)
     const res = await setUserExperienceAction(user.id, destino)
     setCambiandoNivel(null)
     if (res.ok) {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, experience: destino } : u))
       )
+    } else {
+      setStatusError(res.error)
+    }
+  }
+
+  const [cambiandoPropinas, setCambiandoPropinas] = useState<string | null>(null)
+
+  async function cambiarPropinas(user: UserWithResults) {
+    const destino = !user.carga_propinas
+    setCambiandoPropinas(user.id)
+    setStatusError(null)
+    const res = await setCargaPropinasAction(user.id, destino)
+    setCambiandoPropinas(null)
+    if (res.ok) {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, carga_propinas: destino } : u))
+      )
+    } else {
+      setStatusError(res.error)
     }
   }
 
@@ -443,6 +463,34 @@ export default function UsersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:flex-shrink-0">
+                  {/* Los admin cargan propinas siempre: el permiso es para cajeros. */}
+                  {user.role !== 'admin' && (
+                    <button
+                      onClick={() => cambiarPropinas(user)}
+                      disabled={cambiandoPropinas === user.id}
+                      aria-pressed={Boolean(user.carga_propinas)}
+                      title={
+                        user.carga_propinas
+                          ? 'Carga las propinas del salón. Tocá para sacarle el permiso.'
+                          : 'Darle permiso para cargar las propinas del salón (cajeros).'
+                      }
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer min-h-[36px] whitespace-nowrap disabled:opacity-50',
+                        user.carga_propinas
+                          ? 'bg-brand-accent text-white hover:bg-brand-accent-hover'
+                          : 'bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10'
+                      )}
+                    >
+                      {cambiandoPropinas === user.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+                      ) : (
+                        <>
+                          <Banknote className="w-3.5 h-3.5" />
+                          {user.carga_propinas ? 'Carga propinas' : 'Propinas'}
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={() => cambiarNivel(user)}
                     disabled={cambiandoNivel === user.id}
