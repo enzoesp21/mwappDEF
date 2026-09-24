@@ -14,6 +14,7 @@ import {
   EyeOff,
   RefreshCw,
   MoreHorizontal,
+  FileDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -61,6 +62,7 @@ export default function EditorHorario({
   const [estado, setEstado] = useState<EstadoGuardado>({ tipo: 'al_dia' })
   const [publicando, setPublicando] = useState(false)
   const [errorPublicar, setErrorPublicar] = useState<string | null>(null)
+  const [generandoPDF, setGenerandoPDF] = useState(false)
 
   const version = useRef(versionInicial)
   const datosRef = useRef(datos)
@@ -241,6 +243,23 @@ export default function EditorHorario({
     else setErrorPublicar(res.error)
   }
 
+  /**
+   * Baja el PDF de lo que está en pantalla, aunque no esté guardado ni
+   * publicado todavía: es lo que se manda al grupo. La librería se carga recién
+   * al tocar el botón, para no hacer más pesada la página.
+   */
+  async function descargarPDF() {
+    setGenerandoPDF(true)
+    try {
+      const { generarPDFHorario, nombreDelArchivo } = await import('@/lib/horario-pdf')
+      generarPDFHorario(datosRef.current, lunes).save(nombreDelArchivo(lunes))
+    } catch (e) {
+      alert('No se pudo armar el PDF: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setGenerandoPDF(false)
+    }
+  }
+
   // Enter baja a la misma columna de la persona siguiente, como en Excel.
   const alPresionar = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return
@@ -264,6 +283,16 @@ export default function EditorHorario({
         <IndicadorGuardado estado={estado} />
         <div className="flex-1" />
         {errorPublicar && <span className="text-xs text-brand-error">{errorPublicar}</span>}
+        <button
+          type="button"
+          onClick={descargarPDF}
+          disabled={generandoPDF || datos.sectores.length === 0}
+          title="Baja la planilla en PDF para mandar al grupo"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-brand-card border border-brand-border text-brand-text hover:border-brand-accent hover:text-brand-accent transition-colors min-h-[40px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generandoPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          Descargar PDF
+        </button>
         <button
           type="button"
           onClick={alternarPublicacion}
