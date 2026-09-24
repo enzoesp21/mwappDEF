@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
+import FaltasGraves from '@/components/FaltasGraves'
 import { Utensils, ChevronRight, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
@@ -130,6 +131,9 @@ export default async function DashboardPage() {
       </div>
 
       <InstallPrompt dismissible />
+
+      {/* Mientras dura la prueba, siempre a la vista: no alcanza con verla una vez. */}
+      {enPrueba && <FaltasGraves />}
 
       {eom && eomProfile && (
         <Link href="/dashboard/empleado-del-mes" className="block">

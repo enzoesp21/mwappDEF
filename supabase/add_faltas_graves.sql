@@ -22,7 +22,7 @@ SET content = replace(
 En Mirador Waikiki valoramos el aprendizaje y entendemos que al principio se cometen errores. Pero hay conductas que **no tienen margen**: cualquiera de estas implica la **finalización inmediata de la prueba**.
 
 1. **Faltar sin avisar** o abandonar el turno antes de terminar.
-2. **Salir a fumar sin avisar** a tu referente o al encargado.
+2. **Salir a fumar fuera del horario de descanso.**
 3. **Usar el celular en el salón** sin autorización.
 4. **Faltarle el respeto** a un compañero, superior o proveedor.
 5. **Maltratar o faltarle el respeto a un cliente.**
