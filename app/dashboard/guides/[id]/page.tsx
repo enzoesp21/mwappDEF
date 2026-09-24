@@ -25,6 +25,17 @@ export default async function GuidePage({ params }: Props) {
 
   if (!guide) notFound()
 
+  // En período de prueba solo se lee la guía principal, ni pegando la dirección.
+  // El examen lo frena además la base (puede_usar_examen).
+  if (!guide.is_primary) {
+    const { data: yo } = await supabase
+      .from('profiles')
+      .select('experience')
+      .eq('id', session.user.id)
+      .single()
+    if (yo?.experience === 'nuevo') redirect('/dashboard/guides')
+  }
+
   const { data: exam } = await supabase
     .from('exams')
     .select('id, title, passing_score')

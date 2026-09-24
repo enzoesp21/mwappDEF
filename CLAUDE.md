@@ -70,8 +70,12 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 
 - `guide_paths` decide qué guías ve cada puesto y en qué orden. No se filtra además por
   `guides.puestos`. El admin lo edita en Guías → tarjeta del puesto.
-- Quien está en período de prueba (`profiles.experience = 'nuevo'`) solo ve las guías de
-  su puesto. El admin lo pasa al equipo desde Usuarios.
+- Quien está en período de prueba (`profiles.experience = 'nuevo'`) solo ve y rinde la
+  guía principal, nada más, hasta que el admin lo pasa al equipo desde Usuarios. El freno
+  de verdad está en la base (`puede_usar_examen`, dentro de `get_exam_questions` y
+  `submit_exam`); las pantallas además esconden el resto y redirigen a `/dashboard/guides`.
+  Ojo con los redirects: la lista de guías NO puede mandar a la pantalla del puesto,
+  porque esa lo devuelve a la lista y queda un bucle.
 - La guía principal (`guides.is_primary`) va primera en todos los recorridos.
 
 ## Horarios

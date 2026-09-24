@@ -32,11 +32,9 @@ export default async function PuestoGuidesPage({ params }: Props) {
   const esTuPuesto = miPuesto === info.valor
   const enPrueba = profile.experience === 'nuevo'
 
-  // En período de prueba no se entra al recorrido de otro puesto, ni escribiendo
-  // la dirección a mano.
-  if (enPrueba && !esTuPuesto && miPuesto) {
-    redirect('/dashboard/guides/puesto/' + encodeURIComponent(miPuesto))
-  }
+  // En período de prueba no se entra a ningún recorrido, ni siquiera al del
+  // propio puesto: hasta pasar al equipo solo está la guía principal.
+  if (enPrueba) redirect('/dashboard/guides')
 
   // Lo que ve este puesto lo decide guide_paths, que es lo que el admin arma.
   // No se filtra además por guides.puestos: si lo hiciera, una guía asignada
@@ -93,15 +91,13 @@ export default async function PuestoGuidesPage({ params }: Props) {
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="flex items-center gap-3">
-        {!enPrueba && (
-          <Link
-            href="/dashboard/guides"
-            className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-card border border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer flex-shrink-0"
-            aria-label="Volver a los puestos"
-          >
-            <ArrowLeft className="w-4 h-4 text-brand-text" />
-          </Link>
-        )}
+        <Link
+          href="/dashboard/guides"
+          className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-card border border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer flex-shrink-0"
+          aria-label="Volver a los puestos"
+        >
+          <ArrowLeft className="w-4 h-4 text-brand-text" />
+        </Link>
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"

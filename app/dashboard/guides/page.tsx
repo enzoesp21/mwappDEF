@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PuestoCard from '@/components/PuestoCard'
+import GuiasEnPrueba from '@/components/GuiasEnPrueba'
+import type { GuideWithStatus } from '@/lib/types'
 import { PUESTOS_INFO, buscarPuesto } from '@/lib/puestos'
 
 export const dynamic = 'force-dynamic'
@@ -21,10 +23,42 @@ export default async function GuidesPage() {
 
   const miPuesto = buscarPuesto(profile.puesto as string)?.valor ?? null
 
-  // Mientras está en período de prueba solo ve las guías de su puesto: recién
-  // arrancó y la información del resto del complejo no le suma todavía.
-  if (profile.experience === 'nuevo' && miPuesto) {
-    redirect('/dashboard/guides/puesto/' + encodeURIComponent(miPuesto))
+  // En período de prueba solo está la guía principal, hasta que un admin lo
+  // pase al equipo. Se arma acá mismo: mandarlo a la pantalla del puesto haría
+  // un ida y vuelta, porque esa pantalla también lo devuelve para acá.
+  if (profile.experience === 'nuevo') {
+    const { data: guia } = await supabase
+      .from('guides')
+      .select('*')
+      .eq('is_primary', true)
+      .limit(1)
+      .maybeSingle()
+
+    let principal: GuideWithStatus | null = null
+    if (guia) {
+      const { data: examen } = await supabase
+        .from('exams')
+        .select('*')
+        .eq('guide_id', guia.id)
+        .maybeSingle()
+      const { data: aprobado } = examen
+        ? await supabase
+            .from('exam_results')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('exam_id', examen.id)
+            .eq('passed', true)
+            .limit(1)
+            .maybeSingle()
+        : { data: null }
+      principal = {
+        ...guia,
+        exam: examen ?? undefined,
+        result: aprobado ?? undefined,
+        status: aprobado ? 'passed' : examen ? 'exam_pending' : 'not_started',
+      }
+    }
+    return <GuiasEnPrueba principal={principal} />
   }
 
   // Consultas sueltas, sin joins anidados: en este proyecto los joins

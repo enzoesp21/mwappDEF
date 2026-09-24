@@ -39,10 +39,13 @@ export default async function DashboardPage() {
 
   if (!profile) redirect('/login')
 
-  const { data: guides } = await supabase
+  // En período de prueba solo cuenta la guía principal: es la única habilitada.
+  const enPrueba = profile.experience === 'nuevo'
+  const consultaGuias = supabase
     .from('guides')
     .select('*')
     .or(`puestos.cs.{"${profile.puesto}"},puestos.cs.{"todos"}`)
+  const { data: guides } = await (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
     // La guía principal va siempre primera, sin importar cuándo se creó.
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: true })
