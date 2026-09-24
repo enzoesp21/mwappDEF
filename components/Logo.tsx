@@ -16,7 +16,12 @@ export default function Logo({ size = 'md', className }: LogoProps) {
       alt="Mirador Waikiki"
       width={h}
       height={h}
-      className={cn('w-auto object-contain', className)}
+      className={cn('object-contain flex-shrink-0', className)}
+      // El tamaño va en el estilo y no solo en los atributos: Tailwind les pone
+      // height:auto a todas las imágenes, y sin esto el navegador usa el tamaño
+      // real del archivo. Con el optimizador de imágenes apagado, eso es el
+      // logo entero ocupando todo el ancho del celular.
+      style={{ width: h, height: h }}
       priority
     />
   )
