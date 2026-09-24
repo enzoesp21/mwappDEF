@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, BookOpen, Trophy, MessageSquarePlus, User, Utensils } from 'lucide-react'
+import { Home, BookOpen, Trophy, MessageSquarePlus, User, Utensils, CalendarDays } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Inicio' },
   { href: '/dashboard/guides', icon: BookOpen, label: 'Guías' },
+  { href: '/dashboard/horario', icon: CalendarDays, label: 'Horario' },
   { href: '/dashboard/comida', icon: Utensils, label: 'Comida' },
   { href: '/dashboard/resultados', icon: Trophy, label: 'Resultados' },
   { href: '/dashboard/sugerencias', icon: MessageSquarePlus, label: 'Sugerencias' },

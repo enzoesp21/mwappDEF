@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   ClipboardCheck,
   Trophy,
+  CalendarDays,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { label: 'Correcciones', href: '/admin/correcciones', icon: ClipboardCheck, exact: false },
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
   { label: 'Empleado del mes', href: '/admin/empleado-del-mes', icon: Trophy, exact: false },
+  { label: 'Horarios', href: '/admin/horarios', icon: CalendarDays, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 
