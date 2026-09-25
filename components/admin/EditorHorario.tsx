@@ -16,11 +16,14 @@ import {
   RefreshCw,
   MoreHorizontal,
   FileDown,
+  Moon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DIAS_CORTOS,
   numeroDeDia,
+  NOCHES_POR_DEFECTO,
+  diasConNoche,
   pintaComoFinde,
   totalesDelSector,
   type DatosHorario,
@@ -225,6 +228,20 @@ export default function EditorHorario({
     })
   }
 
+  function alternarNoche(dia: number) {
+    aplicar((d) => {
+      const actuales = d.noches ?? NOCHES_POR_DEFECTO
+      const noches = actuales.includes(dia)
+        ? actuales.filter((x) => x !== dia)
+        : [...actuales, dia].sort((a, b) => a - b)
+      return { ...d, noches }
+    })
+  }
+
+  function ponerNoches(noches: number[]) {
+    aplicar((d) => ({ ...d, noches }))
+  }
+
   // Qué días se pintan como fin de semana. Depende solo de los feriados, así que
   // se memoriza por ellos: si no, cada tecla redibujaría todas las filas.
   const claveFeriados = (datos.feriados ?? []).join(',')
@@ -232,6 +249,13 @@ export default function EditorHorario({
     const feriados = claveFeriados ? claveFeriados.split(',').map(Number) : []
     return Array.from({ length: 7 }, (_, i) => pintaComoFinde({ sectores: [], feriados }, i))
   }, [claveFeriados])
+
+  // Qué días hay servicio de noche. Igual que arriba: memorizado por su valor.
+  const claveNoches = (datos.noches ?? NOCHES_POR_DEFECTO).join(',')
+  const noches = useMemo(
+    () => diasConNoche({ sectores: [], noches: claveNoches ? claveNoches.split(',').map(Number) : [] }),
+    [claveNoches]
+  )
 
   function agregarSector() {
     aplicar((d) => ({ ...d, sectores: [...d.sectores, { nombre: 'NUEVO SECTOR', personas: [] }] }))
@@ -396,6 +420,49 @@ export default function EditorHorario({
         </div>
       </div>
 
+      <div className="bg-brand-card border border-brand-border rounded-xl p-3">
+        <p className="text-xs font-semibold text-brand-text">¿Qué días hay servicio de noche?</p>
+        <p className="text-[11px] text-brand-muted mb-2">
+          Quien cierra esos días (&quot;11C&quot;) hace noche. En temporada, marcá toda la semana.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {DIAS_CORTOS.map((d, i) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => alternarNoche(i)}
+              aria-pressed={noches[i]}
+              title={noches[i] ? 'Sacar la noche de este día' : 'Este día hay servicio de noche'}
+              className={cn(
+                'flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors min-h-[36px] cursor-pointer',
+                noches[i]
+                  ? 'bg-brand-text border-brand-text text-white'
+                  : 'bg-brand-card border-brand-border text-brand-text hover:border-brand-accent'
+              )}
+            >
+              {noches[i] && <Moon className="w-3 h-3" />}
+              {d}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-3 mt-2">
+          <button
+            type="button"
+            onClick={() => ponerNoches([0, 1, 2, 3, 4, 5, 6])}
+            className="text-[11px] font-semibold text-brand-accent hover:underline cursor-pointer"
+          >
+            Toda la semana
+          </button>
+          <button
+            type="button"
+            onClick={() => ponerNoches(NOCHES_POR_DEFECTO)}
+            className="text-[11px] font-semibold text-brand-accent hover:underline cursor-pointer"
+          >
+            Solo viernes y sábado
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-x-3 gap-y-1.5">
         {REFERENCIAS.map((r) => (
           <span key={r.etiqueta} className="flex items-center gap-1.5 text-[11px] text-brand-muted">
@@ -414,7 +481,7 @@ export default function EditorHorario({
       )}
 
       {datos.sectores.map((sector, si) => {
-        const totales = totalesDelSector(sector)
+        const totales = totalesDelSector(sector, noches)
         return (
           <section key={si} className="bg-brand-card border border-brand-border rounded-xl overflow-hidden">
             <div className="flex items-center gap-2 px-3 py-2 bg-brand-text text-white">
@@ -472,6 +539,7 @@ export default function EditorHorario({
                         onRellenar={rellenarFila}
                         onTecla={alPresionar}
                         findes={findes}
+                        noches={noches}
                       />
                     )
                   })}
@@ -530,6 +598,7 @@ interface FilaProps {
   onRellenar: (si: number, pi: number, valor: string) => void
   onTecla: (e: React.KeyboardEvent<HTMLInputElement>) => void
   findes: boolean[]
+  noches: boolean[]
 }
 
 // Memorizada: con 400 celdas, redibujar todo en cada tecla se nota en el celular.
@@ -547,6 +616,7 @@ const FilaPersona = memo(function FilaPersona({
   onRellenar,
   onTecla,
   findes,
+  noches,
 }: FilaProps) {
   const [menu, setMenu] = useState(false)
   const boton = useRef<HTMLButtonElement>(null)
@@ -605,7 +675,7 @@ const FilaPersona = memo(function FilaPersona({
             aria-label={(persona.nombre || 'Persona') + ', ' + DIAS_CORTOS[dia]}
             className={cn(
               'w-full min-w-[78px] px-1.5 py-1.5 rounded text-center text-[11px] border border-transparent focus:border-brand-accent focus:outline-none',
-              claseCelda(valor, dia, findes[dia])
+              claseCelda(valor, findes[dia], noches[dia])
             )}
           />
         </td>

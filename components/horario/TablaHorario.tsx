@@ -8,6 +8,7 @@ import {
   esFeriado,
   normalizarNombre,
   numeroDeDia,
+  diasConNoche,
   pintaComoFinde,
   totalesDelSector,
   type DatosHorario,
@@ -28,6 +29,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
   const aResaltar = useMemo(() => new Set(resaltar.map(normalizarNombre)), [resaltar])
 
   const findes = Array.from({ length: 7 }, (_, i) => pintaComoFinde(datos, i))
+  const noches = diasConNoche(datos)
   const filtro = normalizarNombre(busqueda)
   const sectores = useMemo(() => {
     if (!filtro) return datos.sectores
@@ -79,7 +81,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
       )}
 
       {sectores.map((sector, si) => {
-        const totales = totalesDelSector(sector)
+        const totales = totalesDelSector(sector, noches)
         return (
           <section key={si} className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
             <h2 className="px-3 py-2 bg-brand-text text-white text-xs font-bold uppercase tracking-wider">
@@ -128,7 +130,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                             <div
                               className={cn(
                                 'rounded px-1 py-1 text-center whitespace-nowrap',
-                                claseCelda(valor, i, findes[i]),
+                                claseCelda(valor, findes[i], noches[i]),
                                 hoy === i && 'ring-1 ring-brand-accent/60'
                               )}
                             >

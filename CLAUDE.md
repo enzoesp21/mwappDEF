@@ -87,6 +87,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   cocina y maestranza no tiene usuario.
 - El guardado usa control de versión con `updated_at`: **no pasar esa versión por
   `new Date()`**, perdería los microsegundos y la comparación nunca daría igual.
+- Noche: quien cierra ("11C") un día con servicio de noche, hace noche. Los días con noche
+  se eligen por semana (`datos.noches`; si no está, viernes y sábado) y se copian a la
+  semana siguiente. Los feriados (`datos.feriados`) no se copian.
 - Lógica de totales y búsqueda en `lib/horarios.ts`; el PDF en `lib/horario-pdf.ts`.
 
 ## Propinas

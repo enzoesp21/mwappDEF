@@ -11,6 +11,8 @@ interface Props {
   hoy: number | null
   /** Días feriados de la semana (0 = lunes). */
   feriados?: number[]
+  /** Los siete días: true si hay servicio de noche (sale de diasConNoche). */
+  noches: boolean[]
 }
 
 const DESCRIPCION: Record<string, string> = {
@@ -21,7 +23,7 @@ const DESCRIPCION: Record<string, string> = {
   vacio: 'Sin cargar',
 }
 
-export default function MiSemana({ lunes, filas, hoy, feriados = [] }: Props) {
+export default function MiSemana({ lunes, filas, hoy, feriados = [], noches }: Props) {
   return (
     <section className="bg-brand-card border border-brand-accent/40 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 bg-brand-accent/10 border-b border-brand-accent/20">
@@ -45,7 +47,7 @@ export default function MiSemana({ lunes, filas, hoy, feriados = [] }: Props) {
                   key={i}
                   className={cn(
                     'rounded-lg px-0.5 py-1.5 text-center flex flex-col items-center justify-start min-h-[62px]',
-                    claseCelda(valor, i, i >= 5 || feriado),
+                    claseCelda(valor, i >= 5 || feriado, noches[i]),
                     esHoy && 'ring-2 ring-brand-accent'
                   )}
                 >

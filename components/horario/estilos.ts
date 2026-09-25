@@ -4,7 +4,7 @@ import { esNoche, tipoCelda } from '@/lib/horarios'
  * Color de cada celda según lo que dice. Sirve para leer la planilla de un
  * vistazo: quién está libre, de vacaciones o hace noche.
  */
-export function claseCelda(valor: string, indiceDia: number, finde = false): string {
+export function claseCelda(valor: string, finde = false, hayNoche = false): string {
   switch (tipoCelda(valor)) {
     case 'vacio':
       return finde ? 'bg-[#d6e7cf]/60 text-brand-muted' : 'bg-transparent text-brand-muted'
@@ -17,7 +17,7 @@ export function claseCelda(valor: string, indiceDia: number, finde = false): str
     case 'otro_lugar':
       return 'bg-violet-100 text-violet-800'
     case 'turno':
-      if (esNoche(valor, indiceDia)) return 'bg-brand-accent/20 text-brand-text font-semibold'
+      if (esNoche(valor, hayNoche)) return 'bg-brand-accent/20 text-brand-text font-semibold'
       // Mismo verde que el fin de semana del PDF y de la planilla de Excel.
       return finde ? 'bg-[#d6e7cf] text-brand-text' : 'bg-brand-card text-brand-text'
   }

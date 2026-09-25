@@ -6,6 +6,7 @@ import {
   esNoche,
   etiquetaSemana,
   numeroDeDia,
+  diasConNoche,
   pintaComoFinde,
   tipoCelda,
   totalesDelSector,
@@ -43,7 +44,7 @@ const GRIS: RGB = [106, 125, 114]
 /** Proporción del logo recortado (public/logo-blanco.png): 340 × 270. */
 const LOGO_ANCHO_SOBRE_ALTO = 340 / 270
 
-function fondoDeCelda(valor: string, dia: number, finde: boolean): RGB {
+function fondoDeCelda(valor: string, finde: boolean, hayNoche: boolean): RGB {
   switch (tipoCelda(valor)) {
     case 'libre':
       return LIBRE
@@ -54,7 +55,7 @@ function fondoDeCelda(valor: string, dia: number, finde: boolean): RGB {
     case 'otro_lugar':
       return MIRADOR_9
     case 'turno':
-      if (esNoche(valor, dia)) return NOCHE
+      if (esNoche(valor, hayNoche)) return NOCHE
       return finde ? FIN_DE_SEMANA : BLANCO
     default:
       return finde ? FIN_DE_SEMANA : BLANCO
@@ -105,8 +106,8 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
   // La primera hoja lleva la franja grande; las demás, una más finita.
   const altoFranja = 27
   const altoFranjaChica = 13
-  const inicioPrimera = altoFranja + 5
-  const inicioResto = altoFranjaChica + 5
+  const inicioPrimera = altoFranja + 7
+  const inicioResto = altoFranjaChica + 6
   const limiteAbajo = altoPagina - 13
 
   function franjaGrande() {
@@ -171,11 +172,16 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
 
   // Sábado, domingo y feriados van en verde, como en la planilla.
   const findes = DIAS.map((_, i) => pintaComoFinde(datos, i))
+  // Días con servicio de noche: quien cierra esos días, hace noche.
+  const noches = diasConNoche(datos)
   const encabezadoDias = DIAS.map(
     (d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i) + (esFeriado(datos, i) ? ' · FERIADO' : '')
   )
-  // Alto real de una fila con letra de 6.6 y 0.4 mm de relleno vertical.
-  const altoFila = 3.5
+  // Alto real de una fila: letra de 7.4 pt (2.6 mm × 1.15 de interlineado)
+  // más 0.8 mm de relleno arriba y abajo. El encabezado y el total, con letra
+  // de 7.8, dan un poco más.
+  const altoFila = 4.6
+  const altoEncabezado = 4.8
   // Anchos fijos: si no, cada sector se acomoda solo y no se alinean entre sí.
   const anchoNombre = 44
   const anchoDia = (anchoPagina - 2 * margen - anchoNombre) / 7
@@ -185,19 +191,15 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
     const personas = sector.personas.filter((p) => p.nombre.trim() || p.dias.some((d) => d.trim()))
     if (personas.length === 0) continue
 
-    // Los sectores chicos no se parten entre dos hojas. Los grandes sí (el
-    // encabezado se repite arriba), siempre que entren varias filas: si no,
-    // todo el horario no entra en dos hojas.
-    const altoSector = (personas.length + 2) * altoFila
-    const entra = y + altoSector <= limiteAbajo
-    const filasQueEntran = Math.floor((limiteAbajo - y) / altoFila) - 2
-    const sePuedePartir = personas.length >= 8 && filasQueEntran >= 4
-    if (!entra && !sePuedePartir) {
+    // Un sector no se parte entre dos hojas: si no entra en lo que queda,
+    // arranca en la siguiente. Solo se parte si ni siquiera entra en una hoja.
+    const altoSector = personas.length * altoFila + 2 * altoEncabezado + 1
+    if (y + altoSector > limiteAbajo && altoSector <= limiteAbajo - inicioResto) {
       doc.addPage()
       y = inicioResto
     }
 
-    const totales = totalesDelSector({ ...sector, personas })
+    const totales = totalesDelSector({ ...sector, personas }, noches)
     autoTable(doc, {
       startY: y,
       margin: { top: inicioResto, left: margen, right: margen, bottom: 13 },
@@ -213,8 +215,8 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
       ],
       styles: {
         font: 'helvetica',
-        fontSize: 6.6,
-        cellPadding: { top: 0.4, bottom: 0.4, left: 1.5, right: 1.5 },
+        fontSize: 7.4,
+        cellPadding: { top: 0.8, bottom: 0.8, left: 2, right: 2 },
         overflow: 'linebreak',
         halign: 'center',
         valign: 'middle',
@@ -227,13 +229,13 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
         fillColor: CREMA,
         textColor: LOGO_OSCURO,
         fontStyle: 'bold',
-        fontSize: 7,
+        fontSize: 7.8,
       },
       footStyles: {
         fillColor: CREMA,
         textColor: LOGO_OSCURO,
         fontStyle: 'bold',
-        fontSize: 7,
+        fontSize: 7.8,
       },
       columnStyles: {
         0: { halign: 'left', cellWidth: anchoNombre, fontStyle: 'bold' },
@@ -248,7 +250,7 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
             data.cell.styles.halign = 'left'
             data.cell.styles.fillColor = LOGO
             data.cell.styles.textColor = BLANCO
-            data.cell.styles.fontSize = 8
+            data.cell.styles.fontSize = 8.8
           }
           if (data.section === 'foot') data.cell.styles.textColor = GRIS
           return
@@ -260,15 +262,15 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
         }
         if (data.section === 'body') {
           const valor = String(data.cell.raw ?? '')
-          data.cell.styles.fillColor = fondoDeCelda(valor, dia, findes[dia])
+          data.cell.styles.fillColor = fondoDeCelda(valor, findes[dia], noches[dia])
           if (tipoCelda(valor) !== 'turno') data.cell.styles.textColor = GRIS
-          if (esNoche(valor, dia)) data.cell.styles.fontStyle = 'bold'
+          if (esNoche(valor, noches[dia])) data.cell.styles.fontStyle = 'bold'
         }
       },
     })
 
     // lastAutoTable lo agrega el plugin al documento.
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 3.5
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 5.5
   }
 
   // Franja y pie en todas las hojas.

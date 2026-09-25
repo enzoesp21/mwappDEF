@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import {
   buscarEnHorario,
+  diasConNoche,
   etiquetaSemana,
   hoyEnArgentina,
   lunesDe,
@@ -121,7 +122,13 @@ export default async function HorarioPage({ searchParams }: Props) {
       )}
 
       {misFilas.length > 0 && (
-        <MiSemana lunes={lunes} filas={misFilas} hoy={indiceHoy} feriados={datos.feriados ?? []} />
+        <MiSemana
+          lunes={lunes}
+          filas={misFilas}
+          hoy={indiceHoy}
+          feriados={datos.feriados ?? []}
+          noches={diasConNoche(datos)}
+        />
       )}
 
       <TablaHorario

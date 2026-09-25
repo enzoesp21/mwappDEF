@@ -22,6 +22,11 @@ export interface DatosHorario {
   sectores: SectorHorario[]
   /** Días de la semana que son feriado (0 = lunes ... 6 = domingo). */
   feriados?: number[]
+  /**
+   * Días con servicio de noche (0 = lunes ... 6 = domingo). Si no está, son
+   * viernes y sábado; en temporada puede ser toda la semana.
+   */
+  noches?: number[]
 }
 
 export type EstadoSemana = 'draft' | 'published'
@@ -38,8 +43,8 @@ export interface SemanaHorario {
 export const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 export const DIAS_CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
-/** Viernes y sábado hay servicio de noche: quien cierra esos días, hace noche. */
-const DIAS_CON_NOCHE = new Set([4, 5])
+/** Fuera de temporada hay servicio de noche viernes y sábado. */
+export const NOCHES_POR_DEFECTO = [4, 5]
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -112,14 +117,20 @@ export function esCierre(valor: string): boolean {
   return /^\d{1,2}([.:]\d{2})?\s*(A\s*)?C$/i.test(valor.trim())
 }
 
+/** Los siete días: true si ese día hay servicio de noche. */
+export function diasConNoche(datos: DatosHorario): boolean[] {
+  const noches = datos.noches ?? NOCHES_POR_DEFECTO
+  return Array.from({ length: 7 }, (_, i) => noches.includes(i))
+}
+
 /**
  * Hace noche si lo dice explícitamente ("11+ NOCHE") o si cierra un día con
  * servicio de noche. Es la misma cuenta que se hace a mano en la planilla.
  */
-export function esNoche(valor: string, indiceDia: number): boolean {
+export function esNoche(valor: string, hayNocheEseDia: boolean): boolean {
   if (tipoCelda(valor) !== 'turno') return false
   if (/NOCHE/i.test(valor)) return true
-  return esCierre(valor) && DIAS_CON_NOCHE.has(indiceDia)
+  return esCierre(valor) && hayNocheEseDia
 }
 
 export interface TotalDia {
@@ -129,8 +140,8 @@ export interface TotalDia {
   noche: number
 }
 
-/** Cuántos trabajan por día en un sector. */
-export function totalesDelSector(sector: SectorHorario): TotalDia[] {
+/** Cuántos trabajan por día en un sector. `noches`: sale de diasConNoche(). */
+export function totalesDelSector(sector: SectorHorario, noches: boolean[]): TotalDia[] {
   return Array.from({ length: 7 }, (_, dia) => {
     let total = 0
     let noche = 0
@@ -138,7 +149,7 @@ export function totalesDelSector(sector: SectorHorario): TotalDia[] {
       const celda = p.dias[dia] ?? ''
       if (tipoCelda(celda) !== 'turno') continue
       total++
-      if (esNoche(celda, dia)) noche++
+      if (esNoche(celda, noches[dia])) noche++
     }
     return { total, noche }
   })
@@ -222,10 +233,12 @@ export function pintaComoFinde(datos: DatosHorario, indiceDia: number): boolean 
 
 /**
  * Copia una semana dejando la estructura y los horarios, para editar encima.
- * Los feriados no se copian: son de una fecha puntual, no de la semana.
+ * Los feriados no se copian: son de una fecha puntual. Los días con noche sí:
+ * la temporada dura varias semanas.
  */
 export function copiarDatos(datos: DatosHorario): DatosHorario {
   return {
+    ...(datos.noches ? { noches: [...datos.noches] } : {}),
     sectores: datos.sectores.map((s) => ({
       nombre: s.nombre,
       personas: s.personas.map((p) => ({
@@ -241,15 +254,9 @@ export function validarDatos(datos: unknown): datos is DatosHorario {
   if (!datos || typeof datos !== 'object') return false
   const d = datos as DatosHorario
   if (!Array.isArray(d.sectores)) return false
-  if (
-    d.feriados !== undefined &&
-    !(
-      Array.isArray(d.feriados) &&
-      d.feriados.every((n) => Number.isInteger(n) && n >= 0 && n <= 6)
-    )
-  ) {
-    return false
-  }
+  const listaDeDias = (l: unknown) =>
+    l === undefined || (Array.isArray(l) && l.every((n) => Number.isInteger(n) && n >= 0 && n <= 6))
+  if (!listaDeDias(d.feriados) || !listaDeDias(d.noches)) return false
   return d.sectores.every(
     (s) =>
       typeof s?.nombre === 'string' &&
