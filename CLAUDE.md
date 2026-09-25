@@ -27,6 +27,7 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Con un freno (`DO $$ ... RAISE EXCEPTION`) cuando algo pueda salir mal a medias.
 - Terminar con una consulta de verificación cuyo resultado Enzo pueda leer.
 - Si el cambio de código depende del SQL, avisar que hay que correrlo.
+- **A Enzo el SQL se le pega entero en el chat**, listo para copiar. Nada de links ni `irm`.
 
 ## Trampas que ya nos mordieron (no repetir)
 
@@ -95,8 +96,10 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   prueba). Lógica y mensaje de WhatsApp en `lib/propinas.ts`.
 - Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
   `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
-- Cada mozo ve SOLO sus filas (`tip_entries.user_id`, RLS). El vínculo nombre → usuario es
-  estricto (`vincularUsuario`): ante la duda no se vincula, mejor que mostrar la plata de otro.
+- Quién ve qué (RLS, `ve_propinas_de_todos()`): quien carga y el puesto Mozos ("Mozos y
+  Runners") ven el reparto de todos, de solo lectura (decisión de Enzo). El resto ve SOLO
+  sus filas (`tip_entries.user_id`). El vínculo nombre → usuario es estricto
+  (`vincularUsuario`): ante la duda no se vincula.
 - Se guarda con la RPC `guardar_propinas` (todo el día en una operación, con versión).
 - Pantallas compartidas en `components/propinas/`, montadas en `/admin/propinas` y
   `/dashboard/propinas` (los admin no pueden entrar a `/dashboard`).

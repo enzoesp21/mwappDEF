@@ -22,7 +22,7 @@ export interface DiaCompleto {
   total: number
   general: number
   version: string
-  personas: (PersonaPropina & { user_id: string | null })[]
+  personas: (PersonaPropina & { user_id: string | null; monto: number })[]
 }
 
 export interface MiPropina {
@@ -40,8 +40,22 @@ export interface MiPropina {
  * correr el SQL, pedir carga_propinas anularía la consulta entera.
  */
 export async function puedeCargarPropinas(supabase: Supabase, userId: string): Promise<boolean> {
+  return (await permisosPropinas(supabase, userId)).puedeCargar
+}
+
+/**
+ * Qué puede hacer con las propinas: cargar (admin y cajeros tildados) o ver
+ * el reparto de todos (además, el puesto Mozos). El resto ve solo lo suyo.
+ * Es lo mismo que decide la base con ve_propinas_de_todos().
+ */
+export async function permisosPropinas(
+  supabase: Supabase,
+  userId: string
+): Promise<{ puedeCargar: boolean; veTodas: boolean }> {
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-  return data?.role === 'admin' || (data?.carga_propinas === true && data?.status === 'approved')
+  const aprobado = data?.status === 'approved'
+  const puedeCargar = data?.role === 'admin' || (data?.carga_propinas === true && aprobado)
+  return { puedeCargar, veTodas: puedeCargar || (data?.puesto === 'Mozos' && aprobado) }
 }
 
 /** Los últimos días cargados, del más nuevo al más viejo. */
@@ -99,7 +113,7 @@ export async function cargarDia(
 
   const { data: filas, error: errorFilas } = await supabase
     .from('tip_entries')
-    .select('nombre, user_id, grupo, horas, pago, efectivo, orden')
+    .select('nombre, user_id, grupo, horas, monto, pago, efectivo, orden')
     .eq('day_id', dia.id as string)
     .order('orden', { ascending: true })
   if (errorFilas) return { dia: null, error: errorFilas.message }
@@ -116,6 +130,7 @@ export async function cargarDia(
         user_id: (f.user_id as string) ?? null,
         grupo: f.grupo as Grupo,
         horas: Number(f.horas),
+        monto: f.monto as number,
         pago: (f.pago as Pago) ?? null,
         efectivo: (f.efectivo as number) ?? null,
       })),

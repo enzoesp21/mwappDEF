@@ -7,12 +7,15 @@ import type { DiaResumen } from '@/lib/propinas-datos'
 interface Props {
   base: string
   dias: DiaResumen[]
+  /** Sin permiso de carga (mozos): sin botón de cargar ni estado de los pagos. */
+  puedeCargar?: boolean
 }
 
-/** Los días cargados, para quien carga propinas. */
-export default function ListaDias({ base, dias }: Props) {
+/** Los días cargados: para editarlos, o para que los mozos vean el reparto. */
+export default function ListaDias({ base, dias, puedeCargar = true }: Props) {
   return (
     <div className="space-y-3">
+      {puedeCargar && (
       <Link
         href={base + '/nuevo'}
         className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl bg-brand-accent text-white font-bold text-sm hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[52px]"
@@ -20,11 +23,14 @@ export default function ListaDias({ base, dias }: Props) {
         <Plus className="w-4 h-4" />
         Cargar un día
       </Link>
+      )}
 
       {dias.length === 0 ? (
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 text-center">
           <p className="text-sm text-brand-text font-medium">Todavía no hay días cargados</p>
-          <p className="text-xs text-brand-muted mt-1">Tocá &quot;Cargar un día&quot; para empezar.</p>
+          {puedeCargar && (
+            <p className="text-xs text-brand-muted mt-1">Tocá &quot;Cargar un día&quot; para empezar.</p>
+          )}
         </div>
       ) : (
         <ul className="bg-brand-card border border-brand-border rounded-2xl divide-y divide-brand-border/70 overflow-hidden">
@@ -43,6 +49,7 @@ export default function ListaDias({ base, dias }: Props) {
                       {d.personas === 1 ? 'persona' : 'personas'} · {pesos(d.porHora)}/h
                     </p>
                   </div>
+                  {puedeCargar && (
                   <span
                     className={cn(
                       'text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap',
@@ -53,6 +60,7 @@ export default function ListaDias({ base, dias }: Props) {
                   >
                     {todosPagos ? 'Pagado' : `${d.pagados}/${d.personas} pagos`}
                   </span>
+                  )}
                   <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
                 </Link>
               </li>

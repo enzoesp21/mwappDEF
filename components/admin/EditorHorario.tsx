@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   Plus,
@@ -270,8 +271,9 @@ export default function EditorHorario({
   async function descargarPDF() {
     setGenerandoPDF(true)
     try {
-      const { generarPDFHorario, nombreDelArchivo } = await import('@/lib/horario-pdf')
-      generarPDFHorario(datosRef.current, lunes).save(nombreDelArchivo(lunes))
+      const { generarPDFHorario, nombreDelArchivo, cargarLogo } = await import('@/lib/horario-pdf')
+      const logo = await cargarLogo()
+      generarPDFHorario(datosRef.current, lunes, logo).save(nombreDelArchivo(lunes))
     } catch (e) {
       alert('No se pudo armar el PDF: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
@@ -547,6 +549,8 @@ const FilaPersona = memo(function FilaPersona({
   findes,
 }: FilaProps) {
   const [menu, setMenu] = useState(false)
+  const boton = useRef<HTMLButtonElement>(null)
+  const cerrarMenu = useCallback(() => setMenu(false), [])
 
   return (
     <tr className="border-b border-brand-border/60 group">
@@ -560,60 +564,31 @@ const FilaPersona = memo(function FilaPersona({
             aria-label="Nombre de la persona"
             className="flex-1 min-w-0 px-1.5 py-1 rounded text-xs font-medium text-brand-text bg-transparent focus:outline-none focus:bg-brand-dark/40"
           />
-          <div className="relative flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setMenu((v) => !v)}
-              aria-label="Opciones de la fila"
-              className="p-1 rounded text-brand-muted hover:bg-brand-dark/40 cursor-pointer"
-            >
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </button>
-            {menu && (
-              <div
-                className="absolute left-0 top-full mt-1 z-30 bg-brand-card border border-brand-border rounded-lg shadow-lg p-2 w-44 space-y-1"
-                onMouseLeave={() => setMenu(false)}
-              >
-                <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wider px-1">
-                  Toda la semana
-                </p>
-                <div className="flex gap-1 flex-wrap">
-                  {RELLENOS.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => {
-                        onRellenar(si, pi, v)
-                        setMenu(false)
-                      }}
-                      className="px-2 py-1 text-[11px] font-semibold rounded bg-brand-dark/50 hover:bg-brand-accent/20 cursor-pointer"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-1 pt-1 border-t border-brand-border">
-                  <button type="button" onClick={() => onMover(si, pi, -1)} disabled={esPrimera} className="flex-1 flex justify-center p-1 rounded hover:bg-brand-dark/40 disabled:opacity-30 cursor-pointer" aria-label="Subir">
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button type="button" onClick={() => onMover(si, pi, 1)} disabled={esUltima} className="flex-1 flex justify-center p-1 rounded hover:bg-brand-dark/40 disabled:opacity-30 cursor-pointer" aria-label="Bajar">
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenu(false)
-                      onQuitar(si, pi)
-                    }}
-                    className="flex-1 flex justify-center p-1 rounded text-brand-error hover:bg-brand-error/10 cursor-pointer"
-                    aria-label="Sacar de esta semana"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+          <button
+            ref={boton}
+            type="button"
+            onClick={() => setMenu((v) => !v)}
+            aria-label="Opciones de la fila"
+            aria-expanded={menu}
+            className={cn(
+              'p-1.5 rounded text-brand-muted hover:bg-brand-dark/40 cursor-pointer flex-shrink-0',
+              menu && 'bg-brand-accent/15 text-brand-accent'
             )}
-          </div>
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          {menu && (
+            <MenuFila
+              ancla={boton.current}
+              nombre={persona.nombre}
+              esPrimera={esPrimera}
+              esUltima={esUltima}
+              onCerrar={cerrarMenu}
+              onRellenar={(v) => onRellenar(si, pi, v)}
+              onMover={(delta) => onMover(si, pi, delta)}
+              onQuitar={() => onQuitar(si, pi)}
+            />
+          )}
         </div>
       </td>
       {persona.dias.map((valor, dia) => (
@@ -638,6 +613,134 @@ const FilaPersona = memo(function FilaPersona({
     </tr>
   )
 })
+
+// ---------- Menú de una fila ----------
+
+/**
+ * Se dibuja fuera de la tabla (en el body) y con posición fija. Adentro de
+ * la tabla quedaba tapado por las filas de abajo (la columna de nombres es
+ * sticky y cada celda arma su propia capa) y recortado por el scroll.
+ */
+function MenuFila({
+  ancla,
+  nombre,
+  esPrimera,
+  esUltima,
+  onCerrar,
+  onRellenar,
+  onMover,
+  onQuitar,
+}: {
+  ancla: HTMLElement | null
+  nombre: string
+  esPrimera: boolean
+  esUltima: boolean
+  onCerrar: () => void
+  onRellenar: (valor: string) => void
+  onMover: (delta: number) => void
+  onQuitar: () => void
+}) {
+  const caja = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  // Debajo del botón; si no entra, arriba. Nunca fuera de la pantalla.
+  useEffect(() => {
+    if (!ancla) return
+    const r = ancla.getBoundingClientRect()
+    const ancho = 224
+    const alto = caja.current?.offsetHeight ?? 150
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - ancho - 8))
+    const abajo = r.bottom + 4
+    const top = abajo + alto > window.innerHeight - 8 ? Math.max(8, r.top - alto - 4) : abajo
+    setPos({ top, left })
+  }, [ancla])
+
+  // Se cierra tocando afuera, con Escape o si se mueve la pantalla.
+  useEffect(() => {
+    const afuera = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (caja.current?.contains(t) || ancla?.contains(t)) return
+      onCerrar()
+    }
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar()
+    const mover = (e: Event) => {
+      if (caja.current?.contains(e.target as Node)) return
+      onCerrar()
+    }
+    document.addEventListener('pointerdown', afuera)
+    document.addEventListener('keydown', tecla)
+    window.addEventListener('scroll', mover, true)
+    window.addEventListener('resize', onCerrar)
+    return () => {
+      document.removeEventListener('pointerdown', afuera)
+      document.removeEventListener('keydown', tecla)
+      window.removeEventListener('scroll', mover, true)
+      window.removeEventListener('resize', onCerrar)
+    }
+  }, [ancla, onCerrar])
+
+  const hacer = (accion: () => void) => () => {
+    accion()
+    onCerrar()
+  }
+
+  return createPortal(
+    <div
+      ref={caja}
+      role="menu"
+      style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
+      className="fixed z-[60] w-56 bg-brand-card border border-brand-border rounded-xl shadow-xl p-2.5 space-y-2"
+    >
+      {nombre && <p className="text-xs font-semibold text-brand-text truncate px-0.5">{nombre}</p>}
+      <div>
+        <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-wider px-0.5 mb-1">
+          Toda la semana
+        </p>
+        <div className="grid grid-cols-4 gap-1">
+          {RELLENOS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={hacer(() => onRellenar(v))}
+              className="py-2 text-xs font-semibold rounded-lg bg-brand-dark/50 hover:bg-brand-accent/20 cursor-pointer"
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1 pt-2 border-t border-brand-border">
+        <button
+          type="button"
+          onClick={hacer(() => onMover(-1))}
+          disabled={esPrimera}
+          className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[11px] text-brand-text hover:bg-brand-dark/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+        >
+          <ChevronUp className="w-4 h-4" />
+          Subir
+        </button>
+        <button
+          type="button"
+          onClick={hacer(() => onMover(1))}
+          disabled={esUltima}
+          className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[11px] text-brand-text hover:bg-brand-dark/40 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+        >
+          <ChevronDown className="w-4 h-4" />
+          Bajar
+        </button>
+        <button
+          type="button"
+          onClick={hacer(onQuitar)}
+          className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[11px] text-brand-error hover:bg-brand-error/10 cursor-pointer"
+        >
+          <Trash2 className="w-4 h-4" />
+          Sacar
+        </button>
+      </div>
+    </div>,
+    document.body
+  )
+}
 
 // ---------- Indicador de guardado ----------
 

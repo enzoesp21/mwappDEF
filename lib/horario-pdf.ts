@@ -13,17 +13,20 @@ import {
 } from '@/lib/horarios'
 
 /**
- * Arma el PDF del horario con el mismo formato de la planilla que se manda
- * los domingos al grupo: A4 apaisado, un bloque por sector, fin de semana en
- * verde y los totales abajo de cada sector.
+ * Arma el PDF del horario para mandar al grupo: A4 apaisado, con una franja
+ * arriba en el color del logo y el logo en blanco, un bloque por sector y los
+ * totales abajo de cada uno. Los colores de las celdas son los mismos de la
+ * app (fin de semana en verde, libres, vacaciones, noche...).
  *
- * Solo usa texto y autoTable: nada de html(), que es lo que en jsPDF pasa por
- * DOMPurify.
+ * Solo usa texto, rectángulos, una imagen y autoTable: nada de html(), que es
+ * lo que en jsPDF pasa por DOMPurify.
  */
 
 type RGB = [number, number, number]
 
-const VERDE_OSCURO: RGB = [31, 45, 39]
+// El verde azulado del logo.
+const LOGO: RGB = [93, 136, 139]
+const LOGO_OSCURO: RGB = [52, 86, 89]
 const VERDE: RGB = [110, 143, 122]
 const FIN_DE_SEMANA: RGB = [214, 231, 207]
 const LIBRE: RGB = [236, 232, 222]
@@ -32,8 +35,13 @@ const LICENCIA: RGB = [254, 243, 199]
 const MIRADOR_9: RGB = [237, 233, 254]
 const NOCHE: RGB = [196, 216, 202]
 const BLANCO: RGB = [255, 255, 255]
+const CREMA: RGB = [245, 241, 231]
+const LINEA: RGB = [226, 218, 200]
 const TEXTO: RGB = [31, 45, 39]
 const GRIS: RGB = [106, 125, 114]
+
+/** Proporción del logo recortado (public/logo-blanco.png): 340 × 270. */
+const LOGO_ANCHO_SOBRE_ALTO = 340 / 270
 
 function fondoDeCelda(valor: string, dia: number, finde: boolean): RGB {
   switch (tipoCelda(valor)) {
@@ -57,81 +65,173 @@ export function nombreDelArchivo(lunes: string): string {
   return 'Horarios MW ' + etiquetaSemana(lunes) + '.pdf'
 }
 
-export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
+/**
+ * El logo en blanco, como data URL, para la franja de arriba. Si no se puede
+ * leer, el PDF sale igual sin logo: no vale la pena frenar la descarga.
+ */
+export async function cargarLogo(): Promise<string | null> {
+  try {
+    const res = await fetch('/logo-blanco.png')
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise<string | null>((resolve) => {
+      const lector = new FileReader()
+      lector.onload = () => resolve(typeof lector.result === 'string' ? lector.result : null)
+      lector.onerror = () => resolve(null)
+      lector.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+const REFERENCIAS: [string, RGB][] = [
+  ['Turno', BLANCO],
+  ['Finde o feriado', FIN_DE_SEMANA],
+  ['Hace noche', NOCHE],
+  ['Libre (X)', LIBRE],
+  ['Vacaciones', VACACIONES],
+  ['Licencia', LICENCIA],
+  ['Mirador 9', MIRADOR_9],
+]
+
+export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: string | null = null): jsPDF {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   const anchoPagina = doc.internal.pageSize.getWidth()
   const altoPagina = doc.internal.pageSize.getHeight()
   const margen = 10
-  const titulo = 'HORARIOS DEL ' + etiquetaSemana(lunes).toUpperCase()
+  const semana = 'Semana del ' + etiquetaSemana(lunes)
 
-  function encabezadoDePagina() {
+  // La primera hoja lleva la franja grande; las demás, una más finita.
+  const altoFranja = 27
+  const altoFranjaChica = 13
+  const inicioPrimera = altoFranja + 5
+  const inicioResto = altoFranjaChica + 5
+  const limiteAbajo = altoPagina - 13
+
+  function franjaGrande() {
+    doc.setFillColor(...LOGO)
+    doc.rect(0, 0, anchoPagina, altoFranja, 'F')
+    let x = margen
+    if (logo) {
+      const alto = 20
+      doc.addImage(logo, 'PNG', margen, (altoFranja - alto) / 2, alto * LOGO_ANCHO_SOBRE_ALTO, alto, 'logo', 'SLOW')
+      x += alto * LOGO_ANCHO_SOBRE_ALTO + 6
+      // Separador fino entre el logo y el título.
+      doc.setDrawColor(...BLANCO)
+      doc.setLineWidth(0.3)
+      doc.line(x - 3, 7, x - 3, altoFranja - 7)
+    }
+    doc.setTextColor(...BLANCO)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.setTextColor(...VERDE_OSCURO)
-    doc.text(titulo, margen, 13)
+    doc.setFontSize(22)
+    doc.text('HORARIOS', x, 14.5)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.text(semana, x, 21)
+
+    // Referencias a la derecha, dentro de la franja.
+    doc.setFontSize(7.5)
+    const anchos = REFERENCIAS.map(([t]) => doc.getTextWidth(t))
+    const total = anchos.reduce((a, b) => a + b, 0) + REFERENCIAS.length * 4.2 + (REFERENCIAS.length - 1) * 4
+    let rx = anchoPagina - margen - total
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.5)
+    doc.text('REFERENCIAS', rx, 13)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setDrawColor(...BLANCO)
+    doc.setLineWidth(0.25)
+    REFERENCIAS.forEach(([t, color], i) => {
+      doc.setFillColor(...color)
+      doc.rect(rx, 16.4, 3.2, 3.2, 'FD')
+      doc.text(t, rx + 4.2, 19)
+      rx += 4.2 + anchos[i] + 4
+    })
+  }
+
+  function franjaChica() {
+    doc.setFillColor(...LOGO)
+    doc.rect(0, 0, anchoPagina, altoFranjaChica, 'F')
+    let x = margen
+    if (logo) {
+      const alto = 9
+      doc.addImage(logo, 'PNG', margen, (altoFranjaChica - alto) / 2, alto * LOGO_ANCHO_SOBRE_ALTO, alto, 'logo', 'SLOW')
+      x += alto * LOGO_ANCHO_SOBRE_ALTO + 4
+    }
+    doc.setTextColor(...BLANCO)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.text('HORARIOS', x, 8.3)
+    const anchoTitulo = doc.getTextWidth('HORARIOS')
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
-    doc.setTextColor(...GRIS)
-    doc.text('Mirador Waikiki', anchoPagina - margen, 13, { align: 'right' })
+    doc.text(semana, x + anchoTitulo + 4, 8.3)
   }
 
   // Sábado, domingo y feriados van en verde, como en la planilla.
   const findes = DIAS.map((_, i) => pintaComoFinde(datos, i))
   const encabezadoDias = DIAS.map(
-    (d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i) + (esFeriado(datos, i) ? '\nFERIADO' : '')
+    (d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i) + (esFeriado(datos, i) ? ' · FERIADO' : '')
   )
-  // Alto real de una fila con letra de 6.8 y 0.5 mm de relleno vertical.
-  const altoFila = 3.8
+  // Alto real de una fila con letra de 6.6 y 0.4 mm de relleno vertical.
+  const altoFila = 3.5
   // Anchos fijos: si no, cada sector se acomoda solo y no se alinean entre sí.
-  const anchoNombre = 42
+  const anchoNombre = 44
   const anchoDia = (anchoPagina - 2 * margen - anchoNombre) / 7
-  let y = 18
+  let y = inicioPrimera
 
   for (const sector of datos.sectores) {
-    if (sector.personas.length === 0) continue
+    const personas = sector.personas.filter((p) => p.nombre.trim() || p.dias.some((d) => d.trim()))
+    if (personas.length === 0) continue
 
-    // Un sector no se parte entre dos hojas si entra entero en la siguiente.
-    const altoSector = (sector.personas.length + 2) * altoFila + 2.5
-    if (y + altoSector > altoPagina - 14 && altoSector < altoPagina - 30) {
+    // Los sectores chicos no se parten entre dos hojas. Los grandes sí (el
+    // encabezado se repite arriba), siempre que entren varias filas: si no,
+    // todo el horario no entra en dos hojas.
+    const altoSector = (personas.length + 2) * altoFila
+    const entra = y + altoSector <= limiteAbajo
+    const filasQueEntran = Math.floor((limiteAbajo - y) / altoFila) - 2
+    const sePuedePartir = personas.length >= 8 && filasQueEntran >= 4
+    if (!entra && !sePuedePartir) {
       doc.addPage()
-      y = 18
+      y = inicioResto
     }
 
-    const totales = totalesDelSector(sector)
+    const totales = totalesDelSector({ ...sector, personas })
     autoTable(doc, {
       startY: y,
-      // Arriba queda lugar para el título, que se dibuja al final en cada hoja.
-      margin: { top: 18, left: margen, right: margen, bottom: 12 },
+      margin: { top: inicioResto, left: margen, right: margen, bottom: 13 },
       theme: 'grid',
+      // El nombre del sector va en la primera celda, sobre el color del logo.
       head: [[sector.nombre.toUpperCase(), ...encabezadoDias]],
-      body: sector.personas.map((p) => [p.nombre, ...p.dias.map((c) => c || '')]),
+      body: personas.map((p) => [p.nombre, ...p.dias.map((c) => c || '')]),
       foot: [
         [
-          'Total personal',
-          ...totales.map((t) => (t.noche > 0 ? t.total + ' (' + t.noche + ' noche)' : String(t.total))),
+          'Trabajan',
+          ...totales.map((t) => (t.noche > 0 ? t.total + '  (' + t.noche + ' noche)' : String(t.total))),
         ],
       ],
       styles: {
         font: 'helvetica',
-        fontSize: 6.8,
-        cellPadding: { top: 0.5, bottom: 0.5, left: 1, right: 1 },
+        fontSize: 6.6,
+        cellPadding: { top: 0.4, bottom: 0.4, left: 1.5, right: 1.5 },
         overflow: 'linebreak',
         halign: 'center',
         valign: 'middle',
         textColor: TEXTO,
-        lineColor: [202, 184, 146],
-        lineWidth: 0.15,
+        lineColor: LINEA,
+        lineWidth: 0.1,
         minCellHeight: altoFila,
       },
       headStyles: {
-        fillColor: VERDE_OSCURO,
-        textColor: BLANCO,
+        fillColor: CREMA,
+        textColor: LOGO_OSCURO,
         fontStyle: 'bold',
         fontSize: 7,
       },
       footStyles: {
-        fillColor: [243, 239, 228],
-        textColor: GRIS,
+        fillColor: CREMA,
+        textColor: LOGO_OSCURO,
         fontStyle: 'bold',
         fontSize: 7,
       },
@@ -144,12 +244,19 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
       didParseCell: (data: CellHookData) => {
         const col = data.column.index
         if (col === 0) {
-          if (data.section === 'head') data.cell.styles.halign = 'left'
+          if (data.section === 'head') {
+            data.cell.styles.halign = 'left'
+            data.cell.styles.fillColor = LOGO
+            data.cell.styles.textColor = BLANCO
+            data.cell.styles.fontSize = 8
+          }
+          if (data.section === 'foot') data.cell.styles.textColor = GRIS
           return
         }
         const dia = col - 1
         if (data.section === 'head' && findes[dia]) {
           data.cell.styles.fillColor = VERDE
+          data.cell.styles.textColor = BLANCO
         }
         if (data.section === 'body') {
           const valor = String(data.cell.raw ?? '')
@@ -161,45 +268,23 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string): jsPDF {
     })
 
     // lastAutoTable lo agrega el plugin al documento.
-    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 2.5
+    y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 3.5
   }
 
-  // Referencias al final, como en la planilla.
-  const referencias: [string, RGB][] = [
-    ['Turno', BLANCO],
-    ['Finde o feriado', FIN_DE_SEMANA],
-    ['Hace noche', NOCHE],
-    ['Libre (X)', LIBRE],
-    ['Vacaciones', VACACIONES],
-    ['Licencia', LICENCIA],
-    ['Mirador 9', MIRADOR_9],
-  ]
-  if (y > altoPagina - 16) {
-    doc.addPage()
-    y = 18
-  }
-  doc.setFontSize(7.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...GRIS)
-  doc.text('Referencias', margen, y + 3)
-  let x = margen + 20
-  doc.setFont('helvetica', 'normal')
-  for (const [etiqueta, color] of referencias) {
-    doc.setFillColor(...color)
-    doc.setDrawColor(202, 184, 146)
-    doc.rect(x, y + 0.6, 3.2, 3.2, 'FD')
-    doc.text(etiqueta, x + 4.5, y + 3)
-    x += doc.getTextWidth(etiqueta) + 12
-  }
-
-  // Título y numeración en todas las hojas.
+  // Franja y pie en todas las hojas.
   const total = doc.getNumberOfPages()
   for (let i = 1; i <= total; i++) {
     doc.setPage(i)
-    encabezadoDePagina()
-    doc.setFontSize(7)
+    if (i === 1) franjaGrande()
+    else franjaChica()
+    doc.setDrawColor(...LOGO)
+    doc.setLineWidth(0.3)
+    doc.line(margen, altoPagina - 9, anchoPagina - margen, altoPagina - 9)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
     doc.setTextColor(...GRIS)
-    doc.text('Hoja ' + i + ' de ' + total, anchoPagina - margen, altoPagina - 6, { align: 'right' })
+    doc.text('Mirador Waikiki · ' + semana, margen, altoPagina - 5)
+    doc.text('Hoja ' + i + ' de ' + total, anchoPagina - margen, altoPagina - 5, { align: 'right' })
   }
 
   return doc

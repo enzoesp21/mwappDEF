@@ -123,8 +123,10 @@ export default async function DashboardPage() {
     missingMeals = Math.max(0, totalSlots - (chosen ?? 0))
   }
 
-  // Propinas: quien las carga tiene el acceso a mano; el resto ve la última suya.
+  // Propinas: quien las carga tiene el acceso a mano; mozos y runners ven el
+  // reparto de todos; el resto ve la última suya.
   const cargaPropinas = profile.carga_propinas === true
+  const veRepartoSalon = profile.puesto === 'Mozos'
   const { propinas } = await misPropinas(supabase, session.user.id)
   const ultimaPropina = propinas[0] ?? null
 
@@ -176,7 +178,7 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      {(cargaPropinas || ultimaPropina) && (
+      {(cargaPropinas || ultimaPropina || veRepartoSalon) && (
         <Link
           href="/dashboard/propinas"
           className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
@@ -190,17 +192,21 @@ export default async function DashboardPage() {
                 <p className="text-sm font-semibold text-brand-text">Cargar propinas</p>
                 <p className="text-xs text-brand-muted">El reparto del salón y el reporte para el grupo</p>
               </>
+            ) : ultimaPropina ? (
+              <>
+                <p className="text-sm font-semibold text-brand-text">
+                  Tu propina: {pesos(ultimaPropina.monto)}
+                </p>
+                <p className="text-xs text-brand-muted">
+                  Del {fechaConDia(ultimaPropina.fecha)} ·{' '}
+                  {veRepartoSalon ? 'ver el reparto' : 'ver todas'}
+                </p>
+              </>
             ) : (
-              ultimaPropina && (
-                <>
-                  <p className="text-sm font-semibold text-brand-text">
-                    Tu propina: {pesos(ultimaPropina.monto)}
-                  </p>
-                  <p className="text-xs text-brand-muted">
-                    Del {fechaConDia(ultimaPropina.fecha)} · ver todas
-                  </p>
-                </>
-              )
+              <>
+                <p className="text-sm font-semibold text-brand-text">Propinas del salón</p>
+                <p className="text-xs text-brand-muted">El reparto de cada día</p>
+              </>
             )}
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
