@@ -199,3 +199,26 @@ export async function setUserPuestoAction(userId: string, puesto: string): Promi
   revalidatePath('/dashboard', 'layout')
   return { ok: true }
 }
+
+/**
+ * Le pone una contraseña provisoria a alguien que se olvidó la suya. La
+ * persona entra con esa y después la puede cambiar en su Perfil.
+ */
+export async function resetUserPasswordAction(userId: string, clave: string): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  if (clave.length < 6) return { ok: false, error: 'La contraseña tiene que tener al menos 6 caracteres.' }
+  if (clave.length > 72) return { ok: false, error: 'La contraseña es demasiado larga.' }
+
+  const { error } = await supabase.rpc('admin_cambiar_clave', { p_user_id: userId, p_clave: clave })
+  if (error) {
+    return {
+      ok: false,
+      error: /admin_cambiar_clave|schema cache/.test(error.message)
+        ? 'Falta correr el SQL para cambiar contraseñas (supabase/add_cambiar_clave.sql) en Supabase.'
+        : 'No se pudo cambiar: ' + error.message,
+    }
+  }
+  return { ok: true }
+}

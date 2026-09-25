@@ -112,6 +112,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - RLS en todas las tablas. Función `is_admin()` en la base.
 - Un trigger (`protect_profile_fields`) impide que alguien se cambie a sí mismo el rol,
   el estado o el puesto desde el navegador. Deja pasar al admin y al editor SQL.
+- Contraseñas: no hay "me olvidé la contraseña" por mail (decisión de Enzo). Un admin pone
+  una provisoria desde Usuarios → Clave (RPC `admin_cambiar_clave`, bcrypt con pgcrypto) y
+  la persona la cambia en Perfil (`auth.updateUser`).
 - Los votos del empleado del mes NO son anónimos: el admin ve quién votó a quién
   (decisión de Enzo, y la pantalla de votación lo avisa).
 - Next 14.2.35. Quedan avisos que solo arregla Next 15 (migración grande, pendiente).

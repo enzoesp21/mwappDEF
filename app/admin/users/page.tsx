@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote, KeyRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
@@ -9,6 +9,7 @@ import { cn, formatDate, formatDateTime } from '@/lib/utils'
 import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setUserPuestoAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 import { buscarPuesto } from '@/lib/puestos'
+import CambiarClaveUsuario from '@/components/admin/CambiarClaveUsuario'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -98,6 +99,9 @@ export default function UsersPage() {
       setStatusError(res.error)
     }
   }
+
+  // A quién se le está cambiando la contraseña (abre la ventana).
+  const [claveDe, setClaveDe] = useState<UserWithResults | null>(null)
 
   const [cambiandoPuesto, setCambiandoPuesto] = useState<string | null>(null)
 
@@ -503,6 +507,15 @@ export default function UsersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:flex-shrink-0">
+                  <button
+                    onClick={() => setClaveDe(user)}
+                    title="Ponerle una contraseña nueva si se olvidó la suya"
+                    aria-label={'Cambiar la contraseña de ' + user.full_name}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10 transition-colors cursor-pointer min-h-[36px] whitespace-nowrap"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    Clave
+                  </button>
                   {/* Los admin cargan propinas siempre: el permiso es para cajeros. */}
                   {user.role !== 'admin' && (
                     <button
@@ -752,6 +765,14 @@ export default function UsersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {claveDe && (
+        <CambiarClaveUsuario
+          userId={claveDe.id}
+          nombre={claveDe.full_name}
+          onCerrar={() => setClaveDe(null)}
+        />
       )}
     </div>
   )
