@@ -76,29 +76,59 @@ export default function EditorHorario({
   const bloqueado = useRef(false)
   const cambioSinProgramar = useRef(false)
 
-  /** Devuelve si quedó guardado, para que publicar no avance sobre un error. */
+  const enCurso = useRef<Promise<boolean> | null>(null)
+
+  /**
+   * Devuelve si quedó guardado, para que publicar no avance sobre un error.
+   *
+   * Los guardados van de a uno: con internet lento, si arrancaba otro antes de
+   * que volviera el anterior, salía con la versión vieja y la app lo tomaba
+   * como "otra persona guardó cambios" (y se perdía lo último).
+   */
   const guardar = useCallback(
     async (aGuardar: DatosHorario): Promise<boolean> => {
+      while (enCurso.current) await enCurso.current
       if (bloqueado.current) return false
-      setEstado({ tipo: 'guardando' })
-      const res = await guardarSemanaAction(id, aGuardar, version.current)
-      if (res.ok && res.value) {
-        version.current = res.value
-        const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-        setEstado({ tipo: 'guardado', hora })
-        return true
+
+      const intento = (async () => {
+        setEstado({ tipo: 'guardando' })
+        const res = await guardarSemanaAction(id, aGuardar, version.current)
+        if (res.ok && res.value) {
+          version.current = res.value
+          // Si mientras tanto se escribió algo más, sigue pendiente.
+          if (!temporizador.current) {
+            const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+            setEstado({ tipo: 'guardado', hora })
+          }
+          return true
+        }
+        if (!res.ok && res.error.startsWith('Otra persona')) {
+          // Se deja de autoguardar: seguir escribiendo encima sería perder algo.
+          bloqueado.current = true
+          setEstado({ tipo: 'conflicto', mensaje: res.error })
+        } else if (!res.ok) {
+          setEstado({ tipo: 'error', mensaje: res.error })
+        }
+        return false
+      })()
+
+      enCurso.current = intento
+      try {
+        return await intento
+      } finally {
+        if (enCurso.current === intento) enCurso.current = null
       }
-      if (!res.ok && res.error.startsWith('Otra persona')) {
-        // Se deja de autoguardar: seguir escribiendo encima sería perder algo.
-        bloqueado.current = true
-        setEstado({ tipo: 'conflicto', mensaje: res.error })
-      } else if (!res.ok) {
-        setEstado({ tipo: 'error', mensaje: res.error })
-      }
-      return false
     },
     [id]
   )
+
+  /** Guarda ya lo que esté esperando el autoguardado (al salir de la pantalla). */
+  const guardarYa = useCallback(() => {
+    if (!temporizador.current) return
+    clearTimeout(temporizador.current)
+    temporizador.current = null
+    void guardar(datosRef.current)
+  }, [guardar])
 
   /**
    * Única vía para cambiar la planilla: recibe una transformación y la aplica
@@ -120,8 +150,27 @@ export default function EditorHorario({
     setEstado({ tipo: 'pendiente' })
     if (temporizador.current) clearTimeout(temporizador.current)
     const aGuardar = datos
-    temporizador.current = setTimeout(() => guardar(aGuardar), ESPERA_AUTOGUARDADO)
+    temporizador.current = setTimeout(() => {
+      temporizador.current = null
+      guardar(aGuardar)
+    }, ESPERA_AUTOGUARDADO)
   }, [datos, guardar])
+
+  // Al pasar a otra app, bloquear el celular o irse de la pantalla, se guarda
+  // en el momento: con la app en segundo plano el celular congela la espera
+  // del autoguardado y lo último escrito podía quedar sin guardar.
+  useEffect(() => {
+    const alOcultar = () => {
+      if (document.visibilityState === 'hidden') guardarYa()
+    }
+    document.addEventListener('visibilitychange', alOcultar)
+    window.addEventListener('pagehide', guardarYa)
+    return () => {
+      document.removeEventListener('visibilitychange', alOcultar)
+      window.removeEventListener('pagehide', guardarYa)
+      guardarYa()
+    }
+  }, [guardarYa])
 
   // Aviso al cerrar la pestaña con cambios sin guardar.
   useEffect(() => {
