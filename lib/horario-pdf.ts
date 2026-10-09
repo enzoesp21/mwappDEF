@@ -1,8 +1,10 @@
 import { jsPDF } from 'jspdf'
 import { autoTable, type CellHookData } from 'jspdf-autotable'
 import {
-  DIAS,
+  cantidadDias,
   esFeriado,
+  nombreDia,
+  nombreDiaCorto,
   esNoche,
   etiquetaSemana,
   numeroDeDia,
@@ -62,8 +64,8 @@ function fondoDeCelda(valor: string, finde: boolean, hayNoche: boolean): RGB {
   }
 }
 
-export function nombreDelArchivo(lunes: string): string {
-  return 'Horarios MW ' + etiquetaSemana(lunes) + '.pdf'
+export function nombreDelArchivo(lunes: string, dias = 7): string {
+  return 'Horarios MW ' + etiquetaSemana(lunes, dias) + '.pdf'
 }
 
 /**
@@ -101,7 +103,8 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
   const anchoPagina = doc.internal.pageSize.getWidth()
   const altoPagina = doc.internal.pageSize.getHeight()
   const margen = 10
-  const semana = 'Semana del ' + etiquetaSemana(lunes)
+  const totalDias = cantidadDias(datos)
+  const semana = 'Semana del ' + etiquetaSemana(lunes, totalDias)
 
   // La primera hoja lleva la franja grande; las demás, una más finita.
   const altoFranja = 27
@@ -171,11 +174,16 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
   }
 
   // Sábado, domingo y feriados van en verde, como en la planilla.
-  const findes = DIAS.map((_, i) => pintaComoFinde(datos, i))
+  const findes = Array.from({ length: totalDias }, (_, i) => pintaComoFinde(datos, i))
   // Días con servicio de noche: quien cierra esos días, hace noche.
   const noches = diasConNoche(datos)
-  const encabezadoDias = DIAS.map(
-    (d, i) => d.toUpperCase() + ' ' + numeroDeDia(lunes, i) + (esFeriado(datos, i) ? ' · FERIADO' : '')
+  // Con días extra las columnas son más angostas: nombres cortos ("LUN 12").
+  const encabezadoDias = findes.map(
+    (_, i) =>
+      (totalDias > 7 ? nombreDiaCorto(i) : nombreDia(i)).toUpperCase() +
+      ' ' +
+      numeroDeDia(lunes, i) +
+      (esFeriado(datos, i) ? ' · FERIADO' : '')
   )
   // Alto real de una fila: letra de 7.4 pt (2.6 mm × 1.15 de interlineado)
   // más 0.8 mm de relleno arriba y abajo. El encabezado y el total, con letra
@@ -184,7 +192,7 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
   const altoEncabezado = 4.8
   // Anchos fijos: si no, cada sector se acomoda solo y no se alinean entre sí.
   const anchoNombre = 44
-  const anchoDia = (anchoPagina - 2 * margen - anchoNombre) / 7
+  const anchoDia = (anchoPagina - 2 * margen - anchoNombre) / totalDias
   let y = inicioPrimera
 
   for (const sector of datos.sectores) {
@@ -239,7 +247,7 @@ export function generarPDFHorario(datos: DatosHorario, lunes: string, logo: stri
       },
       columnStyles: {
         0: { halign: 'left', cellWidth: anchoNombre, fontStyle: 'bold' },
-        ...Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i + 1, { cellWidth: anchoDia }])),
+        ...Object.fromEntries(Array.from({ length: totalDias }, (_, i) => [i + 1, { cellWidth: anchoDia }])),
       },
       showHead: 'everyPage',
       rowPageBreak: 'avoid',

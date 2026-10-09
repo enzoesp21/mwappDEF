@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { etiquetaSemana, semanaVacia, validarDatos } from '@/lib/horarios'
+import { cantidadDias, etiquetaSemana, semanaVacia, validarDatos } from '@/lib/horarios'
 import EditorHorario from '@/components/admin/EditorHorario'
+import { pronosticoMarDelPlata } from '@/lib/clima'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,18 +26,22 @@ export default async function EditarHorarioPage({ params }: Props) {
     .single()
   if (me?.role !== 'admin') redirect('/dashboard')
 
-  const { data: semana } = await supabase
-    .from('schedule_weeks')
-    .select('id, week_start, status, data, updated_at')
-    .eq('id', params.id)
-    .maybeSingle()
+  // El pronóstico se pide a la vez que la semana, para no sumar espera.
+  const [{ data: semana }, clima] = await Promise.all([
+    supabase
+      .from('schedule_weeks')
+      .select('id, week_start, status, data, updated_at')
+      .eq('id', params.id)
+      .maybeSingle(),
+    pronosticoMarDelPlata(),
+  ])
   if (!semana) notFound()
 
   const lunes = semana.week_start as string
-  const etiqueta = etiquetaSemana(lunes)
   // Si alguien tocó la base a mano y dejó algo raro, se arranca vacío en lugar
   // de romper la pantalla.
   const datos = validarDatos(semana.data) ? semana.data : semanaVacia()
+  const etiqueta = etiquetaSemana(lunes, cantidadDias(datos))
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 animate-fade-in">
@@ -63,6 +68,7 @@ export default async function EditarHorarioPage({ params }: Props) {
         publicada={semana.status === 'published'}
         datosIniciales={datos}
         versionInicial={semana.updated_at as string}
+        clima={clima}
       />
     </div>
   )

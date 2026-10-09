@@ -4,8 +4,9 @@ import { useMemo, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  DIAS_CORTOS,
+  cantidadDias,
   esFeriado,
+  nombreDiaCorto,
   normalizarNombre,
   numeroDeDia,
   diasConNoche,
@@ -28,7 +29,8 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const aResaltar = useMemo(() => new Set(resaltar.map(normalizarNombre)), [resaltar])
 
-  const findes = Array.from({ length: 7 }, (_, i) => pintaComoFinde(datos, i))
+  const totalDias = cantidadDias(datos)
+  const findes = Array.from({ length: totalDias }, (_, i) => pintaComoFinde(datos, i))
   const noches = diasConNoche(datos)
   const filtro = normalizarNombre(busqueda)
   const sectores = useMemo(() => {
@@ -88,22 +90,25 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
               {sector.nombre}
             </h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-[11px] border-collapse min-w-[620px]">
+              <table
+                className="w-full text-[11px] border-collapse"
+                style={{ minWidth: 620 + (totalDias - 7) * 75 }}
+              >
                 <thead>
                   <tr className="border-b border-brand-border">
                     <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-1.5 min-w-[112px]">
                       &nbsp;
                     </th>
-                    {DIAS_CORTOS.map((d, i) => (
+                    {findes.map((_, i) => (
                       <th
-                        key={d}
+                        key={i}
                         className={cn(
                           'font-semibold px-1 py-1.5 text-center whitespace-nowrap',
                           claseEncabezadoDia(findes[i]),
                           hoy === i && !findes[i] && 'text-brand-accent'
                         )}
                       >
-                        {hoy === i ? 'Hoy' : d} {numeroDeDia(lunes, i)}
+                        {hoy === i ? 'Hoy' : nombreDiaCorto(i)} {numeroDeDia(lunes, i)}
                         {esFeriado(datos, i) && (
                           <span className="block text-[8px] font-bold uppercase tracking-wider">Feriado</span>
                         )}

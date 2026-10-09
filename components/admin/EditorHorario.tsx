@@ -20,8 +20,14 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
-  DIAS_CORTOS,
+  MAX_DIAS_EXTRA,
+  agregarDiaExtra,
+  cantidadDias,
+  nombreDia,
+  nombreDiaCorto,
   numeroDeDia,
+  quitarDiaExtra,
+  ultimoDiaExtraTieneDatos,
   NOCHES_POR_DEFECTO,
   diasConNoche,
   pintaComoFinde,
@@ -32,6 +38,8 @@ import {
 } from '@/lib/horarios'
 import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/components/horario/estilos'
 import { guardarSemanaAction, publicarSemanaAction } from '@/app/actions/horarios'
+import ClimaSemana from '@/components/admin/ClimaSemana'
+import type { ClimaDia } from '@/lib/clima'
 
 interface Props {
   id: string
@@ -41,6 +49,8 @@ interface Props {
   datosIniciales: DatosHorario
   /** Tal cual vino de la base: no pasar por Date, perdería los microsegundos. */
   versionInicial: string
+  /** Pronóstico de Mar del Plata por fecha; null si no se pudo pedir. */
+  clima: Record<string, ClimaDia> | null
 }
 
 type EstadoGuardado =
@@ -61,6 +71,7 @@ export default function EditorHorario({
   publicada,
   datosIniciales,
   versionInicial,
+  clima,
 }: Props) {
   const router = useRouter()
   const [datos, setDatos] = useState<DatosHorario>(datosIniciales)
@@ -211,7 +222,7 @@ export default function EditorHorario({
 
   const rellenarFila = useCallback(
     (si: number, pi: number, valor: string) =>
-      conPersona(si, pi, (p) => ({ ...p, dias: Array(7).fill(valor) })),
+      conPersona(si, pi, (p) => ({ ...p, dias: Array(p.dias.length).fill(valor) })),
     [conPersona]
   )
 
@@ -237,10 +248,37 @@ export default function EditorHorario({
   )
 
   function agregarPersona(si: number) {
-    conSector(si, (s) => ({
-      ...s,
-      personas: [...s.personas, { nombre: '', dias: Array(7).fill('') }],
+    aplicar((d) => ({
+      ...d,
+      sectores: d.sectores.map((s, i) =>
+        i === si
+          ? { ...s, personas: [...s.personas, { nombre: '', dias: Array(cantidadDias(d)).fill('') }] }
+          : s
+      ),
     }))
+  }
+
+  /**
+   * Suma al final el día siguiente (por ejemplo, el lunes feriado de la semana
+   * que viene) para pasar el horario completo hasta ahí. Se marca como
+   * feriado porque es para lo que se usa; si no lo es, se desmarca arriba.
+   */
+  function agregarDia() {
+    aplicar((d) => {
+      const con = agregarDiaExtra(d)
+      const nuevo = cantidadDias(con) - 1
+      return { ...con, feriados: [...(con.feriados ?? []), nuevo] }
+    })
+  }
+
+  function quitarDia() {
+    const d = datosRef.current
+    const ultimo = cantidadDias(d) - 1
+    const fecha = nombreDia(ultimo).toLowerCase() + ' ' + numeroDeDia(lunes, ultimo)
+    if (ultimoDiaExtraTieneDatos(d) && !confirm('¿Sacar el ' + fecha + '? Se borra lo que está cargado ese día.')) {
+      return
+    }
+    aplicar(quitarDiaExtra)
   }
 
   function renombrarSector(si: number, nombre: string) {
@@ -293,18 +331,26 @@ export default function EditorHorario({
 
   // Qué días se pintan como fin de semana. Depende solo de los feriados, así que
   // se memoriza por ellos: si no, cada tecla redibujaría todas las filas.
+  const totalDias = cantidadDias(datos)
+  const diasExtra = totalDias - 7
   const claveFeriados = (datos.feriados ?? []).join(',')
   const findes = useMemo(() => {
     const feriados = claveFeriados ? claveFeriados.split(',').map(Number) : []
-    return Array.from({ length: 7 }, (_, i) => pintaComoFinde({ sectores: [], feriados }, i))
-  }, [claveFeriados])
+    return Array.from({ length: totalDias }, (_, i) => pintaComoFinde({ sectores: [], feriados }, i))
+  }, [claveFeriados, totalDias])
 
   // Qué días hay servicio de noche. Igual que arriba: memorizado por su valor.
   const claveNoches = (datos.noches ?? NOCHES_POR_DEFECTO).join(',')
   const noches = useMemo(
-    () => diasConNoche({ sectores: [], noches: claveNoches ? claveNoches.split(',').map(Number) : [] }),
-    [claveNoches]
+    () =>
+      diasConNoche({
+        sectores: [],
+        diasExtra,
+        noches: claveNoches ? claveNoches.split(',').map(Number) : [],
+      }),
+    [claveNoches, diasExtra]
   )
+  const indicesDias = useMemo(() => Array.from({ length: totalDias }, (_, i) => i), [totalDias])
 
   function agregarSector() {
     aplicar((d) => ({ ...d, sectores: [...d.sectores, { nombre: 'NUEVO SECTOR', personas: [] }] }))
@@ -346,7 +392,9 @@ export default function EditorHorario({
     try {
       const { generarPDFHorario, nombreDelArchivo, cargarLogo } = await import('@/lib/horario-pdf')
       const logo = await cargarLogo()
-      generarPDFHorario(datosRef.current, lunes, logo).save(nombreDelArchivo(lunes))
+      generarPDFHorario(datosRef.current, lunes, logo).save(
+        nombreDelArchivo(lunes, cantidadDias(datosRef.current))
+      )
     } catch (e) {
       alert('No se pudo armar el PDF: ' + (e instanceof Error ? e.message : String(e)))
     } finally {
@@ -436,17 +484,20 @@ export default function EditorHorario({
         </p>
       )}
 
+      <ClimaSemana lunes={lunes} totalDias={totalDias} clima={clima} />
+
       <div className="bg-brand-card border border-brand-border rounded-xl p-3">
         <p className="text-xs font-semibold text-brand-text mb-2">
           ¿Hay algún feriado esta semana? Tocá el día y se pinta como sábado y domingo.
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {DIAS_CORTOS.map((d, i) => {
-            const esFinde = i >= 5
+          {indicesDias.map((i) => {
+            const d = nombreDiaCorto(i)
+            const esFinde = i % 7 >= 5
             const marcado = (datos.feriados ?? []).includes(i)
             return (
               <button
-                key={d}
+                key={i}
                 type="button"
                 onClick={() => alternarFeriado(i)}
                 disabled={esFinde}
@@ -467,6 +518,35 @@ export default function EditorHorario({
             )
           })}
         </div>
+
+        <div className="mt-3 pt-3 border-t border-brand-border/70">
+          <p className="text-xs font-semibold text-brand-text">¿El lunes que viene es feriado?</p>
+          <p className="text-[11px] text-brand-muted mb-2">
+            Sumá uno o dos días de la semana siguiente y pasá el horario completo hasta ahí.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {diasExtra < MAX_DIAS_EXTRA && (
+              <button
+                type="button"
+                onClick={agregarDia}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-brand-accent text-brand-accent hover:bg-brand-accent/10 cursor-pointer min-h-[36px]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Sumar el {nombreDia(totalDias).toLowerCase()} {numeroDeDia(lunes, totalDias)}
+              </button>
+            )}
+            {diasExtra > 0 && (
+              <button
+                type="button"
+                onClick={quitarDia}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-brand-border text-brand-muted hover:text-brand-error hover:border-brand-error/50 cursor-pointer min-h-[36px]"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Sacar el {nombreDia(totalDias - 1).toLowerCase()} {numeroDeDia(lunes, totalDias - 1)}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="bg-brand-card border border-brand-border rounded-xl p-3">
@@ -475,9 +555,9 @@ export default function EditorHorario({
           Quien cierra esos días (&quot;11C&quot;) hace noche. En temporada, marcá toda la semana.
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {DIAS_CORTOS.map((d, i) => (
+          {indicesDias.map((i) => (
             <button
-              key={d}
+              key={i}
               type="button"
               onClick={() => alternarNoche(i)}
               aria-pressed={noches[i]}
@@ -490,14 +570,15 @@ export default function EditorHorario({
               )}
             >
               {noches[i] && <Moon className="w-3 h-3" />}
-              {d}
+              {nombreDiaCorto(i)}
+              {i >= 7 && ' ' + numeroDeDia(lunes, i)}
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-3 mt-2">
           <button
             type="button"
-            onClick={() => ponerNoches([0, 1, 2, 3, 4, 5, 6])}
+            onClick={() => ponerNoches(indicesDias)}
             className="text-[11px] font-semibold text-brand-accent hover:underline cursor-pointer"
           >
             Toda la semana
@@ -553,15 +634,18 @@ export default function EditorHorario({
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse min-w-[760px]">
+              <table
+                className="w-full text-xs border-collapse"
+                style={{ minWidth: 760 + diasExtra * 90 }}
+              >
                 <thead>
                   <tr className="border-b border-brand-border">
                     <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-2 w-[190px]">
                       Persona
                     </th>
-                    {DIAS_CORTOS.map((d, i) => (
-                      <th key={d} className={cn('font-semibold px-1 py-2 text-center', claseEncabezadoDia(findes[i]))}>
-                        {d} {numeroDeDia(lunes, i)}
+                    {indicesDias.map((i) => (
+                      <th key={i} className={cn('font-semibold px-1 py-2 text-center', claseEncabezadoDia(findes[i]))}>
+                        {nombreDiaCorto(i)} {numeroDeDia(lunes, i)}
                         {(datos.feriados ?? []).includes(i) && (
                           <span className="block text-[9px] font-bold uppercase tracking-wider">Feriado</span>
                         )}
@@ -721,7 +805,7 @@ const FilaPersona = memo(function FilaPersona({
             data-fila={fila}
             data-col={dia}
             maxLength={40}
-            aria-label={(persona.nombre || 'Persona') + ', ' + DIAS_CORTOS[dia]}
+            aria-label={(persona.nombre || 'Persona') + ', ' + nombreDiaCorto(dia) + (dia >= 7 ? ' (semana siguiente)' : '')}
             className={cn(
               'w-full min-w-[78px] px-1.5 py-1.5 rounded text-center text-[11px] border border-transparent focus:border-brand-accent focus:outline-none',
               claseCelda(valor, findes[dia], noches[dia])

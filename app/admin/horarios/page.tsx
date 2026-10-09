@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { ChevronRight, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cn, formatDateTime } from '@/lib/utils'
-import { etiquetaSemana, hoyEnArgentina, lunesDe, sumarDias } from '@/lib/horarios'
+import { MAX_DIAS_EXTRA, etiquetaSemana, hoyEnArgentina, lunesDe, sumarDias } from '@/lib/horarios'
 import NuevaSemana from '@/components/admin/NuevaSemana'
 import BorrarSemana from '@/components/admin/BorrarSemana'
 
@@ -24,9 +24,10 @@ export default async function AdminHorariosPage() {
   if (me?.role !== 'admin') redirect('/dashboard')
 
   // Sin el contenido: solo hace falta para listar, y son varios KB por semana.
+  // De adentro solo se pide cuántos días extra tiene, para el título.
   const { data: semanas } = await supabase
     .from('schedule_weeks')
-    .select('id, week_start, status, published_at, updated_at')
+    .select('id, week_start, status, published_at, updated_at, dias_extra:data->diasExtra')
     .order('week_start', { ascending: false })
     .limit(20)
 
@@ -57,7 +58,11 @@ export default async function AdminHorariosPage() {
             const lunes = s.week_start as string
             const publicada = s.status === 'published'
             const esEstaSemana = lunes === lunesActual
-            const etiqueta = etiquetaSemana(lunes)
+            const extra = Number(s.dias_extra ?? 0)
+            const etiqueta = etiquetaSemana(
+              lunes,
+              7 + (Number.isInteger(extra) ? Math.min(Math.max(extra, 0), MAX_DIAS_EXTRA) : 0)
+            )
             return (
               <div key={s.id as string} className="flex items-center gap-2 pr-2">
                 <Link

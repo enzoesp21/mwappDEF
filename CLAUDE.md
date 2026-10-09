@@ -90,6 +90,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Noche: quien cierra ("11C") un día con servicio de noche, hace noche. Los días con noche
   se eligen por semana (`datos.noches`; si no está, viernes y sábado) y se copian a la
   semana siguiente. Los feriados (`datos.feriados`) no se copian.
+- Días extra (`datos.diasExtra`, 0 a 2): se suman al final días de la semana siguiente (el
+  lunes feriado) y cada persona pasa a tener 8 o 9 celdas. Sin el campo, 7 días como siempre.
+  Nunca dar por hecho 7 días: usar `cantidadDias(datos)` y `nombreDiaCorto(i)` (i % 7).
+  Al copiar la semana se vuelve a lunes a domingo.
+- Clima: arriba del editor, el pronóstico de Mar del Plata por día (`lib/clima.ts`, Open-Meteo:
+  gratis y sin clave, 16 días adelante y 7 atrás, caché de 30 min). Si no contesta, el editor
+  sigue andando y lo avisa en una línea: nunca puede frenar el armado del horario.
 - Lógica de totales y búsqueda en `lib/horarios.ts`; el PDF en `lib/horario-pdf.ts`.
 
 ## Propinas

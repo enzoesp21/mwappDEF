@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import {
   buscarEnHorario,
+  cantidadDias,
   diasConNoche,
   etiquetaSemana,
   hoyEnArgentina,
@@ -75,8 +76,12 @@ export default async function HorarioPage({ searchParams }: Props) {
   const elegida = opciones.find((s) => s.week_start === pedida) ?? opciones[0]
   const lunes = elegida.week_start as string
   const datos = elegida.data as DatosHorario
-  const esVieja = lunes < lunesActual
-  const indiceHoy = lunes === lunesActual ? (new Date(hoy + 'T00:00:00Z').getUTCDay() + 6) % 7 : null
+  // Puede caer en un día extra (el lunes siguiente, si se sumó por un feriado).
+  const totalDias = cantidadDias(datos)
+  const desdeElLunes = Math.round((Date.parse(hoy) - Date.parse(lunes)) / 86_400_000)
+  const indiceHoy = desdeElLunes >= 0 && desdeElLunes < totalDias ? desdeElLunes : null
+  // Vieja de verdad solo si ya pasó entera: con días extra puede cubrir hoy.
+  const esVieja = desdeElLunes >= totalDias
 
   const miNombre = (yo?.full_name as string) ?? ''
   const otros = (usuarios ?? []).map((u) => (u.full_name as string) ?? '')
@@ -110,7 +115,7 @@ export default async function HorarioPage({ searchParams }: Props) {
       <div className="flex items-center gap-2 text-sm text-brand-text">
         <Clock className="w-4 h-4 text-brand-accent flex-shrink-0" />
         <span>
-          Semana del <strong>{etiquetaSemana(lunes)}</strong>
+          Semana del <strong>{etiquetaSemana(lunes, totalDias)}</strong>
         </span>
       </div>
 

@@ -1,6 +1,6 @@
 import { CalendarCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DIAS_CORTOS, numeroDeDia, tipoCelda, type PersonaHorario } from '@/lib/horarios'
+import { nombreDiaCorto, numeroDeDia, tipoCelda, type PersonaHorario } from '@/lib/horarios'
 import { claseCelda } from '@/components/horario/estilos'
 
 interface Props {
@@ -37,6 +37,7 @@ export default function MiSemana({ lunes, filas, hoy, feriados = [], noches }: P
             Figurás como <span className="font-semibold text-brand-text">{persona.nombre}</span> en{' '}
             {sector.toLowerCase()}
           </p>
+          {/* Siete columnas: si hay días extra, caen abajo de su mismo día. */}
           <div className="grid grid-cols-7 gap-1">
             {persona.dias.map((valor, i) => {
               const tipo = tipoCelda(valor)
@@ -47,12 +48,12 @@ export default function MiSemana({ lunes, filas, hoy, feriados = [], noches }: P
                   key={i}
                   className={cn(
                     'rounded-lg px-0.5 py-1.5 text-center flex flex-col items-center justify-start min-h-[62px]',
-                    claseCelda(valor, i >= 5 || feriado, noches[i]),
+                    claseCelda(valor, i % 7 >= 5 || feriado, noches[i]),
                     esHoy && 'ring-2 ring-brand-accent'
                   )}
                 >
                   <span className={cn('text-[10px] font-semibold', esHoy ? 'text-brand-accent' : 'text-brand-muted')}>
-                    {esHoy ? 'Hoy' : DIAS_CORTOS[i]}
+                    {esHoy ? 'Hoy' : nombreDiaCorto(i)}
                   </span>
                   <span className="text-[9px] text-brand-muted">
                     {feriado ? 'Feriado' : numeroDeDia(lunes, i)}
