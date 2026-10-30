@@ -24,7 +24,7 @@ export default async function SugerenciasPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Sugerencias y Reclamos</h1>
+        <h1 className="text-2xl font-semibold text-brand-accent">Sugerencias y Reclamos</h1>
         <p className="text-brand-muted text-sm mt-0.5">
           Envianos tus ideas, comentarios o inquietudes.
         </p>

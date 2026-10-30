@@ -149,7 +149,7 @@ export default async function HorarioPage({ searchParams }: Props) {
 function Encabezado() {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
+      <h1 className="text-2xl font-semibold text-brand-accent flex items-center gap-2">
         <CalendarDays className="w-6 h-6 text-brand-accent" />
         Horario
       </h1>

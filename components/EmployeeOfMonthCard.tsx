@@ -22,7 +22,7 @@ export default function EmployeeOfMonthCard({
   const inicial = fullName.trim().charAt(0).toUpperCase() || 'U'
 
   return (
-    <div className="relative bg-gradient-to-br from-[#6e8f7a] to-[#3d5747] rounded-2xl overflow-hidden">
+    <div className="relative bg-gradient-to-br from-[#5f7d6a] to-[#344a3d] rounded-2xl overflow-hidden">
       <div
         aria-hidden
         className="absolute inset-0 opacity-20"

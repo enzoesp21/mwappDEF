@@ -141,10 +141,13 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">
-          Hola, {profile.full_name.split(' ')[0]}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-muted">
+          {profile.puesto} · Mirador Waikiki
+        </p>
+        <h1 className="text-3xl font-semibold text-brand-accent leading-tight mt-1">
+          Hola, {profile.full_name.split(' ')[0]}.
         </h1>
-        <p className="text-brand-muted text-sm mt-0.5">{profile.puesto}</p>
+        <p className="font-serif italic text-brand-text/80 text-lg mt-0.5">Que tengas un buen turno.</p>
       </div>
 
       <InstallPrompt dismissible />

@@ -27,7 +27,7 @@ export default async function ProgresionMozoPage({ params }: { params: { id: str
           <ArrowLeft className="w-3.5 h-3.5" />
           Progresión
         </Link>
-        <h1 className="text-2xl font-bold text-brand-text mt-1">{nombre}</h1>
+        <h1 className="text-2xl font-semibold text-brand-accent mt-1">{nombre}</h1>
         <p className="text-sm text-brand-muted">
           {actual ? `Nivel ${actual.nivel} · ${actual.nombre} · ${actual.porcentaje} % de la propina` : 'Sin nivel asignado'}
           {estado?.desde && actual && ` · desde el ${formatDate(estado.desde + 'T12:00:00')}`}

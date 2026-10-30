@@ -21,6 +21,9 @@ import {
  * la etiqueta visible, que puede leerse distinto y más completa.
  *
  * El orden de esta lista es el orden en que aparecen las tarjetas.
+ *
+ * Los colores son de la paleta de miradorwaikiki.com: verdes, el verde azulado
+ * del balneario, el marrón del hotel y el azul de Hula Kai.
  */
 export interface PuestoInfo {
   valor: string
@@ -32,17 +35,17 @@ export interface PuestoInfo {
 }
 
 export const PUESTOS_INFO: PuestoInfo[] = [
-  { valor: 'Mozos',           nombre: 'Mozos y Runners',     icono: ConciergeBell, desde: '#6e8f7a', hasta: '#3d5747' },
-  { valor: 'Commis',          nombre: 'Comisses',            icono: HandPlatter,   desde: '#7b9a86', hasta: '#4a6455' },
-  { valor: 'Limpieza',        nombre: 'Limpieza',            icono: Sparkles,      desde: '#8a9e93', hasta: '#556860' },
-  { valor: 'Bacha',           nombre: 'Bacha',               icono: Droplets,      desde: '#6f8b93', hasta: '#3f545a' },
-  { valor: 'Caja',            nombre: 'Caja',                icono: Calculator,    desde: '#95916f', hasta: '#5c5940' },
-  { valor: 'Cocina',          nombre: 'Cocina',              icono: ChefHat,       desde: '#a08464', hasta: '#66503a' },
-  { valor: 'Ensaladas',       nombre: 'Ensaladas y Postres', icono: Salad,         desde: '#7f9b6a', hasta: '#4c613d' },
-  { valor: 'Barra',           nombre: 'Barra',               icono: Martini,       desde: '#8b7d9b', hasta: '#544a61' },
-  { valor: 'Recepción',       nombre: 'Recepción',           icono: BookUser,      desde: '#94867a', hasta: '#5b5048' },
-  { valor: 'Calienta Platos', nombre: 'Calientaplatos',      icono: Flame,         desde: '#a37a63', hasta: '#66483a' },
-  { valor: 'Pastelería',      nombre: 'Pastelería',          icono: CakeSlice,     desde: '#a8828d', hasta: '#684e57' },
+  { valor: 'Mozos',           nombre: 'Mozos y Runners',     icono: ConciergeBell, desde: '#5f7d6a', hasta: '#344a3d' },
+  { valor: 'Commis',          nombre: 'Comisses',            icono: HandPlatter,   desde: '#6f8a77', hasta: '#3e5446' },
+  { valor: 'Limpieza',        nombre: 'Limpieza',            icono: Sparkles,      desde: '#7b8c83', hasta: '#47574f' },
+  { valor: 'Bacha',           nombre: 'Bacha',               icono: Droplets,      desde: '#4f7a7e', hasta: '#2f4c50' },
+  { valor: 'Caja',            nombre: 'Caja',                icono: Calculator,    desde: '#8a7653', hasta: '#5a4a30' },
+  { valor: 'Cocina',          nombre: 'Cocina',              icono: ChefHat,       desde: '#8c6a4a', hasta: '#57402b' },
+  { valor: 'Ensaladas',       nombre: 'Ensaladas y Postres', icono: Salad,         desde: '#6f8a5a', hasta: '#43573a' },
+  { valor: 'Barra',           nombre: 'Barra',               icono: Martini,       desde: '#41687f', hasta: '#284456' },
+  { valor: 'Recepción',       nombre: 'Recepción',           icono: BookUser,      desde: '#7d6e5c', hasta: '#4d4337' },
+  { valor: 'Calienta Platos', nombre: 'Calientaplatos',      icono: Flame,         desde: '#8f6550', hasta: '#58392c' },
+  { valor: 'Pastelería',      nombre: 'Pastelería',          icono: CakeSlice,     desde: '#94786a', hasta: '#5c463d' },
 ]
 
 /** Busca por el valor guardado. Tolera el puesto escrito sin tilde. */

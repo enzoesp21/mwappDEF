@@ -11,7 +11,7 @@ export default function GuiasEnPrueba({ principal }: Props) {
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
-        <h1 className="text-xl font-bold text-brand-text">Guías</h1>
+        <h1 className="text-xl font-semibold text-brand-accent">Guías</h1>
         <p className="text-brand-muted text-sm mt-0.5 leading-relaxed">
           Empezá por acá: es la guía base de cómo trabajamos en Mirador Waikiki.
         </p>

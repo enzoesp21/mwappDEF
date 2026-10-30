@@ -25,7 +25,7 @@ export default async function ResultadosPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Resultados</h1>
+        <h1 className="text-2xl font-semibold text-brand-accent">Resultados</h1>
         <p className="text-brand-muted text-sm mt-0.5">
           {totalPassed} examen{totalPassed !== 1 ? 'es' : ''} aprobado{totalPassed !== 1 ? 's' : ''} en total
         </p>

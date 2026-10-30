@@ -59,7 +59,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-4 animate-slide-up">
-      <h1 className="text-xl font-bold text-brand-text">Mi Perfil</h1>
+      <h1 className="text-xl font-semibold text-brand-accent">Mi Perfil</h1>
 
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5 space-y-4">
         <AvatarUploader

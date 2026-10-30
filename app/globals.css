@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Karla:wght@300;400;500;600;700;800&family=Paytone+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Bodoni+Moda:ital,wght@1,400;1,500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,7 +16,7 @@
 body {
   background-color: #dbd2b5;
   color: #1f2d27;
-  font-family: 'Karla', system-ui, sans-serif;
+  font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -33,7 +33,7 @@ body {
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #6e8f7a;
+  background: #516d5c;
 }
 
 /* Prose / Markdown */
@@ -42,15 +42,15 @@ body {
   line-height: 1.75;
 }
 .prose h1 {
-  font-family: 'Paytone One', 'Arial Black', system-ui, sans-serif;
-  color: #6e8f7a;
+  color: #516d5c;
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   margin-bottom: 0.5rem;
   margin-top: 1.5rem;
 }
 .prose h2 {
-  color: #6e8f7a;
+  color: #516d5c;
   font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -59,7 +59,7 @@ body {
   padding-bottom: 0.25rem;
 }
 .prose h3 {
-  color: #5d7d6a;
+  color: #476051;
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 0.4rem;
@@ -81,7 +81,7 @@ body {
   font-weight: 700;
 }
 .prose em {
-  color: #6a7d72;
+  color: #56655c;
 }
 .prose hr {
   border-color: #cab892;
@@ -92,12 +92,12 @@ body {
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
-  color: #6e8f7a;
+  color: #516d5c;
 }
 .prose blockquote {
-  border-left: 3px solid #6e8f7a;
+  border-left: 3px solid #516d5c;
   padding-left: 1rem;
-  color: #6a7d72;
+  color: #56655c;
   font-style: italic;
 }
 .prose table {
@@ -108,7 +108,7 @@ body {
 }
 .prose th {
   background: #e8e0ca;
-  color: #6e8f7a;
+  color: #516d5c;
   padding: 0.5rem;
   text-align: left;
   border: 1px solid #cab892;
@@ -122,7 +122,7 @@ body {
   background: #e0d8c0;
 }
 .prose a {
-  color: #6e8f7a;
+  color: #516d5c;
   text-decoration: underline;
 }
 .prose img {
@@ -138,8 +138,8 @@ body {
 /* Etiquetas de dieta dentro de las guías: `SIN TACC`, `VEGETARIANO`, `VEGANO` */
 .prose code {
   display: inline-block;
-  background: #6e8f7a1a;
-  border: 1px solid #6e8f7a40;
+  background: #516d5c1a;
+  border: 1px solid #516d5c40;
   color: #4f6b59;
   font-family: inherit;
   font-size: 0.7rem;
@@ -156,8 +156,44 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: #6e8f7a !important;
-  box-shadow: 0 0 0 3px rgba(110, 143, 122, 0.2);
+  border-color: #516d5c !important;
+  box-shadow: 0 0 0 3px rgba(81, 109, 92, 0.2);
+}
+
+/* Títulos firmes y apretados, como en miradorwaikiki.com. */
+h1,
+h2 {
+  letter-spacing: -0.02em;
+}
+
+/* Tarjetas como las de la web: blancas, con un marco crema y sombra suave. */
+.bg-brand-card.rounded-2xl {
+  box-shadow:
+    0 0 0 4px rgba(248, 245, 240, 0.85),
+    0 16px 32px -24px rgba(31, 45, 39, 0.5);
+}
+.bg-brand-card.rounded-2xl.border-brand-border {
+  border-color: #e6dcc4;
+}
+
+/*
+ * Botones principales como los de miradorwaikiki.com ("RESERVAR", "CÓMO
+ * LLEGAR"): píldora, mayúscula y letras espaciadas. Aplica a todo botón o
+ * link verde lleno con esquinas grandes; los chips que se prenden y apagan
+ * (aria-pressed) y los botones chicos (rounded-lg) quedan como están.
+ */
+:is(button, a).bg-brand-accent.text-white.rounded-xl:not([aria-pressed]) {
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Etiquetas chiquitas en mayúscula ("MAR DEL PLATA · DESDE 1999"). */
+.uppercase.tracking-wider,
+.uppercase.tracking-widest {
+  letter-spacing: 0.16em;
 }
 
 /* Bottom nav safe area */

@@ -25,7 +25,7 @@ export default async function MiProgresionPage() {
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
+        <h1 className="text-2xl font-semibold text-brand-accent flex items-center gap-2">
           <TrendingUp className="w-6 h-6 text-brand-accent" />
           Tu progresión
         </h1>

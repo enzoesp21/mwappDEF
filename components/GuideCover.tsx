@@ -3,12 +3,12 @@ import { cn } from '@/lib/utils'
 // Fondos derivados de la paleta de marca. Se elige por el título, así cada
 // guía tiene siempre el mismo color y se distinguen entre sí de un vistazo.
 const THEMES = [
-  'from-[#6e8f7a] to-[#3d5747]',
+  'from-[#5f7d6a] to-[#344a3d]',
   'from-[#cab892] to-[#8a7550]',
-  'from-[#5d7d6a] to-[#2f4438]',
+  'from-[#516d5c] to-[#2f4438]',
   'from-[#b08968] to-[#6e5039]',
-  'from-[#7d8fa0] to-[#48565f]',
-  'from-[#9c7d8a] to-[#5e4a53]',
+  'from-[#41687f] to-[#284456]',
+  'from-[#4f7a7e] to-[#2f4c50]',
 ]
 
 function themeFor(title: string) {

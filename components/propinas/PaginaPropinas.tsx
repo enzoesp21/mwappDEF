@@ -31,7 +31,7 @@ export default async function PaginaPropinas({ base, userId }: Props) {
   return (
     <div className="space-y-5 max-w-2xl animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
+        <h1 className="text-2xl font-semibold text-brand-accent flex items-center gap-2">
           <Banknote className="w-6 h-6 text-brand-accent" />
           Propinas
         </h1>

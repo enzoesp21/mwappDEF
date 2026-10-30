@@ -75,7 +75,7 @@ export default async function AdminComidaPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text">Comida Semanal</h1>
+        <h1 className="text-2xl font-semibold text-brand-accent">Comida Semanal</h1>
         <p className="text-sm text-brand-muted mt-1">
           Semana del {weekLabel} · {total} inscripción{total !== 1 ? 'es' : ''}
         </p>

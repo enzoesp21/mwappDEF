@@ -53,7 +53,7 @@ export default async function EmpleadoDelMesPage() {
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-bold text-brand-text flex items-center gap-2">
+        <h1 className="text-2xl font-semibold text-brand-accent flex items-center gap-2">
           <Trophy className="w-6 h-6 text-brand-accent" />
           Empleado del mes
         </h1>

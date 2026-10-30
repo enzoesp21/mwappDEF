@@ -13,8 +13,13 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
 - Next.js 14 (App Router), server components y server actions (`'use server'`).
 - Supabase: auth, Postgres con RLS, storage (bucket `guias`, público).
 - Tailwind con colores de marca en `tailwind.config.ts`: `brand-dark` (fondo crema
-  #dbd2b5), `brand-card` (blanco), `brand-accent` (verde #6e8f7a), `brand-text`,
+  #dbd2b5), `brand-card` (blanco), `brand-accent` (verde #516d5c), `brand-text`,
   `brand-muted`, `brand-border`, `brand-success`, `brand-error`.
+- La estética sigue a miradorwaikiki.com (decisión de Enzo): Poppins para todo, Bodoni Moda
+  itálica (`font-serif`) para frases, títulos en verde semibold y apretados, etiquetas
+  chiquitas en mayúscula espaciada, tarjetas blancas con marco crema y botones principales
+  en píldora mayúscula (estos dos últimos salen de reglas globales en `app/globals.css`).
+  Fotos del lugar en `public/fotos/` (sacadas de la web).
 - Despliega en Vercel desde la rama `main` de este repo.
 
 ## Cómo se entregan los cambios de base de datos

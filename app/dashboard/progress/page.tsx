@@ -38,7 +38,7 @@ export default async function ProgressPage() {
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
-        <h1 className="text-xl font-bold text-brand-text">Mi Progreso</h1>
+        <h1 className="text-xl font-semibold text-brand-accent">Mi Progreso</h1>
         <p className="text-brand-muted text-sm mt-0.5">
           {results?.length ?? 0} examen{results?.length !== 1 ? 'es' : ''} aprobado
           {results?.length !== 1 ? 's' : ''}

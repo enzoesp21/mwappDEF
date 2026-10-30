@@ -86,7 +86,7 @@ function Volver({ base, titulo }: { base: string; titulo: string }) {
         <ArrowLeft className="w-3.5 h-3.5" />
         Propinas
       </Link>
-      <h1 className="text-2xl font-bold text-brand-text mt-1">{titulo}</h1>
+      <h1 className="text-2xl font-semibold text-brand-accent mt-1">{titulo}</h1>
     </div>
   )
 }
