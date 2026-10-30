@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
 import FaltasGraves from '@/components/FaltasGraves'
-import { Utensils, ChevronRight, BookOpen, Banknote } from 'lucide-react'
+import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
@@ -10,6 +10,7 @@ import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
 import type { GuideWithStatus } from '@/lib/types'
 import { misPropinas } from '@/lib/propinas-datos'
 import { fechaConDia, pesos } from '@/lib/propinas'
+import { datosNivel } from '@/lib/progresion'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -130,6 +131,13 @@ export default async function DashboardPage() {
   const { propinas } = await misPropinas(supabase, session.user.id)
   const ultimaPropina = propinas[0] ?? null
 
+  // Progresión: solo para mozos. Si todavía no se corrió el SQL, no aparece.
+  const { data: miNivel } =
+    profile.puesto === 'Mozos'
+      ? await supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
+      : { data: null }
+  const nivelActual = datosNivel((miNivel?.nivel as number) ?? 0)
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
@@ -208,6 +216,26 @@ export default async function DashboardPage() {
                 <p className="text-xs text-brand-muted">El reparto de cada día</p>
               </>
             )}
+          </div>
+          <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+        </Link>
+      )}
+
+      {profile.puesto === 'Mozos' && (
+        <Link
+          href="/dashboard/progresion"
+          className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-brand-text">
+              {nivelActual ? `Tu nivel: ${nivelActual.porcentaje} % de la propina` : 'Tu progresión en la propina'}
+            </p>
+            <p className="text-xs text-brand-muted">
+              {nivelActual && nivelActual.nivel < 3 ? 'Mirá qué te falta para subir' : 'Del 50 % al 100 % en tres niveles'}
+            </p>
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
         </Link>

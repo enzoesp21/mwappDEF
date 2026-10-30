@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   FileDown,
   Moon,
+  Sun,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -32,6 +33,7 @@ import {
   diasConNoche,
   pintaComoFinde,
   totalesDelSector,
+  totalesGenerales,
   type DatosHorario,
   type PersonaHorario,
   type SectorHorario,
@@ -39,6 +41,7 @@ import {
 import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/components/horario/estilos'
 import { guardarSemanaAction, publicarSemanaAction } from '@/app/actions/horarios'
 import ClimaSemana from '@/components/admin/ClimaSemana'
+import ResumenSemana from '@/components/admin/ResumenSemana'
 import type { ClimaDia } from '@/lib/clima'
 
 interface Props {
@@ -351,6 +354,7 @@ export default function EditorHorario({
     [claveNoches, diasExtra]
   )
   const indicesDias = useMemo(() => Array.from({ length: totalDias }, (_, i) => i), [totalDias])
+  const generales = useMemo(() => totalesGenerales(datos, noches), [datos, noches])
 
   function agregarSector() {
     aplicar((d) => ({ ...d, sectores: [...d.sectores, { nombre: 'NUEVO SECTOR', personas: [] }] }))
@@ -602,6 +606,8 @@ export default function EditorHorario({
         ))}
       </div>
 
+      {datos.sectores.length > 0 && <ResumenSemana lunes={lunes} totales={generales} findes={findes} />}
+
       {datos.sectores.length === 0 && (
         <div className="border border-dashed border-brand-border rounded-xl p-8 text-center">
           <p className="text-sm text-brand-muted">
@@ -684,6 +690,20 @@ export default function EditorHorario({
                       <td key={i} className={cn('px-1 py-1.5 text-center text-[11px] font-semibold text-brand-text', claseColumna(findes[i]))}>
                         {t.total}
                         {t.noche > 0 && <span className="text-brand-accent"> ({t.noche}N)</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="bg-amber-50/70">
+                    <td className="sticky left-0 z-10 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-brand-text">
+                      <span className="flex items-center gap-1">
+                        <Sun className="w-3 h-3 text-amber-600" />
+                        Almuerzo
+                        <span className="font-normal text-brand-muted">12 a 15.30</span>
+                      </span>
+                    </td>
+                    {totales.map((t, i) => (
+                      <td key={i} className="px-1 py-1.5 text-center text-[11px] font-bold text-brand-text">
+                        {t.almuerzo}
                       </td>
                     ))}
                   </tr>

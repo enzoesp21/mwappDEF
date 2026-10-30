@@ -94,6 +94,10 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   lunes feriado) y cada persona pasa a tener 8 o 9 celdas. Sin el campo, 7 días como siempre.
   Nunca dar por hecho 7 días: usar `cantidadDias(datos)` y `nombreDiaCorto(i)` (i % 7).
   Al copiar la semana se vuelve a lunes a domingo.
+- Almuerzo (12 a 15.30): cuenta quien trabaja en algún momento de esa franja, leyendo la hora
+  de entrada y salida del texto (`horarioDelTurno`, `estaAlAlmuerzo`). "8 A 16.30", "11C", "14C"
+  sí; "16C", "7.30 A 12" y "M9+NOCHE..." no. Fila "Almuerzo" en cada sector del editor y
+  resumen general arriba (`totalesGenerales`: quien está en dos sectores cuenta una vez).
 - Clima: arriba del editor, el pronóstico de Mar del Plata por día (`lib/clima.ts`, Open-Meteo:
   gratis y sin clave, 16 días adelante y 7 atrás, caché de 30 min). Si no contesta, el editor
   sigue andando y lo avisa en una línea: nunca puede frenar el armado del horario.
@@ -113,6 +117,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Se guarda con la RPC `guardar_propinas` (todo el día en una operación, con versión).
 - Pantallas compartidas en `components/propinas/`, montadas en `/admin/propinas` y
   `/dashboard/propinas` (los admin no pueden entrar a `/dashboard`).
+
+## Progresión de mozos
+
+- Tres niveles = los tres grupos de propinas: 1 · 50 % ("prueba"), 2 · 75 % ("reducido"),
+  3 · 100 % ("camarero"). Requisitos escritos en `lib/progresion.ts` (decisión de Enzo, el
+  nivel 1 son sus cuatro criterios): manuales (los tilda un encargado), exámenes (se toman
+  solos; la guía se reconoce por partes del título en `claveDeGuia`) y tiempo mínimo.
+- Tablas `mozo_niveles` (nivel, desde, tildes en JSONB con claves "n2_...") e historial.
+  Se cambian solo con las RPC `cambiar_nivel_mozo` y `marcar_requisito_mozo` (admin). Al
+  bajar se borran las tildes de los niveles perdidos y el tiempo vuelve a contar.
+- Sin fila = sin nivel: propinas sigue como antes. Con nivel, la calculadora pone el grupo
+  sola en un día nuevo y al escribir el nombre; el cajero lo puede cambiar (se avisa).
+- Pantallas: `/admin/progresion` (lista y ficha) y `/dashboard/progresion` (solo puesto Mozos).
 
 ## Seguridad
 

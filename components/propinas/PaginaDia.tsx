@@ -11,6 +11,7 @@ import {
   usuariosParaVincular,
 } from '@/lib/propinas-datos'
 import EditorPropinas from '@/components/propinas/EditorPropinas'
+import { nivelesPorUsuario } from '@/lib/progresion-datos'
 import AvisoPropinas from '@/components/propinas/AvisoPropinas'
 import VistaDia from '@/components/propinas/VistaDia'
 
@@ -41,11 +42,12 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
     )
   }
 
-  const [usuarios, sugerencias, dia, plantilla] = await Promise.all([
+  const [usuarios, sugerencias, dia, plantilla, niveles] = await Promise.all([
     usuariosParaVincular(supabase),
     nombresUsados(supabase),
     esNuevo ? Promise.resolve(null) : cargarDia(supabase, fecha),
     esNuevo ? plantillaDiaNuevo(supabase) : Promise.resolve([]),
+    nivelesPorUsuario(supabase),
   ])
   if (dia && !dia.error && !dia.dia) notFound()
 
@@ -67,6 +69,7 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
           version={dia?.dia?.version ?? null}
           usuarios={usuarios}
           sugerencias={sugerencias}
+          nivelPorUsuario={niveles}
         />
       )}
     </div>

@@ -18,6 +18,7 @@ import {
   Trophy,
   CalendarDays,
   Banknote,
+  TrendingUp,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Logo from '@/components/Logo'
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { label: 'Empleado del mes', href: '/admin/empleado-del-mes', icon: Trophy, exact: false },
   { label: 'Horarios', href: '/admin/horarios', icon: CalendarDays, exact: false },
   { label: 'Propinas', href: '/admin/propinas', icon: Banknote, exact: false },
+  { label: 'Progresión', href: '/admin/progresion', icon: TrendingUp, exact: false },
   { label: 'Comida', href: '/admin/comida', icon: Utensils, exact: false },
 ]
 

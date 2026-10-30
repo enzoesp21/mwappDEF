@@ -160,11 +160,54 @@ export function esNoche(valor: string, hayNocheEseDia: boolean): boolean {
   return esCierre(valor) && hayNocheEseDia
 }
 
+/** El almuerzo va de las 12 a las 15.30 (en horas: 12 a 15,5). */
+export const ALMUERZO = { desde: 12, hasta: 15.5 }
+
+/**
+ * A qué hora entra y sale un turno, en horas (7.30 → 7,5). `fin` es 24 si
+ * cierra ("11C") y null si no lo dice ("11", "11 + NOCHE"). Null si no se
+ * entiende el texto o si de día está en otro lado ("M9+NOCHE WAIKIKI").
+ *
+ * Entiende cómo se escriben en la planilla: "9 A 17.30", "7:30 a 16:00",
+ * "10A 19.30", "10  18.30", "11C", "11 a C", "12 a 16.30 + NOCHE".
+ */
+export function horarioDelTurno(valor: string): { inicio: number; fin: number | null } | null {
+  const v = valor.trim().toUpperCase()
+  if (tipoCelda(v) !== 'turno' || v.startsWith('M9')) return null
+  const hora = (h: string, m?: string) => Number(h) + (m ? Number(m) / 60 : 0)
+
+  const empieza = v.match(/^(\d{1,2})(?:[.:](\d{2}))?/)
+  if (!empieza) return null
+  const inicio = hora(empieza[1], empieza[2])
+  if (inicio > 24) return null
+
+  const resto = v.slice(empieza[0].length).trim()
+  if (/^(A\s*)?C\b/.test(resto)) return { inicio, fin: 24 }
+  const termina = resto.match(/^(?:A\s*)?(\d{1,2})(?:[.:](\d{2}))?/)
+  if (!termina) return { inicio, fin: null }
+  const fin = hora(termina[1], termina[2])
+  return { inicio, fin: fin > inicio ? fin : null }
+}
+
+/**
+ * Está al almuerzo si trabaja en algún momento entre las 12 y las 15.30: los
+ * que entran a las 8, 9, 10 u 11 (o cierran desde ahí) sí; los de "16C" o los
+ * que se van a las 12 ("7.30 A 12"), no. Si no dice a qué hora sale, cuenta
+ * con que la hora de entrada sea antes de las 15.30.
+ */
+export function estaAlAlmuerzo(valor: string): boolean {
+  const h = horarioDelTurno(valor)
+  if (!h) return false
+  return h.inicio < ALMUERZO.hasta && (h.fin === null || h.fin > ALMUERZO.desde)
+}
+
 export interface TotalDia {
   /** Cuántos trabajan ese día en el complejo. */
   total: number
   /** De esos, cuántos hacen noche. */
   noche: number
+  /** De esos, cuántos están al almuerzo (12 a 15.30). */
+  almuerzo: number
 }
 
 /** Cuántos trabajan por día en un sector. `noches`: sale de diasConNoche(). */
@@ -172,13 +215,39 @@ export function totalesDelSector(sector: SectorHorario, noches: boolean[]): Tota
   return Array.from({ length: noches.length }, (_, dia) => {
     let total = 0
     let noche = 0
+    let almuerzo = 0
     for (const p of sector.personas) {
       const celda = p.dias[dia] ?? ''
       if (tipoCelda(celda) !== 'turno') continue
       total++
       if (esNoche(celda, noches[dia])) noche++
+      if (estaAlAlmuerzo(celda)) almuerzo++
     }
-    return { total, noche }
+    return { total, noche, almuerzo }
+  })
+}
+
+/**
+ * Lo mismo para todo el complejo. Alguien que figura en dos sectores (pasa:
+ * Gabriel en Maestranza y en Ensalada) cuenta una sola vez por día.
+ */
+export function totalesGenerales(datos: DatosHorario, noches: boolean[]): TotalDia[] {
+  return Array.from({ length: noches.length }, (_, dia) => {
+    const trabajan = new Set<string>()
+    const deNoche = new Set<string>()
+    const alAlmuerzo = new Set<string>()
+    datos.sectores.forEach((s, si) =>
+      s.personas.forEach((p, pi) => {
+        const celda = p.dias[dia] ?? ''
+        if (tipoCelda(celda) !== 'turno') return
+        // Sin nombre no se puede saber si es la misma persona: cuenta aparte.
+        const clave = normalizarNombre(p.nombre) || si + '-' + pi
+        trabajan.add(clave)
+        if (esNoche(celda, noches[dia])) deNoche.add(clave)
+        if (estaAlAlmuerzo(celda)) alAlmuerzo.add(clave)
+      })
+    )
+    return { total: trabajan.size, noche: deNoche.size, almuerzo: alAlmuerzo.size }
   })
 }
 

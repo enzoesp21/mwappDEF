@@ -27,6 +27,7 @@ import {
   type PersonaPropina,
 } from '@/lib/propinas'
 import { borrarDiaPropinasAction, guardarPropinasAction } from '@/app/actions/propinas'
+import { datosNivel, grupoDeNivel } from '@/lib/progresion'
 
 interface Fila {
   key: string
@@ -48,6 +49,8 @@ interface Props {
   version: string | null
   usuarios: { id: string; full_name: string }[]
   sugerencias: string[]
+  /** Nivel de progresión de cada mozo (por id de usuario): define su grupo. */
+  nivelPorUsuario?: Record<string, number>
 }
 
 let contador = 0
@@ -94,8 +97,20 @@ export default function EditorPropinas(props: Props) {
   const [fecha, setFecha] = useState(props.fecha)
   const [total, setTotal] = useState(props.total ? String(props.total) : '')
   const [general, setGeneral] = useState(props.general ? String(props.general) : '')
+  // El grupo que le toca a cada uno según su nivel de progresión, si tiene.
+  const nivelDe = (nombre: string): number | null => {
+    const id = nombre.trim() ? vincularUsuario(nombre, props.usuarios) : null
+    return id ? props.nivelPorUsuario?.[id] ?? null : null
+  }
+  const grupoSegunNivel = (nombre: string): Grupo | null => grupoDeNivel(nivelDe(nombre))
+
   const [filas, setFilas] = useState<Fila[]>(() =>
-    props.personas.length > 0 ? props.personas.map(aFila) : [aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })]
+    props.personas.length > 0
+      ? props.personas.map((p) =>
+          // En un día nuevo arranca con el grupo de su nivel; uno ya guardado queda como está.
+          aFila(props.esNuevo ? { ...p, grupo: grupoSegunNivel(p.nombre) ?? p.grupo } : p)
+        )
+      : [aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })]
   )
   const [version, setVersion] = useState(props.version)
   const [guardando, setGuardando] = useState(false)
@@ -268,6 +283,7 @@ export default function EditorPropinas(props: Props) {
             const p = personas[i]
             const trabajo = p.horas > 0
             const vinculado = f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null
+            const nivel = datosNivel(nivelDe(f.nombre) ?? 0)
             return (
               <li key={f.key} className={cn('px-4 py-3 space-y-2', !trabajo && 'bg-brand-card-hover/60')}>
                 <div className="flex items-center gap-2">
@@ -276,7 +292,11 @@ export default function EditorPropinas(props: Props) {
                       type="text"
                       list="nombres-propinas"
                       value={f.nombre}
-                      onChange={(e) => cambiar(f.key, { nombre: e.target.value })}
+                      onChange={(e) => {
+                        const nombre = e.target.value
+                        const grupo = grupoSegunNivel(nombre)
+                        cambiar(f.key, grupo ? { nombre, grupo } : { nombre })
+                      }}
                       placeholder="Nombre y apellido"
                       aria-label="Nombre"
                       className={cn(inputBase, 'font-medium', vinculado && 'pr-8')}
@@ -352,6 +372,19 @@ export default function EditorPropinas(props: Props) {
                   </div>
                 )}
 
+                {trabajo && nivel && (
+                  <p
+                    className={cn(
+                      'text-[11px]',
+                      nivel.grupo === f.grupo ? 'text-brand-muted' : 'text-amber-700 font-medium'
+                    )}
+                  >
+                    {nivel.grupo === f.grupo
+                      ? `Nivel ${nivel.nivel} de progresión · ${nivel.porcentaje} %`
+                      : `Su nivel de progresión es ${nivel.porcentaje} %: hoy lo pusiste distinto.`}
+                  </p>
+                )}
+
                 {trabajo && f.pago === 'tr_ef' && (
                   <label className="flex items-center gap-2">
                     <span className="text-xs text-brand-muted whitespace-nowrap">En efectivo</span>
@@ -382,7 +415,8 @@ export default function EditorPropinas(props: Props) {
           <p className="flex items-start gap-1.5 text-[11px] text-brand-muted leading-relaxed">
             <UserCheck className="w-3.5 h-3.5 flex-shrink-0 mt-px text-brand-accent" />
             Tiene usuario en la app y ve lo que le tocó. Si alguien no lo tiene, revisá que el nombre
-            y apellido estén igual que en su usuario.
+            y apellido estén igual que en su usuario. El grupo se pone solo según el nivel de cada mozo
+            (Progresión); si hace falta, lo cambiás.
           </p>
         </div>
       </section>
