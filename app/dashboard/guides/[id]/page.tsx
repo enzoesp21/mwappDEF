@@ -17,30 +17,19 @@ export default async function GuidePage({ params }: Props) {
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
 
-  const { data: guide } = await supabase
-    .from('guides')
-    .select('*')
-    .eq('id', params.id)
-    .single()
+  // La guía, quién mira y el examen se piden a la vez: el examen se busca por
+  // el id de la guía, que ya viene en la dirección.
+  const [{ data: guide }, { data: yo }, { data: exam }] = await Promise.all([
+    supabase.from('guides').select('*').eq('id', params.id).single(),
+    supabase.from('profiles').select('experience').eq('id', session.user.id).single(),
+    supabase.from('exams').select('id, title, passing_score').eq('guide_id', params.id).maybeSingle(),
+  ])
 
   if (!guide) notFound()
 
   // En período de prueba solo se lee la guía principal, ni pegando la dirección.
   // El examen lo frena además la base (puede_usar_examen).
-  if (!guide.is_primary) {
-    const { data: yo } = await supabase
-      .from('profiles')
-      .select('experience')
-      .eq('id', session.user.id)
-      .single()
-    if (yo?.experience === 'nuevo') redirect('/dashboard/guides')
-  }
-
-  const { data: exam } = await supabase
-    .from('exams')
-    .select('id, title, passing_score')
-    .eq('guide_id', guide.id)
-    .single()
+  if (!guide.is_primary && yo?.experience === 'nuevo') redirect('/dashboard/guides')
 
   let hasPassed = false
   let isPending = false

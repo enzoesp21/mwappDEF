@@ -10,6 +10,15 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [],
   },
+  experimental: {
+    // Ir y volver entre secciones sin esperar: una página visitada hace menos
+    // de 30 segundos se muestra al instante desde la memoria del navegador.
+    // Cuando algo se guarda, las acciones del servidor la invalidan igual.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
 }
 
 export default nextConfig

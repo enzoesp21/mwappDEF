@@ -49,22 +49,50 @@ export default async function DashboardPage() {
     .from('guides')
     .select('*')
     .or(`puestos.cs.{"${profile.puesto}"},puestos.cs.{"todos"}`)
-  const { data: guides } = await (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
-    // La guía principal va siempre primera, sin importar cuándo se creó.
-    .order('is_primary', { ascending: false })
-    .order('created_at', { ascending: true })
 
-  // Sin join anidado a exam_questions: el personal ya no puede leer esa tabla
-  // (las respuestas correctas viven ahí) y el join anularía toda la consulta.
-  const { data: exams } = await supabase
-    .from('exams')
-    .select('id, guide_id, title, passing_score')
+  // Aviso de comida: cuántas comidas de la semana que viene quedan sin elegir.
+  const mealsOpen = isSignupOpen()
+  const weekDays = mealsOpen ? getNextWeekDates() : []
 
-  const { data: results } = await supabase
-    .from('exam_results')
-    .select('*')
-    .eq('user_id', session.user.id)
-    .eq('passed', true)
+  // Todo lo que muestra Inicio se pide a la vez: antes iba de a una consulta
+  // por vez y la pantalla tardaba la suma de todas.
+  const [
+    { data: guides },
+    // Sin join anidado a exam_questions: el personal ya no puede leer esa tabla
+    // (las respuestas correctas viven ahí) y el join anularía toda la consulta.
+    { data: exams },
+    { data: results },
+    { data: eom },
+    { count: chosen },
+    { propinas },
+    { data: miNivel },
+  ] = await Promise.all([
+    (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
+      // La guía principal va siempre primera, sin importar cuándo se creó.
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true }),
+    supabase.from('exams').select('id, guide_id, title, passing_score'),
+    supabase.from('exam_results').select('*').eq('user_id', session.user.id).eq('passed', true),
+    // Empleado del mes vigente, para que lo vea todo el equipo al entrar.
+    supabase
+      .from('employee_of_month')
+      .select('period, user_id, photo_url, message')
+      .eq('period', currentPeriod())
+      .maybeSingle(),
+    mealsOpen
+      ? supabase
+          .from('meal_signups')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', session.user.id)
+          .gte('meal_date', weekDays[0].date)
+          .lte('meal_date', weekDays[weekDays.length - 1].date)
+      : Promise.resolve({ count: 0 }),
+    misPropinas(supabase, session.user.id),
+    // Progresión: solo para mozos. Si todavía no se corrió el SQL, no aparece.
+    profile.puesto === 'Mozos'
+      ? supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
     const exam = exams?.find((e) => e.guide_id === guide.id)
@@ -86,13 +114,6 @@ export default async function DashboardPage() {
   const passedCount = guidesWithStatus.filter((g) => g.status === 'passed').length
   const totalCount = guidesWithStatus.length
 
-  // Empleado del mes vigente, para que lo vea todo el equipo al entrar.
-  const { data: eom } = await supabase
-    .from('employee_of_month')
-    .select('period, user_id, photo_url, message')
-    .eq('period', currentPeriod())
-    .maybeSingle()
-
   let eomProfile: { full_name: string; puesto: string; avatar_url: string | null } | null = null
   if (eom) {
     const { data: p } = await supabase
@@ -109,33 +130,15 @@ export default async function DashboardPage() {
       : null
   }
 
-  // Aviso de comida: cuántas comidas de la semana que viene quedan sin elegir.
-  const mealsOpen = isSignupOpen()
-  let missingMeals = 0
-  if (mealsOpen) {
-    const weekDays = getNextWeekDates()
-    const totalSlots = weekDays.reduce((n, d) => n + d.meals.length, 0)
-    const { count: chosen } = await supabase
-      .from('meal_signups')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', session.user.id)
-      .gte('meal_date', weekDays[0].date)
-      .lte('meal_date', weekDays[weekDays.length - 1].date)
-    missingMeals = Math.max(0, totalSlots - (chosen ?? 0))
-  }
+  const totalSlots = weekDays.reduce((n, d) => n + d.meals.length, 0)
+  const missingMeals = mealsOpen ? Math.max(0, totalSlots - (chosen ?? 0)) : 0
 
   // Propinas: quien las carga tiene el acceso a mano; mozos y runners ven el
   // reparto de todos; el resto ve la última suya.
   const cargaPropinas = profile.carga_propinas === true
   const veRepartoSalon = profile.puesto === 'Mozos'
-  const { propinas } = await misPropinas(supabase, session.user.id)
   const ultimaPropina = propinas[0] ?? null
 
-  // Progresión: solo para mozos. Si todavía no se corrió el SQL, no aparece.
-  const { data: miNivel } =
-    profile.puesto === 'Mozos'
-      ? await supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
-      : { data: null }
   const nivelActual = datosNivel((miNivel?.nivel as number) ?? 0)
 
   return (

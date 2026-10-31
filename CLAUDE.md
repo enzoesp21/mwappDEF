@@ -22,6 +22,19 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
   Fotos del lugar en `public/fotos/` (sacadas de la web).
 - Despliega en Vercel desde la rama `main` de este repo.
 
+## Navegación (que se sienta rápida)
+
+- Cada sección tiene `loading.tsx` con esqueleto (`components/navegacion/Esqueleto.tsx`):
+  al tocar, aparece al instante su forma. Si se agrega una sección pesada, darle el suyo.
+- `template.tsx` en dashboard y admin anima la entrada: entre pestañas del menú entra del
+  costado según la dirección (`lib/navegacion.ts`), a lo de adentro sube apenas. Termina en
+  `transform: none` (no romper elementos `fixed`).
+- `BottomNav` y `AdminNav` marcan la sección al tocar, sin esperar a que cargue.
+- `BarraProgreso` (en el layout raíz) arranca al tocar un link interno.
+- `experimental.staleTimes` (30 s): volver a una sección reciente es instantáneo.
+- Las páginas piden sus datos con `Promise.all`, no de a uno: Inicio hacía ~10 en fila.
+- Letras con `next/font` (Poppins y Bodoni Moda), sin `@import` de Google.
+
 ## Cómo se entregan los cambios de base de datos
 
 **No hay migraciones automáticas.** Cada cambio de base es un archivo en `supabase/`

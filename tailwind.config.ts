@@ -28,9 +28,9 @@ const config: Config = {
       fontFamily: {
         // Las mismas letras que miradorwaikiki.com: Poppins para todo y una
         // serif en itálica para las frases ("Una propuesta diferente...").
-        sans: ['Poppins', '"Segoe UI"', 'system-ui', 'sans-serif'],
-        display: ['Poppins', '"Segoe UI"', 'system-ui', 'sans-serif'],
-        serif: ['"Bodoni Moda"', 'Georgia', '"Times New Roman"', 'serif'],
+        sans: ['var(--font-poppins)', 'Poppins', '"Segoe UI"', 'system-ui', 'sans-serif'],
+        display: ['var(--font-poppins)', 'Poppins', '"Segoe UI"', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-bodoni)', '"Bodoni Moda"', 'Georgia', '"Times New Roman"', 'serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',

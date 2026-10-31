@@ -61,13 +61,23 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
+  // La sección tocada se marca en el acto, sin esperar a que cargue la página.
+  const [tocado, setTocado] = useState<string | null>(null)
+
   useEffect(() => {
     setMobileOpen(false)
+    setTocado(null)
   }, [pathname])
 
   function isActive(href: string, exact: boolean) {
-    if (exact) return pathname === href
-    return pathname.startsWith(href)
+    const ruta = tocado ?? pathname
+    if (exact) return ruta === href
+    return ruta.startsWith(href)
+  }
+
+  function alTocar(href: string) {
+    if (href !== pathname) setTocado(href)
+    setMobileOpen(false)
   }
 
   async function handleLogout() {
@@ -110,6 +120,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
         <MobileNavContent
           adminName={adminName}
           isActive={isActive}
+          alTocar={alTocar}
           loggingOut={loggingOut}
           onLogout={handleLogout}
           pendingCount={pendingCount}
@@ -136,6 +147,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
             <Link
               key={href}
               href={href}
+              onClick={() => alTocar(href)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer min-h-[44px]',
                 isActive(href, exact)
@@ -168,6 +180,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
 function MobileNavContent({
   adminName,
   isActive,
+  alTocar,
   loggingOut,
   onLogout,
   pendingCount,
@@ -175,6 +188,7 @@ function MobileNavContent({
 }: {
   adminName: string
   isActive: (href: string, exact: boolean) => boolean
+  alTocar: (href: string) => void
   loggingOut: boolean
   onLogout: () => void
   pendingCount: number
@@ -197,6 +211,7 @@ function MobileNavContent({
           <Link
             key={href}
             href={href}
+            onClick={() => alTocar(href)}
             className={cn(
               'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 cursor-pointer min-h-[44px]',
               isActive(href, exact)

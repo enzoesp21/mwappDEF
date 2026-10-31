@@ -1,5 +1,25 @@
 import type { Metadata, Viewport } from 'next'
+import { Bodoni_Moda, Poppins } from 'next/font/google'
 import './globals.css'
+import BarraProgreso from '@/components/navegacion/BarraProgreso'
+
+// Las letras de miradorwaikiki.com, servidas por la propia app: no se bajan de
+// Google al abrirla y no hay salto de letra mientras cargan.
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap',
+})
+const bodoni = Bodoni_Moda({
+  subsets: ['latin'],
+  style: ['italic'],
+  weight: ['400', '500'],
+  variable: '--font-bodoni',
+  display: 'swap',
+  // Next no trae medidas de reemplazo para esta letra; solo se usa en frases.
+  adjustFontFallback: false,
+})
 
 export const metadata: Metadata = {
   title: 'Mirador Waikiki App',
@@ -37,8 +57,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
-      <body className="bg-brand-dark text-brand-text antialiased">{children}</body>
+    <html lang="es" className={`${poppins.variable} ${bodoni.variable}`}>
+      <body className="bg-brand-dark text-brand-text antialiased">
+        <BarraProgreso />
+        {children}
+      </body>
     </html>
   )
 }

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Bodoni+Moda:ital,wght@1,400;1,500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +14,7 @@
 body {
   background-color: #dbd2b5;
   color: #1f2d27;
-  font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-poppins), 'Poppins', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -194,6 +192,104 @@ h2 {
 .uppercase.tracking-wider,
 .uppercase.tracking-widest {
   letter-spacing: 0.16em;
+}
+
+/* Esqueletos de carga: crema con un brillo que pasa. */
+.esqueleto {
+  background: linear-gradient(90deg, #e9e0c8 0%, #f6f1e4 45%, #e9e0c8 90%);
+  background-size: 220% 100%;
+  animation: brillo 1.4s ease-in-out infinite;
+}
+@keyframes brillo {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/*
+ * Entrada de cada pantalla (ver app/dashboard/template.tsx). Corta y con
+ * freno suave al final, como en las apps nativas. Termina en "transform:
+ * none" para no dejar nada que afecte a los elementos fijos de la página.
+ */
+.transicion {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+.entrada-sube {
+  animation-name: entra-sube;
+}
+.entrada-derecha {
+  animation-name: entra-derecha;
+}
+.entrada-izquierda {
+  animation-name: entra-izquierda;
+}
+.entrada-vuelve {
+  animation-name: entra-izquierda;
+  animation-duration: 240ms;
+}
+@keyframes entra-sube {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes entra-derecha {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes entra-izquierda {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/*
+ * La página ya entra con la transición; su animación propia queda en un
+ * fundido corto, que se nota cuando llega después del esqueleto de carga.
+ */
+.transicion > .animate-slide-up,
+.transicion > .animate-fade-in,
+.transicion > div > .animate-slide-up {
+  animation: aparece 200ms ease-out both;
+}
+@keyframes aparece {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Respuesta al toque: lo que se toca se hunde apenas, como un botón real. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+a.rounded-2xl:active,
+a.rounded-xl:active,
+button.rounded-2xl:active,
+button.rounded-xl:active,
+button.rounded-full:active {
+  transform: scale(0.98);
 }
 
 /* Bottom nav safe area */
