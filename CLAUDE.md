@@ -149,6 +149,29 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   sola en un día nuevo y al escribir el nombre; el cajero lo puede cambiar (se avisa).
 - Pantallas: `/admin/progresion` (lista y ficha) y `/dashboard/progresion` (solo puesto Mozos).
 
+## Fichadas (reloj EP300 Pro)
+
+- El reloj está conectado por red a la PC de la caja, donde CrossChex Standard (v4.3.18)
+  guarda todo en `C:\Program Files (x86)\Anviz\CrossChex Standard\DB\CrossChex.mdb` (Access).
+  CrossChex queda abierto con "Control en tiempo real" en Activar (se apaga si se reinicia
+  la PC) y una descarga programada a las 12:30 de red de seguridad.
+- `fichero/sincronizar-fichadas.ps1` corre cada minuto en esa PC (tarea de Windows como
+  SYSTEM, la deja `fichero/instalar.ps1`), lee la base con Jet (PowerShell de 32 bits) y
+  manda las nuevas con la RPC `registrar_fichadas`. Entra con la clave del fichero
+  (`fichero_config.token`), no con un usuario: solo puede agregar. `config.json` tiene la
+  clave y NO se sube (está en `.gitignore`).
+- Tablas (`supabase/add_fichadas.sql`): `fichadas` (logid de CrossChex, hora, tipo 0
+  entrada / 1 salida / 2 break / 3 fin de break), `fichero_personas` (nro., nombre y sector
+  de CrossChex, lista aparte de los usuarios de la app) y `fichero_estado` (cuándo habló
+  la caja por última vez, hasta qué logid llegó y errores). Solo las leen los admin.
+- En CrossChex casi nadie tiene departamento: están todos en "Mirador Waikiki", que es la
+  empresa. La pantalla lo trata como "sin sector" y, mientras sean mayoría, muestra una sola
+  lista. Si cargan los sectores en CrossChex, aparecen solos (los nombres se resincronizan).
+- Cuenta de presentes en `lib/fichadas.ts`: la última fichada de cada uno en 16 h decide;
+  más de 13 h desde la entrada sin salida va aparte. Las dobles (mismo tipo en menos de
+  2 min) se ignoran. La jornada arranca a las 5. Pantalla en `/admin/fichadas`, que se
+  refresca sola cada 30 s.
+
 ## Seguridad
 
 - RLS en todas las tablas. Función `is_admin()` en la base.

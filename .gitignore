@@ -42,3 +42,8 @@ next-env.d.ts
 __pycache__/
 *.pyc
 *.pyo
+
+# Programa del fichero: la configuración tiene la clave, no se sube
+fichero/config.json
+fichero/fichero.log*
+fichero/personas.hash
