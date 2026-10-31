@@ -24,16 +24,6 @@ export interface EstadoFichero {
   error: string | null
 }
 
-/** Los tipos de la tabla Status de CrossChex. */
-export const TIPOS: Record<number, string> = {
-  0: 'Entrada',
-  1: 'Salida',
-  2: 'Break',
-  3: 'Fin de break',
-}
-
-export const nombreTipo = (tipo: number) => TIPOS[tipo] ?? `Tipo ${tipo}`
-
 const MINUTO = 60 * 1000
 const HORA = 60 * MINUTO
 const ARGENTINA = -3 * HORA
@@ -43,7 +33,7 @@ const HORA_INICIO_JORNADA = 4
 /** Se piden dos días: para deducir entradas y salidas hace falta ver cómo venía cada uno. */
 const VENTANA = 48 * HORA
 /** Con más de 13 horas desde la entrada, seguramente se olvidó de fichar la salida. */
-const TURNO_LARGO = 13 * HORA
+export const TURNO_LARGO = 13 * HORA
 /** Una entrada de hace más de un día ya no se muestra: se olvidó la salida seguro. */
 const ENTRADA_VIEJA = 24 * HORA
 /** Si la caja no se conecta en 5 minutos, algo pasa (anda cada minuto). */
@@ -52,6 +42,11 @@ const CAJA_SIN_CONEXION = 5 * MINUTO
 const CROSSCHEX_QUIETO = 3 * HORA
 /** Otra fichada de la misma persona a menos de 30 minutos es la misma (apoyó el dedo de nuevo). */
 const REPETIDA = 30 * MINUTO
+
+/** A qué jornada pertenece una hora: "2026-10-30" (lo de antes de las 4 es del día anterior). */
+export function jornadaDe(iso: string): string {
+  return new Date(Date.parse(iso) + ARGENTINA - HORA_INICIO_JORNADA * HORA).toISOString().slice(0, 10)
+}
 
 /** Cuándo empezó la jornada que está corriendo, en ISO. */
 export function inicioJornada(ahora: number): string {
@@ -70,8 +65,6 @@ export type Sentido = 'entrada' | 'salida'
 
 export interface FichadaLeida extends Fichada {
   sentido: Sentido
-  /** La tecla que apretó dice lo contrario de lo que se dedujo. */
-  teclaDistinta: boolean
 }
 
 function sentidoDeTecla(tipo: number): Sentido | null {
@@ -167,10 +160,7 @@ function deducirSentidos(lista: Fichada[]): FichadaLeida[] {
     sentidos[i] = SENTIDOS[j]
     j = desde[i][j]
   }
-  return lista.map((f, i) => {
-    const tecla = sentidoDeTecla(f.tipo)
-    return { ...f, sentido: sentidos[i], teclaDistinta: tecla !== null && tecla !== sentidos[i] }
-  })
+  return lista.map((f, i) => ({ ...f, sentido: sentidos[i] }))
 }
 
 export type Situacion = 'adentro' | 'sin-salida'
@@ -178,30 +168,14 @@ export type Situacion = 'adentro' | 'sin-salida'
 export interface Presente {
   userid: string
   nombre: string
-  sector: string
   situacion: Situacion
   /** La hora en que entró. */
   entrada: string
 }
 
-export interface Sector {
-  nombre: string
-  personas: Presente[]
-}
-
-export const SIN_SECTOR = 'Sin sector'
-
-/** El departamento raíz de CrossChex es la empresa, no un sector: hoy están todos ahí. */
-const SECTORES_GENERALES = new Set(['mirador waikiki'])
-
 /** El nombre como se muestra: CrossChex los tiene en mayúscula ("ANA PEREZ" -> "Ana Perez"). */
 export function nombreDe(persona: PersonaFichero | undefined, userid: string): string {
   return persona?.nombre ? formatearNombre(persona.nombre) : `Nro. ${userid}`
-}
-
-export function sectorDe(persona: PersonaFichero | undefined): string {
-  const sector = persona?.sector?.trim()
-  return sector && !SECTORES_GENERALES.has(sector.toLowerCase()) ? sector : SIN_SECTOR
 }
 
 /**
@@ -223,24 +197,11 @@ export function presentes(leidas: FichadaLeida[], personas: Map<string, PersonaF
     resultado.push({
       userid,
       nombre: nombreDe(persona, userid),
-      sector: sectorDe(persona),
       situacion: hace > TURNO_LARGO ? 'sin-salida' : 'adentro',
       entrada: f.fecha_hora,
     })
   })
   return resultado.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-}
-
-/** Los presentes agrupados por sector, los sectores con más gente primero. */
-export function porSector(lista: Presente[]): Sector[] {
-  const grupos = new Map<string, Presente[]>()
-  for (const p of lista) grupos.set(p.sector, [...(grupos.get(p.sector) ?? []), p])
-  return Array.from(grupos, ([nombre, personas]) => ({ nombre, personas })).sort(
-    (a, b) =>
-      Number(a.nombre === SIN_SECTOR) - Number(b.nombre === SIN_SECTOR) ||
-      b.personas.length - a.personas.length ||
-      a.nombre.localeCompare(b.nombre, 'es')
-  )
 }
 
 export interface Aviso {

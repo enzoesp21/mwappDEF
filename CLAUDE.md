@@ -164,9 +164,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   entrada / 1 salida / 2 break / 3 fin de break), `fichero_personas` (nro., nombre y sector
   de CrossChex, lista aparte de los usuarios de la app) y `fichero_estado` (cuándo habló
   la caja por última vez, hasta qué logid llegó y errores). Solo las leen los admin.
-- En CrossChex casi nadie tiene departamento: están todos en "Mirador Waikiki", que es la
-  empresa. La pantalla lo trata como "sin sector" y, mientras sean mayoría, muestra una sola
-  lista. Si cargan los sectores en CrossChex, aparecen solos (los nombres se resincronizan).
+- Los sectores salen de **Horarios**, no de CrossChex (ahí están todos en "Mirador Waikiki").
+  `vincularHorarios` (`lib/fichadas-reporte.ts`) relaciona cada nombre de la planilla con una
+  persona del reloj: palabras en cualquier orden, una letra de diferencia en palabras largas
+  ("Caruso"/"CARUSSO", "Gisel"/"GISELA"), sin perdón si es una sola palabra ("Moreno" no es
+  "MORENA"), ignorando el sector usado como apellido ("LURDES COCINA"). Ante dos candidatos
+  distintos no se vincula; con el mismo nombre exacto (Bruno Molina está dos veces) se
+  vinculan los dos. Quien está en dos sectores va al que tiene turno ese día. Los que no se
+  encuentran van a "Sin sector en Horarios".
+- Reporte del mes (decisión de Enzo: nada de listas de fichadas sueltas): una fila por día
+  con personas y horas; al abrirla, cada sector con su gente, horas y horario real. Las horas
+  son de turnos completos (entrada -> salida deducidas); lo incompleto se marca y no suma.
+  `?mes=2026-10` para otros meses. Supabase devuelve como mucho 1000 filas por consulta: las
+  fichadas se piden de a 1000 (`traerFichadas` en la página).
 - **No se le puede creer a la tecla** (Entrada/Salida): mucha gente aprieta "Entrada" al irse
   o "Salida" al llegar (1 de cada 6 en sept./oct.; Enzo lo vio en la pantalla). `leerFichadas`
   en `lib/fichadas.ts` deduce el sentido por el orden de las fichadas de cada uno (Viterbi
