@@ -167,10 +167,18 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - En CrossChex casi nadie tiene departamento: están todos en "Mirador Waikiki", que es la
   empresa. La pantalla lo trata como "sin sector" y, mientras sean mayoría, muestra una sola
   lista. Si cargan los sectores en CrossChex, aparecen solos (los nombres se resincronizan).
-- Cuenta de presentes en `lib/fichadas.ts`: la última fichada de cada uno en 16 h decide;
-  más de 13 h desde la entrada sin salida va aparte. Las dobles (mismo tipo en menos de
-  2 min) se ignoran. La jornada arranca a las 5. Pantalla en `/admin/fichadas`, que se
-  refresca sola cada 30 s.
+- **No se le puede creer a la tecla** (Entrada/Salida): mucha gente aprieta "Entrada" al irse
+  o "Salida" al llegar (1 de cada 6 en sept./oct.; Enzo lo vio en la pantalla). `leerFichadas`
+  en `lib/fichadas.ts` deduce el sentido por el orden de las fichadas de cada uno (Viterbi
+  con costos: errarle a la tecla 1, olvidarse de fichar 3, turno de 12-14 h 1.5, de 14-16 h 2,
+  de más de 16 h imposible, empezar saliendo 1). Probado con casos reales: los que entran y
+  salen con "Entrada", turnos dobles (8:44 a 23:07), cierres pasada la medianoche, limpieza
+  que entra a las 4. Si se tocan los costos, volver a probar esos casos.
+- Dobles: otra fichada de la misma persona a menos de 30 min es la misma. Se piden 48 h para
+  ver cómo venía cada uno. Presente = su última fichada deducida es entrada; con más de 13 h
+  va al recuadro de "no fichó la salida"; con más de 24 h no se muestra. La jornada arranca a
+  las 4. Pantalla en `/admin/fichadas`, que se refresca sola cada 30 s. Nadie usa las teclas
+  de break.
 
 ## Seguridad
 

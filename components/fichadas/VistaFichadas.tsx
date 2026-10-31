@@ -1,28 +1,22 @@
-import { AlertTriangle, CheckCircle2, Coffee, Fingerprint, WifiOff } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Fingerprint, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   avisoConexion,
   horaArgentina,
   inicioJornada,
+  leerFichadas,
   nombreDe,
   nombreTipo,
   sectorDe,
   SIN_SECTOR,
   porSector,
   presentes,
-  sinRepetidas,
   type EstadoFichero,
   type Fichada,
   type PersonaFichero,
 } from '@/lib/fichadas'
 import RefrescoAutomatico from '@/components/fichadas/RefrescoAutomatico'
 
-const COLOR_TIPO: Record<number, string> = {
-  0: 'bg-brand-success/15 text-brand-success',
-  1: 'bg-brand-border/40 text-brand-muted',
-  2: 'bg-amber-100 text-amber-800',
-  3: 'bg-brand-accent/10 text-brand-accent',
-}
 
 interface Props {
   fichadas: Fichada[]
@@ -36,10 +30,11 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
   const personas = new Map(listaPersonas.map((p) => [p.userid, p]))
   const aviso = avisoConexion(estado, ahora)
 
-  const lista = presentes(fichadas, personas, ahora)
-  const adentro = lista.filter((p) => p.situacion !== 'sin-salida')
+  // Entrada o salida se deduce por el orden, no por la tecla (ver leerFichadas).
+  const leidas = leerFichadas(fichadas)
+  const lista = presentes(leidas, personas, ahora)
+  const adentro = lista.filter((p) => p.situacion === 'adentro')
   const sinSalida = lista.filter((p) => p.situacion === 'sin-salida')
-  const enBreak = adentro.filter((p) => p.situacion === 'break').length
   // Hoy en CrossChex casi nadie tiene sector: mientras sea así, va una sola
   // lista a lo ancho y el sector como etiqueta de quien lo tenga.
   const conSector = adentro.filter((p) => p.sector !== SIN_SECTOR).length
@@ -47,9 +42,12 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
   const sectores = sinSectores ? [{ nombre: 'Adentro ahora', personas: adentro }] : porSector(adentro)
 
   const desdeHoy = Date.parse(inicioJornada(ahora))
-  const deHoy = sinRepetidas(fichadas)
+  const deHoy = leidas
     .filter((f) => Date.parse(f.fecha_hora) >= desdeHoy && Date.parse(f.fecha_hora) <= ahora + 5 * 60 * 1000)
     .reverse()
+  // Quienes vinieron hoy y su última fichada es una salida.
+  const ultimaDeHoy = new Map(deHoy.map((f) => [f.userid, f] as const).reverse())
+  const seFueron = Array.from(ultimaDeHoy.values()).filter((f) => f.sentido === 'salida').length
 
   return (
     <div className="max-w-3xl space-y-5 animate-fade-in">
@@ -84,7 +82,7 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
 
       <div className="grid grid-cols-3 gap-3">
         <Numero valor={adentro.length} texto="Adentro" destacado />
-        <Numero valor={enBreak} texto="En break" />
+        <Numero valor={seFueron} texto="Se fueron" />
         <Numero valor={deHoy.length} texto="Fichadas hoy" />
       </div>
 
@@ -99,7 +97,7 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
               <li key={p.userid} className="text-sm text-amber-900 flex justify-between gap-3">
                 <span className="truncate">{p.nombre}</span>
                 <span className="text-xs tabular-nums whitespace-nowrap">
-                  entró {p.entrada ? horaArgentina(p.entrada) : '—'}
+                  entró {horaArgentina(p.entrada)}
                 </span>
               </li>
             ))}
@@ -131,16 +129,9 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
                         <span className="ml-1.5 text-[10px] text-brand-muted">· {p.sector}</span>
                       )}
                     </span>
-                    {p.situacion === 'break' ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap">
-                        <Coffee className="w-3 h-3" />
-                        break {horaArgentina(p.ultima.fecha_hora)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-brand-muted tabular-nums whitespace-nowrap">
-                        {p.entrada ? 'desde ' + horaArgentina(p.entrada) : ''}
-                      </span>
-                    )}
+                    <span className="text-xs text-brand-muted tabular-nums whitespace-nowrap">
+                      desde {horaArgentina(p.entrada)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -169,14 +160,23 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
                     <p className="text-sm text-brand-text truncate">{nombreDe(persona, f.userid)}</p>
                     {sector !== SIN_SECTOR && <p className="text-[11px] text-brand-muted truncate">{sector}</p>}
                   </div>
-                  <span
-                    className={cn(
-                      'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap',
-                      COLOR_TIPO[f.tipo] ?? COLOR_TIPO[1]
+                  <div className="flex flex-col items-end flex-shrink-0">
+                    <span
+                      className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap',
+                        f.sentido === 'entrada'
+                          ? 'bg-brand-success/15 text-brand-success'
+                          : 'bg-brand-border/40 text-brand-muted'
+                      )}
+                    >
+                      {f.sentido === 'entrada' ? 'Entrada' : 'Salida'}
+                    </span>
+                    {f.teclaDistinta && (
+                      <span className="text-[10px] text-brand-muted mt-0.5 whitespace-nowrap">
+                        marcó {nombreTipo(f.tipo)}
+                      </span>
                     )}
-                  >
-                    {nombreTipo(f.tipo)}
-                  </span>
+                  </div>
                 </li>
               )
             })}
@@ -195,7 +195,8 @@ export function Encabezado() {
         Fichadas
       </h1>
       <p className="text-brand-muted text-sm mt-0.5 leading-relaxed">
-        Quién está adentro ahora según el reloj de la entrada. La jornada empieza a las 5 de la mañana.
+        Quién está adentro ahora según el reloj de la entrada. Entrada o salida se deduce por el orden de las
+        fichadas de cada uno, no por la tecla que apretó. La jornada empieza a las 4 de la mañana.
       </p>
     </div>
   )
