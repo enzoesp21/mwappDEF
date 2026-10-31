@@ -172,6 +172,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   distintos no se vincula; con el mismo nombre exacto (Bruno Molina está dos veces) se
   vinculan los dos. Quien está en dos sectores va al que tiene turno ese día. Los que no se
   encuentran van a "Sin sector en Horarios".
+- Tocando un nombre (adentro, se fueron, vinieron, reporte del día) aparece "Entrada según
+  horario": la celda de la planilla de esa semana para ese día, leída con `horarioDelTurno`
+  ("8 A 16.30" -> 08:00). Solo la semana de ese día (`celdaDe`), nunca otra.
 - Reporte del mes (decisión de Enzo: nada de listas de fichadas sueltas): una fila por día
   con personas y horas; al abrirla, cada sector con su gente, horas y horario real. Las horas
   son de turnos completos (entrada -> salida deducidas); lo incompleto se marca y no suma.

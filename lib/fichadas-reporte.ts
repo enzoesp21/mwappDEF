@@ -1,7 +1,7 @@
 // Lo que arma el reporte del mes en /admin/fichadas: los turnos de cada uno con
 // sus horas, y en qué sector de Horarios va cada persona del reloj.
 
-import { lunesDe, normalizarNombre, tipoCelda, type DatosHorario } from '@/lib/horarios'
+import { horarioDelTurno, lunesDe, normalizarNombre, tipoCelda, type DatosHorario } from '@/lib/horarios'
 import { jornadaDe, nombreDe, type FichadaLeida, type PersonaFichero } from '@/lib/fichadas'
 
 export const SIN_SECTOR_HORARIOS = 'Sin sector en Horarios'
@@ -72,6 +72,8 @@ interface Ubicacion {
 export interface SectoresDelHorario {
   /** El sector de esa persona ese día (fecha "2026-10-30"), o null si no está en Horarios. */
   sectorDe: (userid: string, fecha: string) => string | null
+  /** Lo que dice la planilla de esa semana para esa persona ese día ("8 A 16.30", "X"), o null. */
+  celdaDe: (userid: string, fecha: string) => string | null
   /** Los sectores en el orden de la planilla. */
   orden: string[]
 }
@@ -146,6 +148,13 @@ export function vincularHorarios(
   }
   const lunesOrdenados = Array.from(porSemana.keys()).sort()
 
+  /** Dónde figura ese día: si está en dos sectores, el que tiene turno. */
+  function ubicacionDelDia(ubicaciones: Ubicacion[], fecha: string, lunes: string): { ubicacion: Ubicacion; indice: number } {
+    const indice = Math.round((Date.parse(fecha) - Date.parse(lunes)) / 86400000)
+    const conTurno = ubicaciones.find((u) => tipoCelda(u.dias?.[indice] ?? '') === 'turno')
+    return { ubicacion: conTurno ?? ubicaciones[0], indice }
+  }
+
   function sectorDe(userid: string, fecha: string): string | null {
     const lunes = lunesDe(fecha)
     let ubicaciones = porSemana.get(lunes)?.get(userid)
@@ -160,12 +169,19 @@ export function vincularHorarios(
       }
     }
     if (!ubicaciones) return null
-    const indice = Math.round((Date.parse(fecha) - Date.parse(lunes)) / 86400000)
-    const conTurno = ubicaciones.find((u) => tipoCelda(u.dias?.[indice] ?? '') === 'turno')
-    return (conTurno ?? ubicaciones[0]).sector
+    return ubicacionDelDia(ubicaciones, fecha, lunes).ubicacion.sector
   }
 
-  return { sectorDe, orden }
+  // Acá no vale otra semana: la celda tiene que ser la de ese día.
+  function celdaDe(userid: string, fecha: string): string | null {
+    const lunes = lunesDe(fecha)
+    const ubicaciones = porSemana.get(lunes)?.get(userid)
+    if (!ubicaciones) return null
+    const { ubicacion, indice } = ubicacionDelDia(ubicaciones, fecha, lunes)
+    return ubicacion.dias?.[indice] ?? null
+  }
+
+  return { sectorDe, celdaDe, orden }
 }
 
 /** Agrupa por sector en el orden de la planilla; los que no están, al final. */
@@ -181,6 +197,29 @@ export function agruparPorSector<T>(
   }
   const posicion = (s: string) => (s === SIN_SECTOR_HORARIOS ? Infinity : orden.indexOf(s) === -1 ? 999 : orden.indexOf(s))
   return Array.from(grupos, ([nombre, items]) => ({ nombre, items })).sort((a, b) => posicion(a.nombre) - posicion(b.nombre))
+}
+
+/** "08:00 (8 A 16.30)", "franco", "no figura en Horarios ese día"... para mostrar al tocar un nombre. */
+export function entradaSegunHorario(celda: string | null): string {
+  if (celda === null) return 'no figura en Horarios ese día'
+  const texto = celda.trim()
+  switch (tipoCelda(texto)) {
+    case 'vacio':
+      return 'no tiene horario cargado ese día'
+    case 'libre':
+      return 'tenía franco (X)'
+    case 'vacaciones':
+      return 'estaba de vacaciones'
+    case 'licencia':
+      return 'estaba de licencia'
+    case 'otro_lugar':
+      return `en otro lado (${texto})`
+  }
+  const turno = horarioDelTurno(texto)
+  if (!turno) return texto
+  const h = Math.floor(turno.inicio)
+  const m = Math.round((turno.inicio - h) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} (${texto})`
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +279,8 @@ export function armarTurnos(leidas: FichadaLeida[], ahora: number, turnoLargo: n
 export interface FilaPersona {
   userid: string
   nombre: string
+  /** A qué hora le tocaba entrar ese día según Horarios (texto para mostrar). */
+  entradaHorario: string
   turnos: Turno[]
   ms: number
 }
@@ -275,6 +316,7 @@ export function reporteDelMes(
     const filas: FilaPersona[] = Array.from(porPersona, ([userid, ts]) => ({
       userid,
       nombre: nombreDe(personas.get(userid), userid),
+      entradaHorario: entradaSegunHorario(horario.celdaDe(userid, fecha)),
       turnos: ts.sort((a, b) => Date.parse(a.entrada ?? a.salida!) - Date.parse(b.entrada ?? b.salida!)),
       ms: ts.reduce((s, t) => s + t.ms, 0),
     }))

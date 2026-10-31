@@ -7,6 +7,7 @@ import {
   horaArgentina,
   jornadaDe,
   leerFichadas,
+  nombreDe,
   presentes,
   TURNO_LARGO,
   type EstadoFichero,
@@ -17,6 +18,7 @@ import {
   agruparPorSector,
   armarTurnos,
   duracion,
+  entradaSegunHorario,
   horasTotales,
   reporteDelMes,
   vincularHorarios,
@@ -25,6 +27,8 @@ import {
   type Turno,
 } from '@/lib/fichadas-reporte'
 import RefrescoAutomatico from '@/components/fichadas/RefrescoAutomatico'
+import NumerosDelDia, { type FilaDelDia } from '@/components/fichadas/NumerosDelDia'
+import NombreConHorario from '@/components/fichadas/NombreConHorario'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -64,9 +68,15 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
   const grupos = agruparPorSector(adentro, (p) => horario.sectorDe(p.userid, hoy), horario.orden)
 
   const turnos = armarTurnos(leidas, ahora, TURNO_LARGO)
-  const vinieronHoy = new Set(turnos.filter((t) => t.dia === hoy).map((t) => t.userid))
-  const siguen = new Set(lista.map((p) => p.userid))
-  const seFueron = Array.from(vinieronHoy).filter((u) => !siguen.has(u)).length
+  const { fueron, vinieron } = quienesHoy(
+    turnos.filter((t) => t.dia === hoy),
+    new Set(lista.map((p) => p.userid)),
+    (userid) => ({
+      nombre: lista.find((p) => p.userid === userid)?.nombre ?? nombreDe(personas.get(userid), userid),
+      sector: horario.sectorDe(userid, hoy),
+      entradaHorario: entradaSegunHorario(horario.celdaDe(userid, hoy)),
+    })
+  )
 
   // Los días del mes, hasta hoy.
   const [anio, numeroMes] = mes.split('-').map(Number)
@@ -115,11 +125,7 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
-        <Numero valor={adentro.length} texto="Adentro" destacado />
-        <Numero valor={seFueron} texto="Se fueron" />
-        <Numero valor={vinieronHoy.size} texto="Vinieron hoy" />
-      </div>
+      <NumerosDelDia adentro={adentro.length} fueron={fueron} vinieron={vinieron} />
 
       {sinSalida.length > 0 && (
         <section className="bg-amber-50 border border-amber-300 rounded-2xl p-4">
@@ -139,12 +145,12 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
       )}
 
       {grupos.length === 0 ? (
-        <div className="border border-dashed border-brand-border rounded-2xl p-8 text-center">
+        <div id="adentro" className="border border-dashed border-brand-border rounded-2xl p-8 text-center scroll-mt-20">
           <Fingerprint className="w-8 h-8 text-brand-muted mx-auto mb-2" />
           <p className="text-sm text-brand-muted">No hay nadie adentro según el reloj.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div id="adentro" className="grid gap-3 sm:grid-cols-2 scroll-mt-20">
           {grupos.map((g) => (
             <section key={g.nombre} className="bg-brand-card border border-brand-border rounded-2xl p-4">
               <h2 className="flex items-center justify-between gap-2">
@@ -153,9 +159,9 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
               </h2>
               <ul className="mt-2 divide-y divide-brand-border/50">
                 {g.items.map((p) => (
-                  <li key={p.userid} className="flex items-center gap-2 py-1.5">
-                    <span className="flex-1 min-w-0 text-sm text-brand-text truncate">{p.nombre}</span>
-                    <span className="text-xs text-brand-muted tabular-nums whitespace-nowrap">
+                  <li key={p.userid} className="flex items-start gap-2 py-1.5">
+                    <NombreConHorario nombre={p.nombre} entrada={entradaSegunHorario(horario.celdaDe(p.userid, hoy))} />
+                    <span className="text-xs text-brand-muted tabular-nums whitespace-nowrap pt-0.5">
                       desde {horaArgentina(p.entrada)}
                     </span>
                   </li>
@@ -255,7 +261,9 @@ function DiaDelMes({ dia, esHoy }: { dia: Dia; esHoy: boolean }) {
             <ul className="divide-y divide-brand-border/40">
               {s.filas.map((f) => (
                 <li key={f.userid} className="flex items-start gap-3 py-1.5">
-                  <span className="flex-1 min-w-0 text-sm text-brand-text truncate pt-0.5">{f.nombre}</span>
+                  <div className="flex-1 min-w-0 pt-0.5 flex">
+                    <NombreConHorario nombre={f.nombre} entrada={f.entradaHorario} />
+                  </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-semibold text-brand-text tabular-nums">
                       {f.ms > 0 ? duracion(f.ms) : '—'}
@@ -308,29 +316,64 @@ export function Encabezado() {
       </h1>
       <p className="text-brand-muted text-sm mt-0.5 leading-relaxed">
         Quién está adentro ahora según el reloj de la entrada, y el mes día por día. Entrada o salida se deduce por el
-        orden de las fichadas, no por la tecla. La jornada empieza a las 4 de la mañana.
+        orden de las fichadas, no por la tecla. La jornada empieza a las 4 de la mañana. Tocá un nombre para ver a qué
+        hora le tocaba entrar según Horarios.
       </p>
     </div>
   )
 }
 
-function Numero({ valor, texto, destacado = false }: { valor: number; texto: string; destacado?: boolean }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border p-3 text-center',
-        destacado ? 'bg-brand-accent border-brand-accent text-white' : 'bg-brand-card border-brand-border'
-      )}
-    >
-      <p className={cn('text-2xl font-bold tabular-nums', destacado ? 'text-white' : 'text-brand-accent')}>{valor}</p>
-      <p
-        className={cn(
-          'text-[10px] font-semibold uppercase tracking-[0.1em] mt-0.5',
-          destacado ? 'text-white/80' : 'text-brand-muted'
-        )}
-      >
-        {texto}
-      </p>
-    </div>
-  )
+/**
+ * Quiénes vinieron hoy y, de ellos, quiénes ya se fueron (no siguen adentro),
+ * con su horario del día. Los que se fueron, el más reciente primero.
+ */
+function quienesHoy(
+  turnosDeHoy: Turno[],
+  siguen: Set<string>,
+  datos: (userid: string) => { nombre: string; sector: string | null; entradaHorario: string }
+): { fueron: FilaDelDia[]; vinieron: FilaDelDia[] } {
+  const porPersona = new Map<string, Turno[]>()
+  for (const t of turnosDeHoy) porPersona.set(t.userid, [...(porPersona.get(t.userid) ?? []), t])
+
+  const fueron: (FilaDelDia & { orden: number })[] = []
+  const vinieron: (FilaDelDia & { orden: number })[] = []
+  porPersona.forEach((ts, userid) => {
+    const { nombre, sector, entradaHorario } = datos(userid)
+    const primera = ts[0].entrada ?? ts[0].salida!
+    const ultima = ts[ts.length - 1]
+    const ms = ts.reduce((s, t) => s + t.ms, 0)
+    const horario = ts.map((t) => textoTramo(t)).join(' · ')
+    const sigue = siguen.has(userid)
+
+    vinieron.push({
+      userid,
+      nombre,
+      sector,
+      entradaHorario,
+      principal: horaArgentina(primera),
+      secundario: sigue ? 'sigue adentro' : ultima.salida ? 'se fue ' + horaArgentina(ultima.salida) : horario,
+      orden: Date.parse(primera),
+    })
+    if (!sigue) {
+      const salida = ultima.salida ?? ultima.entrada!
+      fueron.push({
+        userid,
+        nombre,
+        sector,
+        entradaHorario,
+        principal: ultima.salida ? 'se fue ' + horaArgentina(ultima.salida) : 'sin salida',
+        secundario: ms > 0 ? `${horario} · ${duracion(ms)}` : horario,
+        orden: -Date.parse(salida),
+      })
+    }
+  })
+  const ordenar = (l: (FilaDelDia & { orden: number })[]) =>
+    l.sort((a, b) => a.orden - b.orden).map(({ orden: _, ...f }) => f)
+  return { fueron: ordenar(fueron), vinieron: ordenar(vinieron) }
+}
+
+function textoTramo({ entrada, salida, incompleto }: Turno): string {
+  if (incompleto === 'sin-entrada' && salida) return `salió ${horaArgentina(salida)} · sin entrada`
+  if (!salida && entrada) return `entró ${horaArgentina(entrada)} · sin salida`
+  return `${entrada ? horaArgentina(entrada) : ''} – ${salida ? horaArgentina(salida) : ''}`
 }
