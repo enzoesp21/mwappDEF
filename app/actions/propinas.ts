@@ -3,9 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
+  GRUPOS,
   calcularReparto,
   validarCarga,
   vincularUsuario,
+  type Grupo,
   type PersonaPropina,
 } from '@/lib/propinas'
 import { leerDatosReloj, type DatosRelojPropinas } from '@/lib/propinas-reloj'
@@ -31,6 +33,17 @@ async function requireCargador() {
   const puede =
     profile?.role === 'admin' || (profile?.carga_propinas === true && profile?.status === 'approved')
   return { supabase, session: puede ? session : null }
+}
+
+/** Solo los admin (encargados). */
+async function requireAdmin() {
+  const supabase = await createClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session) return { supabase, session: null }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+  return { supabase, session: profile?.role === 'admin' ? session : null }
 }
 
 function revalidarTodo(fecha?: string) {
@@ -120,6 +133,39 @@ export async function borrarDiaPropinasAction(fecha: string): Promise<Resultado>
   if (!data || data.length === 0) return { ok: false, error: 'No se borró: ese día ya no existe.' }
 
   revalidarTodo(fecha)
+  return { ok: true }
+}
+
+const FALTA_SQL_GRUPOS = 'Falta correr el SQL de grupos de propina (supabase/add_propina_grupos.sql) en Supabase.'
+
+/**
+ * El grupo de propina de alguien de la planilla (al 100, 75 o 50 %), o null
+ * para dejarlo sin definir. Solo un encargado. Las cajeras lo ven en el
+ * editor: cada uno cae solo en su sección.
+ */
+export async function guardarGrupoPropinaAction(empleadoId: string, grupo: Grupo | null): Promise<Resultado> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'Solo un encargado puede cambiar los grupos.' }
+  if (!/^[0-9a-f-]{36}$/i.test(empleadoId)) return { ok: false, error: 'No se encontró a esa persona.' }
+  if (grupo !== null && !GRUPOS.some((g) => g.valor === grupo)) return { ok: false, error: 'Ese grupo no existe.' }
+  const falta = (m: string) => /propina_grupos/i.test(m) && /does not exist|schema cache|could not find/i.test(m)
+
+  if (grupo === null) {
+    const { error } = await supabase.from('propina_grupos').delete().eq('empleado_id', empleadoId)
+    if (error) return { ok: false, error: falta(error.message) ? FALTA_SQL_GRUPOS : error.message }
+  } else {
+    const { data, error } = await supabase
+      .from('propina_grupos')
+      .upsert(
+        { empleado_id: empleadoId, grupo, updated_by: session.user.id, updated_at: new Date().toISOString() },
+        { onConflict: 'empleado_id' }
+      )
+      .select('empleado_id')
+    if (error) return { ok: false, error: falta(error.message) ? FALTA_SQL_GRUPOS : error.message }
+    // Sin error pero sin fila: la base no lo dejó guardar.
+    if (!data || data.length === 0) return { ok: false, error: 'No se guardó: recargá la página y probá de nuevo.' }
+  }
+  revalidatePath('/admin/propinas/grupos')
   return { ok: true }
 }
 

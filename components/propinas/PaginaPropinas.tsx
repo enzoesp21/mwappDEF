@@ -1,4 +1,5 @@
-import { Banknote } from 'lucide-react'
+import Link from 'next/link'
+import { Banknote, ChevronRight, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { hoyEnArgentina } from '@/lib/horarios'
 import { listarDias, misPropinas, permisosPropinas } from '@/lib/propinas-datos'
@@ -44,6 +45,20 @@ export default async function PaginaPropinas({ base, userId }: Props) {
         <AvisoPropinas error={error} />
       ) : puedeCargar ? (
         <>
+          {/* Solo encargados: el grupo de cada uno, que la cajera ve ya separado. */}
+          {base.startsWith('/admin') && (
+            <Link
+              href="/admin/propinas/grupos"
+              className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl px-4 py-3 hover:border-brand-accent transition-colors"
+            >
+              <Users className="w-5 h-5 text-brand-accent flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-brand-text">Grupos de propina</p>
+                <p className="text-xs text-brand-muted">Quién va al 100, al 75 y al 50 %</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+            </Link>
+          )}
           {lista && <ListaDias base={base} dias={lista.dias} />}
           {mias.propinas.length > 0 && (
             <section className="space-y-3">

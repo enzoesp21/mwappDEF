@@ -5,6 +5,7 @@
 
 import type { createClient } from '@/lib/supabase/server'
 import type { Grupo, Pago, PersonaPropina } from '@/lib/propinas'
+import { leerGruposConfigurados, type GrupoConfigurado } from '@/lib/propinas-grupos'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -181,6 +182,23 @@ export async function plantillaDiaNuevo(supabase: Supabase): Promise<PersonaProp
     .map((p) => p.nombre.trim())
     .filter(Boolean)
     .map((nombre) => ({ nombre, grupo: 'camarero' as const, horas: 0, pago: null, efectivo: null }))
+}
+
+/**
+ * Los grupos de propina que configuró un encargado (quién va al 100, 75 o
+ * 50 %). Para quien carga propinas, por la función de la base: la tabla es
+ * solo de admin.
+ */
+export async function gruposDePropina(supabase: Supabase): Promise<{ grupos: GrupoConfigurado[]; error: string | null }> {
+  const { data, error } = await supabase.rpc('grupos_para_propinas')
+  if (error) {
+    const falta = /grupos_para_propinas|schema cache/i.test(error.message)
+    return {
+      grupos: [],
+      error: falta ? 'Falta correr el SQL de grupos de propina (supabase/add_propina_grupos.sql) en Supabase.' : error.message,
+    }
+  }
+  return { grupos: leerGruposConfigurados(data), error: null }
 }
 
 /** Usuarios aprobados, para mostrar quién va a ver lo suyo. */

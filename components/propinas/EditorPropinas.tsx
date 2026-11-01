@@ -29,7 +29,7 @@ import {
 } from '@/lib/propinas'
 import { borrarDiaPropinasAction, guardarPropinasAction, relojParaPropinasAction } from '@/app/actions/propinas'
 import { armarDesdeReloj, type ParaOfrecer, type ResultadoReloj } from '@/lib/propinas-reloj'
-import { datosNivel, grupoDeNivel } from '@/lib/progresion'
+import { grupoConfigurado, type GrupoConfigurado, type GrupoDeAlguien } from '@/lib/propinas-grupos'
 
 interface Fila {
   key: string
@@ -53,7 +53,17 @@ interface Props {
   sugerencias: string[]
   /** Nivel de progresión de cada mozo (por id de usuario): define su grupo. */
   nivelPorUsuario?: Record<string, number>
+  /** Los grupos que configuró un encargado (Propinas → Grupos). */
+  grupos?: GrupoConfigurado[]
+  /** Si no se pudieron leer los grupos (por ejemplo, falta el SQL). */
+  errorGrupos?: string | null
 }
+
+/** "100 %", "75 %" o "50 %". */
+const porcentaje = (g: Grupo) => GRUPOS.find((x) => x.valor === g)?.corta ?? ''
+
+/** Una suma de horas para mostrar: 85,25. */
+const sumaHoras = (h: number) => String(Math.round(h * 100) / 100).replace('.', ',')
 
 let contador = 0
 const nuevaKey = () => 'f' + ++contador
@@ -148,21 +158,27 @@ export default function EditorPropinas(props: Props) {
   const [fecha, setFecha] = useState(props.fecha)
   const [total, setTotal] = useState(props.total ? String(props.total) : '')
   const [general, setGeneral] = useState(props.general ? String(props.general) : '')
-  // El grupo que le toca a cada uno según su nivel de progresión, si tiene.
-  const nivelDe = (nombre: string): number | null => {
-    const id = nombre.trim() ? vincularUsuario(nombre, props.usuarios) : null
-    return id ? props.nivelPorUsuario?.[id] ?? null : null
-  }
-  const grupoSegunNivel = (nombre: string): Grupo | null => grupoDeNivel(nivelDe(nombre))
+  // El grupo de cada uno: el de su nivel de Progresión o el que configuró un encargado.
+  const configuradoDe = (nombre: string): GrupoDeAlguien | null =>
+    grupoConfigurado(
+      nombre,
+      nombre.trim() ? vincularUsuario(nombre, props.usuarios) : null,
+      props.nivelPorUsuario,
+      props.grupos ?? []
+    )
 
   const [filas, setFilas] = useState<Fila[]>(() =>
     props.personas.length > 0
       ? props.personas.map((p) =>
-          // En un día nuevo arranca con el grupo de su nivel; uno ya guardado queda como está.
-          aFila(props.esNuevo ? { ...p, grupo: grupoSegunNivel(p.nombre) ?? p.grupo } : p)
+          // En un día nuevo cada uno arranca en su grupo; uno ya guardado queda como está.
+          aFila(props.esNuevo ? { ...p, grupo: configuradoDe(p.nombre)?.grupo ?? p.grupo } : p)
         )
       : [aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })]
   )
+  // Filas a las que la cajera les eligió el grupo a mano: el configurado ya no las mueve.
+  const elegidasAMano = useRef(new Set<string>())
+  // El nombre que tenía cada fila al entrar a escribirlo, para saber si cambió.
+  const nombreAlEntrar = useRef(new Map<string, string>())
   const [version, setVersion] = useState(props.version)
   const [guardando, setGuardando] = useState(false)
   const [borrando, setBorrando] = useState(false)
@@ -210,7 +226,7 @@ export default function EditorPropinas(props: Props) {
   /** Una fila nueva que pone el reloj, con el grupo de su nivel si tiene. */
   function filaDelReloj(nombre: string, horas: number | null): Fila {
     const fila = {
-      ...aFila({ nombre, grupo: grupoSegunNivel(nombre) ?? 'camarero', horas: 0, pago: null, efectivo: null }),
+      ...aFila({ nombre, grupo: configuradoDe(nombre)?.grupo ?? 'camarero', horas: 0, pago: null, efectivo: null }),
       horas: horas !== null ? textoHoras(horas) : '',
     }
     sumadasPorReloj.current.add(fila.key)
@@ -302,12 +318,32 @@ export default function EditorPropinas(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parametros])
 
-  function agregar() {
-    setFilas((prev) => [...prev, aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })])
+  /** Una fila vacía en esa sección (si después escribe a alguien de otro grupo, se pasa sola). */
+  function agregar(grupo: Grupo) {
+    setFilas((prev) => [...prev, aFila({ nombre: '', grupo, horas: 0, pago: null, efectivo: null })])
   }
 
   function quitar(key: string) {
     setFilas((prev) => prev.filter((f) => f.key !== key))
+  }
+
+  /** La cajera eligió el grupo a mano: queda ese, aunque esté configurado otro. */
+  function elegirGrupo(key: string, grupo: Grupo) {
+    elegidasAMano.current.add(key)
+    cambiar(key, { grupo })
+  }
+
+  /**
+   * Al terminar de escribir un nombre, si esa persona tiene grupo configurado,
+   * pasa sola a su sección (al salir del campo y no al escribir, para que la
+   * fila no se mueva mientras se tipea). Si no cambió el nombre, no se toca.
+   */
+  function alSalirDelNombre(f: Fila) {
+    const antes = nombreAlEntrar.current.get(f.key)
+    nombreAlEntrar.current.delete(f.key)
+    if (antes === undefined || antes === f.nombre || elegidasAMano.current.has(f.key)) return
+    const configurado = configuradoDe(f.nombre)
+    if (configurado && configurado.grupo !== f.grupo) cambiar(f.key, { grupo: configurado.grupo })
   }
 
   async function guardar() {
@@ -366,6 +402,133 @@ export default function EditorPropinas(props: Props) {
         .sort((a, b) => a.localeCompare(b, 'es')),
     [props.sugerencias, props.usuarios]
   )
+
+  /** Una persona de la lista: nombre, horas, grupo, pago y lo que le toca. */
+  function filaDeLaLista(i: number) {
+    const f = filas[i]
+    const p = personas[i]
+    const trabajo = p.horas > 0
+    const vinculado = f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null
+    const configurado = configuradoDe(f.nombre)
+    return (
+      <li key={f.key} className={cn('px-4 py-3 space-y-2', !trabajo && 'bg-brand-card-hover/60')}>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <input
+              type="text"
+              list="nombres-propinas"
+              value={f.nombre}
+              onChange={(e) => cambiar(f.key, { nombre: e.target.value })}
+              onFocus={() => nombreAlEntrar.current.set(f.key, f.nombre)}
+              onBlur={() => alSalirDelNombre(f)}
+              placeholder="Nombre y apellido"
+              aria-label="Nombre"
+              className={cn(inputBase, 'font-medium', vinculado && 'pr-8')}
+            />
+            {vinculado && (
+              <UserCheck
+                className="w-4 h-4 text-brand-accent absolute right-2.5 top-1/2 -translate-y-1/2"
+                aria-label="Tiene usuario: lo ve en su app"
+              />
+            )}
+          </div>
+          {/* Ancho para "12,75": las horas de la propina van de a cuarto. */}
+          <div className="relative w-[5.25rem] flex-shrink-0">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={f.horas}
+              onChange={(e) => cambiar(f.key, { horas: e.target.value })}
+              placeholder="0"
+              aria-label={'Horas de ' + (f.nombre || 'esta persona')}
+              className={cn(inputBase, 'pr-6 text-right tabular-nums')}
+            />
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-brand-muted pointer-events-none">
+              h
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => quitar(f.key)}
+            aria-label={'Sacar a ' + (f.nombre || 'esta fila')}
+            className="w-9 h-9 flex items-center justify-center rounded-lg text-brand-muted hover:text-brand-error hover:bg-brand-error/10 cursor-pointer flex-shrink-0"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {trabajo && (
+          <div className="flex items-center gap-2">
+            <select
+              value={f.grupo}
+              onChange={(e) => elegirGrupo(f.key, e.target.value as Grupo)}
+              aria-label="Grupo"
+              className="px-2 py-1.5 bg-brand-card border border-brand-border rounded-lg text-xs text-brand-text cursor-pointer min-h-[34px]"
+            >
+              {GRUPOS.map((g) => (
+                <option key={g.valor} value={g.valor}>
+                  Al {g.corta}
+                </option>
+              ))}
+            </select>
+            <select
+              value={f.pago ?? ''}
+              onChange={(e) =>
+                cambiar(f.key, { pago: (e.target.value || null) as Pago | null })
+              }
+              aria-label="Cómo se le pagó"
+              className={cn(
+                'px-2 py-1.5 border rounded-lg text-xs cursor-pointer min-h-[34px]',
+                f.pago
+                  ? 'bg-brand-accent/10 border-brand-accent/40 text-brand-accent font-semibold'
+                  : 'bg-brand-card border-brand-border text-brand-muted'
+              )}
+            >
+              <option value="">Sin pagar</option>
+              {PAGOS.map((x) => (
+                <option key={x.valor} value={x.valor}>
+                  {x.corta}
+                </option>
+              ))}
+            </select>
+            <span className="ml-auto text-sm font-bold text-brand-text tabular-nums whitespace-nowrap">
+              {pesos(reparto.montos[i])}
+            </span>
+          </div>
+        )}
+
+        {trabajo && configurado && configurado.grupo !== f.grupo && (
+          <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-amber-700 font-medium">
+            <span>
+              {configurado.origen === 'progresion' ? 'Su nivel de Progresión es' : 'Está configurado al'}{' '}
+              {porcentaje(configurado.grupo)}: hoy lo pusiste al {porcentaje(f.grupo)}.
+            </span>
+            <button
+              type="button"
+              onClick={() => elegirGrupo(f.key, configurado.grupo)}
+              className="underline underline-offset-2 cursor-pointer"
+            >
+              Pasarlo al {porcentaje(configurado.grupo)}
+            </button>
+          </p>
+        )}
+
+        {trabajo && f.pago === 'tr_ef' && (
+          <label className="flex items-center gap-2">
+            <span className="text-xs text-brand-muted whitespace-nowrap">En efectivo</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={f.efectivo}
+              onChange={(e) => cambiar(f.key, { efectivo: e.target.value })}
+              placeholder="Ej: 20800"
+              className={cn(inputBase, 'min-h-[34px] py-1.5 text-xs')}
+            />
+          </label>
+        )}
+      </li>
+    )
+}
 
   return (
     <div className="space-y-4">
@@ -529,146 +692,51 @@ export default function EditorPropinas(props: Props) {
           ))}
         </datalist>
 
-        <ul className="divide-y divide-brand-border/70">
-          {filas.map((f, i) => {
-            const p = personas[i]
-            const trabajo = p.horas > 0
-            const vinculado = f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null
-            const nivel = datosNivel(nivelDe(f.nombre) ?? 0)
-            return (
-              <li key={f.key} className={cn('px-4 py-3 space-y-2', !trabajo && 'bg-brand-card-hover/60')}>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1 min-w-0">
-                    <input
-                      type="text"
-                      list="nombres-propinas"
-                      value={f.nombre}
-                      onChange={(e) => {
-                        const nombre = e.target.value
-                        const grupo = grupoSegunNivel(nombre)
-                        cambiar(f.key, grupo ? { nombre, grupo } : { nombre })
-                      }}
-                      placeholder="Nombre y apellido"
-                      aria-label="Nombre"
-                      className={cn(inputBase, 'font-medium', vinculado && 'pr-8')}
-                    />
-                    {vinculado && (
-                      <UserCheck
-                        className="w-4 h-4 text-brand-accent absolute right-2.5 top-1/2 -translate-y-1/2"
-                        aria-label="Tiene usuario: lo ve en su app"
-                      />
-                    )}
-                  </div>
-                  {/* Ancho para "12,75": las horas de la propina van de a cuarto. */}
-                  <div className="relative w-[5.25rem] flex-shrink-0">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={f.horas}
-                      onChange={(e) => cambiar(f.key, { horas: e.target.value })}
-                      placeholder="0"
-                      aria-label={'Horas de ' + (f.nombre || 'esta persona')}
-                      className={cn(inputBase, 'pr-6 text-right tabular-nums')}
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-brand-muted pointer-events-none">
-                      h
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => quitar(f.key)}
-                    aria-label={'Sacar a ' + (f.nombre || 'esta fila')}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg text-brand-muted hover:text-brand-error hover:bg-brand-error/10 cursor-pointer flex-shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+        {props.errorGrupos && (
+          <p className="mx-4 mb-3 flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 leading-relaxed">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+            <span>No se pudieron leer los grupos configurados: cada uno queda en el grupo que tenía. {props.errorGrupos}</span>
+          </p>
+        )}
 
-                {trabajo && (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={f.grupo}
-                      onChange={(e) => cambiar(f.key, { grupo: e.target.value as Grupo })}
-                      aria-label="Grupo"
-                      className="px-2 py-1.5 bg-brand-card border border-brand-border rounded-lg text-xs text-brand-text cursor-pointer min-h-[34px]"
-                    >
-                      {GRUPOS.map((g) => (
-                        <option key={g.valor} value={g.valor}>
-                          {g.opcion}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={f.pago ?? ''}
-                      onChange={(e) =>
-                        cambiar(f.key, { pago: (e.target.value || null) as Pago | null })
-                      }
-                      aria-label="Cómo se le pagó"
-                      className={cn(
-                        'px-2 py-1.5 border rounded-lg text-xs cursor-pointer min-h-[34px]',
-                        f.pago
-                          ? 'bg-brand-accent/10 border-brand-accent/40 text-brand-accent font-semibold'
-                          : 'bg-brand-card border-brand-border text-brand-muted'
-                      )}
-                    >
-                      <option value="">Sin pagar</option>
-                      {PAGOS.map((x) => (
-                        <option key={x.valor} value={x.valor}>
-                          {x.corta}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="ml-auto text-sm font-bold text-brand-text tabular-nums whitespace-nowrap">
-                      {pesos(reparto.montos[i])}
-                    </span>
-                  </div>
-                )}
+        {/* Las tres secciones: cada uno cae solo en la de su grupo. */}
+        {GRUPOS.map((g) => {
+          const indices = filas.flatMap((f, i) => (f.grupo === g.valor ? [i] : []))
+          const conHorasAca = indices.filter((i) => personas[i].horas > 0)
+          const horasAca = conHorasAca.reduce((s, i) => s + personas[i].horas, 0)
+          return (
+            <div key={g.valor} className="border-t border-brand-border/70">
+              <div className="flex items-baseline justify-between gap-2 px-4 pt-3 pb-2 bg-brand-card-hover/50">
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Al {g.corta}</h3>
+                <span className="text-[11px] text-brand-muted tabular-nums">
+                  {conHorasAca.length === 0
+                    ? 'Nadie con horas'
+                    : `${conHorasAca.length} ${conHorasAca.length === 1 ? 'persona' : 'personas'} · ${sumaHoras(horasAca)} h`}
+                </span>
+              </div>
+              {indices.length > 0 && (
+                <ul className="divide-y divide-brand-border/70 border-t border-brand-border/40">
+                  {indices.map((i) => filaDeLaLista(i))}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={() => agregar(g.valor)}
+                className="flex items-center gap-1.5 w-full px-4 py-2.5 border-t border-brand-border/40 text-xs font-medium text-brand-accent hover:bg-brand-accent/5 cursor-pointer min-h-[40px]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Agregar al {g.corta}
+              </button>
+            </div>
+          )
+        })}
 
-                {trabajo && nivel && (
-                  <p
-                    className={cn(
-                      'text-[11px]',
-                      nivel.grupo === f.grupo ? 'text-brand-muted' : 'text-amber-700 font-medium'
-                    )}
-                  >
-                    {nivel.grupo === f.grupo
-                      ? `Nivel ${nivel.nivel} de progresión · ${nivel.porcentaje} %`
-                      : `Su nivel de progresión es ${nivel.porcentaje} %: hoy lo pusiste distinto.`}
-                  </p>
-                )}
-
-                {trabajo && f.pago === 'tr_ef' && (
-                  <label className="flex items-center gap-2">
-                    <span className="text-xs text-brand-muted whitespace-nowrap">En efectivo</span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={f.efectivo}
-                      onChange={(e) => cambiar(f.key, { efectivo: e.target.value })}
-                      placeholder="Ej: 20800"
-                      className={cn(inputBase, 'min-h-[34px] py-1.5 text-xs')}
-                    />
-                  </label>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-
-        <div className="px-4 py-3 border-t border-brand-border/70 space-y-2">
-          <button
-            type="button"
-            onClick={agregar}
-            className="flex items-center gap-1.5 text-sm font-medium text-brand-accent hover:text-brand-accent-hover cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Agregar persona
-          </button>
+        <div className="px-4 py-3 border-t border-brand-border/70">
           <p className="flex items-start gap-1.5 text-[11px] text-brand-muted leading-relaxed">
             <UserCheck className="w-3.5 h-3.5 flex-shrink-0 mt-px text-brand-accent" />
             Tiene usuario en la app y ve lo que le tocó. Si alguien no lo tiene, revisá que el nombre
-            y apellido estén igual que en su usuario. El grupo se pone solo según el nivel de cada mozo
-            (Progresión); si hace falta, lo cambiás.
+            y apellido estén igual que en su usuario. Cada uno cae solo en su grupo, el que configuró un
+            encargado; si hoy cobra distinto, cambiáselo.
           </p>
         </div>
       </section>

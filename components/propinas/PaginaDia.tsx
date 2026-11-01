@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { hoyEnArgentina, sumarDias } from '@/lib/horarios'
 import {
   cargarDia,
+  gruposDePropina,
   nombresUsados,
   permisosPropinas,
   plantillaDiaNuevo,
@@ -42,12 +43,13 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
     )
   }
 
-  const [usuarios, sugerencias, dia, plantilla, niveles] = await Promise.all([
+  const [usuarios, sugerencias, dia, plantilla, niveles, grupos] = await Promise.all([
     usuariosParaVincular(supabase),
     nombresUsados(supabase),
     esNuevo ? Promise.resolve(null) : cargarDia(supabase, fecha),
     esNuevo ? plantillaDiaNuevo(supabase) : Promise.resolve([]),
     nivelesPorUsuario(supabase),
+    gruposDePropina(supabase),
   ])
   // Una fecha que todavía no se cargó se abre como día nuevo con esa fecha
   // (así llega "Pasar a Propinas" desde la planilla).
@@ -73,6 +75,8 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
           usuarios={usuarios}
           sugerencias={sugerencias}
           nivelPorUsuario={niveles}
+          grupos={grupos.grupos}
+          errorGrupos={grupos.error}
         />
       )}
     </div>

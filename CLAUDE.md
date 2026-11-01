@@ -141,6 +141,21 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   8 h 07 → 8, 8 h 08 → 8,25. Si las horas de la celda no salen de sus minutos (un encargado
   las corrigió a mano), valen las del encargado. Se usa en "Traer horas del reloj" y en el
   Excel de horas para propinas. `validarCarga` no deja guardar horas que no sean de a cuarto.
+- **Grupos de propina** (quién cobra la hora al 100, 75 o 50 %; Enzo, 01/11). Antes la cajera
+  elegía el grupo de cada uno a mano. Ahora:
+  - El encargado los configura una vez en `/admin/propinas/grupos` (link desde Propinas), por
+    empleado de la planilla. Así entran también los que no tienen usuario de la app, que son
+    casi todos los mozos.
+  - Se guardan en `propina_grupos` (`add_propina_grupos.sql`), que es solo de admin. La cajera
+    los lee con la RPC `grupos_para_propinas()`.
+  - Si alguien tiene nivel en Progresión, manda el nivel, y se cambia desde su ficha.
+  - Sin grupo, va al 100 %.
+  - En el editor la lista va en tres secciones (Al 100 %, Al 75 %, Al 50 %), y cada uno cae
+    solo en la suya (`grupoConfigurado`, `lib/propinas-grupos.ts`). Pasa en un día nuevo, al
+    traer del reloj y al terminar de escribir un nombre.
+  - Lo del nombre se resuelve al salir del campo, no mientras se escribe, para que la fila no
+    salte de sección.
+  - Si la cajera lo cambia, queda lo suyo. Se avisa y hay un "Pasarlo al X %".
 - Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
   `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
 - Quién ve qué (RLS, `ve_propinas_de_todos()`): quien carga y el puesto Mozos ("Mozos y
@@ -160,8 +175,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Tablas `mozo_niveles` (nivel, desde, tildes en JSONB con claves "n2_...") e historial.
   Se cambian solo con las RPC `cambiar_nivel_mozo` y `marcar_requisito_mozo` (admin). Al
   bajar se borran las tildes de los niveles perdidos y el tiempo vuelve a contar.
-- Sin fila = sin nivel: propinas sigue como antes. Con nivel, la calculadora pone el grupo
-  sola en un día nuevo y al escribir el nombre; el cajero lo puede cambiar (se avisa).
+- Sin fila = sin nivel: vale el grupo de Propinas → Grupos (o 100 %). Con nivel, manda el
+  nivel (también por encima de Grupos): la calculadora lo pone en su sección sola; el cajero lo
+  puede cambiar (se avisa).
 - Pantallas: `/admin/progresion` (lista y ficha) y `/dashboard/progresion` (solo puesto Mozos).
 
 ## Fichadas (reloj EP300 Pro)
