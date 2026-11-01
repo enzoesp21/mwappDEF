@@ -134,7 +134,10 @@ export default function ExportarPlanilla({ mes, hoy }: Props) {
                 Excel de horas
               </button>
             </div>
-            <p className="text-[11px] text-brand-muted">Empleado y Horas Calculadas, sumadas en esas fechas.</p>
+            <p className="text-[11px] text-brand-muted">
+              Empleado y Horas Calculadas, sumadas en esas fechas. Cada día va de a cuarto de hora (8,25, 8,75), como
+              se cuenta para la propina; la planilla sigue de a media.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -158,8 +161,8 @@ export default function ExportarPlanilla({ mes, hoy }: Props) {
               </Link>
             </div>
             <p className="text-[11px] text-brand-muted">
-              Abre las propinas de ese día y completa las horas de cada uno con las del reloj. Revisá y guardá como
-              siempre.
+              Abre las propinas de ese día, suma a los mozos y completa sus horas con las del reloj, de a cuarto de
+              hora. Revisá y guardá como siempre.
             </p>
           </div>
 

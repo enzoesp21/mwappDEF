@@ -134,6 +134,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Reemplaza la calculadora vieja (prueba77enzo.vercel.app) con la misma cuenta: salón =
   total − general; por hora = salón ÷ (horas completas + 75 % de reducidos + 50 % de
   prueba). Lógica y mensaje de WhatsApp en `lib/propinas.ts`.
+- **Las horas de la propina van de a cuarto** (8 · 8,25 · 8,5 · 8,75). Los mozos las cuentan
+  así para la propina (Enzo, 01/11). La planilla de fichadas sigue de a media hora: no
+  mezclar. Con el reloj, `horasParaPropina` (`lib/propinas-reloj.ts`) redondea los minutos
+  reales del día al cuarto más cercano con `redondearCuartoHora` (`lib/planilla.ts`):
+  8 h 07 → 8, 8 h 08 → 8,25. Si las horas de la celda no salen de sus minutos (un encargado
+  las corrigió a mano), valen las del encargado. Se usa en "Traer horas del reloj" y en el
+  Excel de horas para propinas. `validarCarga` no deja guardar horas que no sean de a cuarto.
 - Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
   `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
 - Quién ve qué (RLS, `ve_propinas_de_todos()`): quien carga y el puesto Mozos ("Mozos y
@@ -288,9 +295,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   1, y Enzo pidió que ponga a todos los mozos.
   - Usa la RPC `reloj_para_propinas` (`add_propinas_mozos_reloj.sql`, devuelve jsonb). La
     puede usar quien carga propinas aunque no sea admin. Trae a todos los que tienen ese día en
-    la planilla (con horas o incompletos), con su sector de Horarios y su celda ese día, y a
-    los que tenían turno en Horarios y no ficharon. Reemplaza a `horas_para_propinas`, que
-    quedó sin uso.
+    la planilla (con horas o incompletos), con sus minutos reales (para las horas de a cuarto),
+    su sector de Horarios y su celda ese día, y a los que tenían turno en Horarios y no
+    ficharon. Reemplaza a `horas_para_propinas`, que quedó sin uso.
   - La lógica es pura, en `lib/propinas-reloj.ts`, con pruebas del 31/10 real.
   - Empareja cada fila de la lista: por usuario, por nombre (planilla o Horarios) y por la
     regla de las 2 palabras. Ante la duda no pone nada.

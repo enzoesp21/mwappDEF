@@ -11,6 +11,7 @@ import {
   hhmm,
   horarioDelDia,
   puedeRecalcular,
+  redondearCuartoHora,
   redondearMediaHora,
   textoFalta,
   textoHabitual,
@@ -177,6 +178,25 @@ describe('redondeo y días', () => {
       [10, 0],
     ]
     for (const [minutos, horas] of casos) assert.equal(redondearMediaHora(minutos), horas, `${minutos} min`)
+  })
+
+  test('solo para la propina: de a cuarto de hora, al más cercano', () => {
+    const casos: [number, number][] = [
+      [8 * 60, 8],
+      [8 * 60 + 7, 8],
+      [8 * 60 + 8, 8.25],
+      [8 * 60 + 22, 8.25],
+      [8 * 60 + 23, 8.5],
+      [8 * 60 + 37, 8.5],
+      [8 * 60 + 38, 8.75],
+      [8 * 60 + 52, 8.75],
+      [8 * 60 + 53, 9],
+      // El 31/10: Lucas Ibarra 8 h 09 (planilla 8) y Gabriel Cansino 8 h 51 (planilla 9).
+      [489, 8.25],
+      [531, 8.75],
+      [5, 0],
+    ]
+    for (const [minutos, horas] of casos) assert.equal(redondearCuartoHora(minutos), horas, `${minutos} min`)
   })
 
   test('se redondea el total del día, no cada tramo', () => {

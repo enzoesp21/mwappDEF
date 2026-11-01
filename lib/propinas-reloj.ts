@@ -14,10 +14,14 @@
  * Quién es mozo lo dice Horarios: el sector donde tiene turno ese día. Si esa
  * semana no figura (los recién llegados), el cargo de la planilla (MOZO; el
  * "MOZO DE MOSTRADOR" es barra) o, si no tiene cargo, el puesto de su usuario.
+ * Las horas van de a cuarto (8 · 8,25 · 8,5 · 8,75): así las cuentan los mozos
+ * para la propina. La planilla sigue de a media hora (ver horasParaPropina).
+ *
  * Ante la duda no se pone nada. Todo es puro: no lee la base ni la hora.
  */
 
 import { normalizarNombre, tipoCelda } from '@/lib/horarios'
+import { redondearCuartoHora, redondearMediaHora } from '@/lib/planilla'
 import { coincidencias, palabras } from '@/lib/planilla-reloj'
 import { vincularUsuario } from '@/lib/propinas'
 
@@ -35,8 +39,10 @@ export interface PersonaDelReloj {
   nombre: string
   profileId: string | null
   nombresHorario: string[]
-  /** null: la celda quedó incompleta (o la jornada todavía no cerró). */
+  /** Las de la planilla, de a media hora. null: la celda quedó incompleta (o la jornada todavía no cerró). */
   horas: number | null
+  /** Los minutos reales del día, antes de redondear (null si no se sabe). */
+  minutos: number | null
   cargo: string | null
   /** El puesto de su usuario de la app, si tiene. */
   puesto: string | null
@@ -57,6 +63,21 @@ export interface DatosRelojPropinas {
 }
 
 type Usuario = { id: string; full_name: string }
+
+/**
+ * Las horas de un día para la propina: de a cuarto, desde los minutos reales
+ * (Lucas Ibarra el 31/10: 8 h 09 → 8,25; la planilla dice 8). Si las horas de
+ * la celda no salen de esos minutos (un encargado las corrigió a mano), valen
+ * las que puso él. null si ese día no tiene horas.
+ */
+export function horasParaPropina(c: { horas: number | null; minutos: number | null }): number | null {
+  if (c.horas === null || !(c.horas > 0)) return null
+  if (c.minutos !== null && c.minutos > 0 && redondearMediaHora(c.minutos) === c.horas) {
+    const cuarto = redondearCuartoHora(c.minutos)
+    if (cuarto > 0) return cuarto
+  }
+  return c.horas
+}
 
 const SECTOR_MOZOS = /CAMARER|MOZO/i
 const SECTOR_RUNNERS = /RUNNER|COMIS/i
@@ -205,7 +226,7 @@ export function armarDesdeReloj(
     if (!fila.nombre.trim()) continue
     const i = pares.get(fila.clave)
     if (i !== undefined) {
-      const horas = datos.personas[i].horas
+      const horas = horasParaPropina(datos.personas[i])
       filas.set(fila.clave, horas !== null ? { tipo: 'horas', horas } : { tipo: 'incompleta' })
     } else {
       filas.set(fila.clave, { tipo: faltaron.some((s) => mismoNombre(fila.nombre, s.nombre)) ? 'sin_fichadas' : 'no_esta' })
@@ -218,13 +239,14 @@ export function armarDesdeReloj(
     if (usadas.has(i)) return
     const tipo = tipoEnElSalon(p)
     const nombre = nombreParaPropinas(p, usuarios)
+    const horas = horasParaPropina(p)
     if (tipo === 'mozo') {
-      mozos.push({ nombre, horas: p.horas, motivo: p.horas !== null ? 'horas' : 'incompleta' })
-    } else if (p.horas !== null && tipo === 'runner') {
-      ofrecer.push({ nombre, horas: p.horas, tipo: 'runner' })
-    } else if (p.horas !== null && !tipo && p.horario.length === 0 && !p.cargo?.trim() && !p.puesto) {
+      mozos.push({ nombre, horas, motivo: horas !== null ? 'horas' : 'incompleta' })
+    } else if (horas !== null && tipo === 'runner') {
+      ofrecer.push({ nombre, horas, tipo: 'runner' })
+    } else if (horas !== null && !tipo && p.horario.length === 0 && !p.cargo?.trim() && !p.puesto) {
       // Ficharon y no se sabe de qué son: recién llegados sin cargo ni Horarios.
-      ofrecer.push({ nombre, horas: p.horas, tipo: 'sin_sector' })
+      ofrecer.push({ nombre, horas, tipo: 'sin_sector' })
     }
   })
 
@@ -262,6 +284,7 @@ export function leerDatosReloj(crudo: unknown): DatosRelojPropinas {
         profileId: texto(p.profile_id),
         nombresHorario: textos(p.nombres_horario),
         horas: numero(p.horas),
+        minutos: numero(p.minutos),
         cargo: texto(p.cargo),
         puesto: texto(p.puesto),
         horario: lista(p.horario)

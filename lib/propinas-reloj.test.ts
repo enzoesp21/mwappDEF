@@ -7,12 +7,14 @@ import assert from 'node:assert/strict'
 import {
   armarDesdeReloj,
   emparejar,
+  horasParaPropina,
   leerDatosReloj,
   nombreParaPropinas,
   tipoEnElSalon,
   type DatosRelojPropinas,
   type PersonaDelReloj,
 } from '@/lib/propinas-reloj'
+import { validarCarga } from '@/lib/propinas'
 
 const usuarios = [
   { id: 'u-nico', full_name: 'Nicolas Leandro Fuentes' },
@@ -25,7 +27,7 @@ const usuarios = [
 ]
 
 function persona(p: Partial<PersonaDelReloj> & { nombre: string }): PersonaDelReloj {
-  return { profileId: null, nombresHorario: [], horas: null, cargo: null, puesto: null, horario: [], ...p }
+  return { profileId: null, nombresHorario: [], horas: null, minutos: null, cargo: null, puesto: null, horario: [], ...p }
 }
 const en = (sector: string, celda: string | null) => [{ sector, celda }]
 
@@ -38,12 +40,13 @@ const dia31: DatosRelojPropinas = {
       profileId: 'u-nico',
       nombresHorario: ['Nicolás Fuentes'],
       horas: 9,
+      minutos: 536,
       cargo: 'MOZO',
       puesto: 'Mozos',
       horario: en('CAMAREROS', '11 a 20'),
     }),
     persona({ nombre: 'AGUIRRE RAQUEL NOEMI', nombresHorario: ['Raquel Aguirre'], cargo: 'MOZO', horario: en('CAMAREROS', '7.30 a 17.30') }),
-    persona({ nombre: 'IBARRA LUCAS DAMIAN', nombresHorario: ['Lucas Ibarra'], horas: 8, cargo: 'MOZO', horario: en('CAMAREROS', '10 a 18.30') }),
+    persona({ nombre: 'IBARRA LUCAS DAMIAN', nombresHorario: ['Lucas Ibarra'], horas: 8, minutos: 489, cargo: 'MOZO', horario: en('CAMAREROS', '10 a 18.30') }),
     persona({ nombre: 'NUÑEZ FACUNDO RODRIGO', profileId: 'u-facu', horas: 13, cargo: 'ENCARGADO', puesto: 'Caja' }),
     persona({ nombre: 'MOLINA BRUNO EZEQUIEL', nombresHorario: ['Bruno Molina'], horas: 14, cargo: 'MOZO DE MOSTRADOR', horario: en('BARRA', '10 a 23.30') }),
     persona({
@@ -61,22 +64,23 @@ const dia31: DatosRelojPropinas = {
       profileId: 'u-lucas',
       nombresHorario: ['Lucas Lopez'],
       horas: 12.5,
+      minutos: 755,
       cargo: 'MOZO',
       puesto: 'Mozos',
       horario: en('CAMAREROS', '11C'),
     }),
     persona({ nombre: 'ZULMA AGUILAR', horas: 12, cargo: 'LIMPIEZA' }),
     // En Horarios tenía licencia, pero el reloj dice que vino: es mozo igual.
-    persona({ nombre: 'GABRIEL CRASINO', nombresHorario: ['Gabriel Cansino'], horas: 9, cargo: 'MOZO', horario: en('CAMAREROS', 'LIC') }),
-    persona({ nombre: 'URIEL ZABALA', nombresHorario: ['Uriel Zabala'], horas: 9.5, cargo: 'PEON GENERAL', horario: en('COMISS / RUNNERS', '16C') }),
+    persona({ nombre: 'GABRIEL CRASINO', nombresHorario: ['Gabriel Cansino'], horas: 9, minutos: 531, cargo: 'MOZO', horario: en('CAMAREROS', 'LIC') }),
+    persona({ nombre: 'URIEL ZABALA', nombresHorario: ['Uriel Zabala'], horas: 9.5, minutos: 578, cargo: 'PEON GENERAL', horario: en('COMISS / RUNNERS', '16C') }),
     // Cargo de peón en la planilla, pero en Horarios está en Camareros: manda Horarios.
-    persona({ nombre: 'MARTINA BARCIA', nombresHorario: ['Martina Barcia'], horas: 13, cargo: 'PEON GENERAL', horario: en('CAMAREROS', '11C') }),
-    persona({ nombre: 'LAUREANO', nombresHorario: ['Laureano'], horas: 9, horario: en('COMISS / RUNNERS', '10 a 18.30') }),
+    persona({ nombre: 'MARTINA BARCIA', nombresHorario: ['Martina Barcia'], horas: 13, minutos: 795, cargo: 'PEON GENERAL', horario: en('CAMAREROS', '11C') }),
+    persona({ nombre: 'LAUREANO', nombresHorario: ['Laureano'], horas: 9, minutos: 538, horario: en('COMISS / RUNNERS', '10 a 18.30') }),
     persona({ nombre: 'VELARDEZ SANTIAGO', horas: 15 }),
     persona({ nombre: 'ALMA', horas: 9.5 }),
     // Recién llegadas: todavía no están en Horarios; sin cargo, vale el puesto de su usuario.
-    persona({ nombre: 'GIULIANA BARTELLONE', profileId: 'u-giuli', horas: 9, puesto: 'Mozos' }),
-    persona({ nombre: 'ABRIL CASTRO', nombresHorario: ['Abril Castro'], horas: 6.5, puesto: 'Mozos' }),
+    persona({ nombre: 'GIULIANA BARTELLONE', profileId: 'u-giuli', horas: 9, minutos: 554, puesto: 'Mozos' }),
+    persona({ nombre: 'ABRIL CASTRO', nombresHorario: ['Abril Castro'], horas: 6.5, minutos: 383, puesto: 'Mozos' }),
   ],
   sinReloj: [
     { sector: 'CAMAREROS', nombre: 'Pamela Almada', celda: 'X' },
@@ -206,11 +210,12 @@ describe('el 31/10: traer horas del reloj suma a todos los mozos', () => {
       [
         ['Abril Castro', 6.5, 'horas'],
         ['Belen', null, 'sin_fichadas'],
-        ['Gabriel Cansino', 9, 'horas'],
-        ['Giuliana Bartellone', 9, 'horas'],
-        ['Lucas Ibarra', 8, 'horas'],
+        // De a cuarto: 8 h 51 es 8,75 (la planilla dice 9) y 9 h 14 es 9,25 (la planilla dice 9).
+        ['Gabriel Cansino', 8.75, 'horas'],
+        ['Giuliana Bartellone', 9.25, 'horas'],
+        ['Lucas Ibarra', 8.25, 'horas'],
         ['Lucas Lopez', 12.5, 'horas'],
-        ['Martina Barcia', 13, 'horas'],
+        ['Martina Barcia', 13.25, 'horas'],
         ['Micaela Dolesor', null, 'sin_fichadas'],
         ['Raquel Aguirre', null, 'incompleta'],
       ]
@@ -222,7 +227,7 @@ describe('el 31/10: traer horas del reloj suma a todos los mozos', () => {
       r.ofrecer.map((o) => [o.nombre, o.horas, o.tipo]),
       [
         ['Laureano', 9, 'runner'],
-        ['Uriel Zabala', 9.5, 'runner'],
+        ['Uriel Zabala', 9.75, 'runner'],
         ['Alma', 9.5, 'sin_sector'],
         ['Velardez Santiago', 15, 'sin_sector'],
       ]
@@ -265,6 +270,7 @@ describe('lo que llega de la base', () => {
           profile_id: null,
           nombres_horario: ['Lucas Ibarra', 3],
           horas: '8.0',
+          minutos: 489,
           estado: 'ok',
           cargo: 'MOZO',
           puesto: null,
@@ -283,14 +289,37 @@ describe('lo que llega de la base', () => {
           profileId: null,
           nombresHorario: ['Lucas Ibarra'],
           horas: 8,
+          minutos: 489,
           cargo: 'MOZO',
           puesto: null,
           horario: [{ sector: 'CAMAREROS', celda: '10 a 18.30' }],
         },
-        { nombre: 'AGUIRRE RAQUEL NOEMI', profileId: null, nombresHorario: [], horas: null, cargo: null, puesto: null, horario: [] },
+        { nombre: 'AGUIRRE RAQUEL NOEMI', profileId: null, nombresHorario: [], horas: null, minutos: null, cargo: null, puesto: null, horario: [] },
       ],
       sinReloj: [{ sector: 'CAMAREROS', nombre: 'Belen', celda: null }],
     })
     assert.deepEqual(leerDatosReloj(null), { personas: [], sinReloj: [] })
+  })
+})
+
+describe('las horas de la propina van de a cuarto', () => {
+  test('desde los minutos reales; si un encargado corrigió la celda a mano, valen sus horas', () => {
+    assert.equal(horasParaPropina({ horas: 8, minutos: 489 }), 8.25) // Lucas Ibarra, 8 h 09
+    assert.equal(horasParaPropina({ horas: 9, minutos: 531 }), 8.75) // Gabriel Cansino, 8 h 51
+    assert.equal(horasParaPropina({ horas: 9.5, minutos: 585 }), 9.75) // Brisa Di Scala, 9 h 45
+    assert.equal(horasParaPropina({ horas: 9, minutos: 536 }), 9) // Nicolás Fuentes, 8 h 56
+    // A mano: el reloj daba 8 h 09 y el encargado puso 9.
+    assert.equal(horasParaPropina({ horas: 9, minutos: 489 }), 9)
+    // Sin minutos (cargada a mano desde cero): sus horas.
+    assert.equal(horasParaPropina({ horas: 8.5, minutos: null }), 8.5)
+    assert.equal(horasParaPropina({ horas: null, minutos: 489 }), null)
+    assert.equal(horasParaPropina({ horas: 0, minutos: 0 }), null)
+  })
+
+  test('al guardar no deja horas que no sean de a cuarto', () => {
+    const con = (horas: number) => validarCarga('2026-10-31', 300000, 45000, [{ nombre: 'Lucas Ibarra', grupo: 'camarero', horas, pago: null, efectivo: null }])
+    for (const bien of [8, 8.25, 8.5, 8.75, 12.75, 0.25]) assert.equal(con(bien), null, String(bien))
+    assert.equal(con(8.3), 'Las horas de Lucas Ibarra van de a cuarto: 8, 8,25, 8,5 u 8,75.')
+    assert.equal(con(8.1), 'Las horas de Lucas Ibarra van de a cuarto: 8, 8,25, 8,5 u 8,75.')
   })
 })

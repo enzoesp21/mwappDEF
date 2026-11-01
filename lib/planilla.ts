@@ -137,6 +137,16 @@ export function redondearMediaHora(minutos: number): number {
   return Math.max(0, Math.ceil((minutos - 15) / 30)) / 2
 }
 
+/**
+ * SOLO PARA LA PROPINA (la planilla sigue de a media hora): los mozos cuentan
+ * las horas de a cuarto (8 · 8,25 · 8,5 · 8,75), decisión de Enzo del 01/11.
+ * Al cuarto más cercano, sobre el total del día:
+ * 8 h 07 → 8 · 8 h 08 → 8,25 · 8 h 22 → 8,25 · 8 h 23 → 8,5 · 8 h 53 → 9.
+ */
+export function redondearCuartoHora(minutos: number): number {
+  return Math.max(0, Math.ceil((minutos - 7.5) / 15)) / 4
+}
+
 /** DÍAS = HORAS / 8,5. */
 export function diasDeHoras(horas: number): number {
   return horas / HORAS_POR_DIA

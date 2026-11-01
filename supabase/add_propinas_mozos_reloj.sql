@@ -9,7 +9,9 @@
 --   - personas: todos los que tienen ese día en la planilla maestra (con
 --     horas o incompletos), con el cargo de la planilla, el puesto de su
 --     usuario y en qué sector de Horarios figuran esa semana (y qué dice su
---     celda ese día).
+--     celda ese día). También los minutos reales: para la propina las horas
+--     van de a cuarto (8 · 8,25 · 8,5 · 8,75) y la planilla las tiene de a
+--     media; la app redondea desde los minutos.
 --   - sin_reloj: quienes tienen algo escrito en Horarios ese día y no
 --     tienen nada en la planilla (no ficharon o no tienen número del reloj).
 -- Con eso la app suma sola a los mozos que faltan, marca los incompletos y
@@ -67,7 +69,7 @@ BEGIN
     ),
     del_dia AS (
       SELECT e.orden, e.nombre, e.profile_id, e.cargo, coalesce(e.nombres_horario, '{}') AS nombres_horario,
-             c.horas, c.estado, pr.puesto,
+             c.horas, c.minutos, c.estado, pr.puesto,
              ARRAY(
                SELECT lower(regexp_replace(translate(btrim(n), 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun'), '\s+', ' ', 'g'))
                FROM unnest(coalesce(e.nombres_horario, '{}')) n
@@ -87,6 +89,7 @@ BEGIN
           'profile_id', d.profile_id,
           'nombres_horario', to_jsonb(d.nombres_horario),
           'horas', d.horas,
+          'minutos', d.minutos,
           'estado', d.estado,
           'cargo', d.cargo,
           'puesto', d.puesto,
@@ -111,14 +114,18 @@ $$;
 REVOKE ALL ON FUNCTION reloj_para_propinas(date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION reloj_para_propinas(date) TO authenticated;
 
--- Verificación: "lista", "solo usuarios con sesión" y cuántos mozos tienen
--- horas el 31/10 según la planilla (los que el botón tiene que sumar).
+-- Verificación: "lista", "solo usuarios con sesión", "trae los minutos" y
+-- cuántos mozos tienen horas el 31/10 según la planilla.
 SELECT 'función reloj_para_propinas' AS que,
        CASE WHEN to_regprocedure('reloj_para_propinas(date)') IS NOT NULL THEN 'lista' ELSE 'FALTA' END AS resultado
 UNION ALL
 SELECT 'quién la puede usar',
        CASE WHEN has_function_privilege('anon', 'reloj_para_propinas(date)', 'EXECUTE') THEN 'MAL: cualquiera'
             ELSE 'solo usuarios con sesión (y adentro se fija si cargan propinas)' END
+UNION ALL
+SELECT 'minutos para las horas de a cuarto',
+       CASE WHEN pg_get_functiondef('reloj_para_propinas(date)'::regprocedure) LIKE '%''minutos'', d.minutos%'
+            THEN 'trae los minutos' ELSE 'FALTA: corré de nuevo este archivo entero' END
 UNION ALL
 SELECT 'mozos con horas el 31/10 en la planilla (cargo MOZO)', count(*)::text
 FROM planilla_celdas c

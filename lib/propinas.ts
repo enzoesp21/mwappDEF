@@ -6,6 +6,7 @@
  *
  *   salón     = total - general
  *   horas     = horas de camareros + 75 % de las de reducidos + 50 % de las de prueba
+ *               (cada uno, de a cuarto de hora: 8 · 8,25 · 8,5 · 8,75)
  *   por hora  = salón / horas
  *   a cada uno = sus horas × su porcentaje × por hora
  */
@@ -191,7 +192,10 @@ export function validarCarga(
     if (!nombre) return 'Hay una fila con horas pero sin nombre.'
     if (!GRUPOS.some((g) => g.valor === p.grupo)) return `Revisá el grupo de ${nombre}.`
     if (!(p.horas <= 24)) return `Revisá las horas de ${nombre}: son más de 24.`
-    if (Math.round(p.horas * 100) !== p.horas * 100) return `Revisá las horas de ${nombre}.`
+    // Para la propina se cuentan de a cuarto de hora (la planilla, de a media).
+    if (Math.round(p.horas * 4) !== p.horas * 4) {
+      return `Las horas de ${nombre} van de a cuarto: 8, 8,25, 8,5 u 8,75.`
+    }
     if (p.pago !== null && !PAGOS.some((x) => x.valor === p.pago)) return `Revisá el pago de ${nombre}.`
     if (p.pago === 'tr_ef' && p.efectivo !== null && (!Number.isInteger(p.efectivo) || p.efectivo < 0)) {
       return `Revisá el efectivo de ${nombre}.`

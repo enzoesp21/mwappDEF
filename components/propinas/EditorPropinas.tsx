@@ -441,7 +441,7 @@ export default function EditorPropinas(props: Props) {
             <div>
               <h2 className="text-sm font-semibold text-brand-text">Horas de cada uno</h2>
               <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">
-                Quien no trabajó, dejalo sin horas: no entra en el reparto.
+                De a cuarto (8, 8,25, 8,5, 8,75). Quien no trabajó, dejalo sin horas: no entra en el reparto.
               </p>
             </div>
             <button
@@ -559,7 +559,8 @@ export default function EditorPropinas(props: Props) {
                       />
                     )}
                   </div>
-                  <div className="relative w-[4.5rem] flex-shrink-0">
+                  {/* Ancho para "12,75": las horas de la propina van de a cuarto. */}
+                  <div className="relative w-[5.25rem] flex-shrink-0">
                     <input
                       type="text"
                       inputMode="decimal"
