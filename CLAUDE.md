@@ -223,6 +223,11 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     primera a la última".
   - Mientras corre la jornada, el que entró figura "adentro", no incompleto.
   - Un día con fichadas de papel queda con origen 'papel', y el proceso ya no lo toca.
+  - Horario cortado: después de juntar las dobles (menos de 30 min), cualquier salida y
+    vuelta es un corte, dure lo que dure. Lo decidió Enzo el 01/11, porque Facundo Viera a
+    veces corta 1 h 40 (el 11/10 daba 12 h de corrido en vez de 10,5). El pedido decía 2 h.
+  - Zulma es la única que entra de madrugada (04:00 a 05:00) y sale al mediodía o a la
+    tarde: con `jornada_calendario` todo queda en su día.
 - Probado con las fichadas reales de octubre (9.349 h, 51 celdas incompletas). Con la
   jornada desde las 07:00 se rompen 4 días: gente que entró entre las 05:57 y las 06:56.
   Desde las 05:00 quedaban bien, pero Enzo eligió dejar las 07:00 (`INICIO_JORNADA`).
@@ -247,6 +252,20 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     tarda unos segundos en ver las funciones nuevas. Pasó al instalarlo el 01/11; la tarea de
     las 17:20 ya anduvo y armó octubre (9.346,5 h, 51 celdas incompletas).
   - Si cambia el dominio de la app, cambiar `planilla_config.url`.
+- Pantallas en `/admin/fichadas/*`, con pestañas (`components/fichadas/PestanasFichadas.tsx`):
+  - **Planilla del mes**, con `GrillaPlanilla` y `PanelCelda`: la grilla como el Excel. El
+    panel de la celda trae las fichadas crudas (`fichadasDelDiaAction`) y corrige con
+    `aplicarSugerenciaAction` y `editarCeldaAction`, en `app/actions/planilla.ts`.
+  - **Del día**: muestra la jornada anterior por defecto, con lo que hay que resolver arriba.
+  - **Empleados** (orden arrastrando, alta al final, cargo, baja, día calendario, usuario,
+    nombres en Horarios) y **Reloj** (equivalencias con `sugerirEmpleados`, en
+    `lib/planilla-reloj.ts`). Sus acciones están en `app/actions/planilla-empleados.ts`. Lo
+    que cambia la cuenta recalcula los meses abiertos.
+  - **Papel**: carga a mano (fuente 'papel') e importación del Excel de CrossChex (fuente
+    'manual'). El lector está en `lib/planilla-importar.ts`: .xlsx con ExcelJS, que se baja
+    solo al usarlo, o CSV. El .xls viejo no se lee. Las fichadas que el reloj ya tiene
+    (misma persona, menos de 1 minuto de diferencia) se saltean. Acciones en
+    `app/actions/planilla-papel.ts`.
 - Nuevos de octubre, al final de la hoja (orden 69 a 75, sin cargo, ver
   `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
   Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone

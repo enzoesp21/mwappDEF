@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils'
 const PESTANAS = [
   { href: '/admin/fichadas', etiqueta: 'Ahora', exacta: true },
   { href: '/admin/fichadas/planilla', etiqueta: 'Planilla del mes', exacta: false },
+  { href: '/admin/fichadas/dia', etiqueta: 'Del día', exacta: false },
   { href: '/admin/fichadas/empleados', etiqueta: 'Empleados', exacta: false },
   { href: '/admin/fichadas/reloj', etiqueta: 'Reloj', exacta: false },
+  { href: '/admin/fichadas/papel', etiqueta: 'Papel', exacta: false },
 ]
 
 /** Las secciones de Fichadas: quién está adentro ahora y la planilla maestra. */

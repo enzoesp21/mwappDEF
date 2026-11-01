@@ -29,8 +29,6 @@ export const INICIO_JORNADA = 7 * 60
 export const DOBLE = 30
 /** Entre 5 y 30 min se avisa; a menos de 5, ni se menciona. */
 export const DOBLE_SIN_AVISO = 5
-/** Un hueco de 2 h o más entre dos tramos es horario cortado. */
-export const HUECO_CORTADO = 2 * 60
 /** Más de 17 h trabajadas en el día se marca para revisar (no bloquea). */
 export const JORNADA_LARGA = 17 * 60
 /** DÍAS = HORAS / 8,5. */
@@ -396,16 +394,12 @@ export function calcularDia(d: DatosDia): ResultadoDia | null {
       ],
     }
   } else {
-    // Entrada, salida, entrada, salida... Un hueco de 2 h o más después de una
-    // salida corta en dos tramos (horario cortado); uno más corto se cuenta.
+    // Entrada, salida, entrada, salida...: cada salida y vuelta es un corte
+    // (horario cortado), dure lo que dure. Decisión de Enzo (01/11): Facundo
+    // Viera a veces corta menos de 2 h y se tiene que detectar siempre.
     tramos = []
-    let desde = toques[0].primera.min
-    for (let i = 1; i < toques.length; i += 2) {
-      const siguiente = toques[i + 1]
-      if (!siguiente || siguiente.primera.min - toques[i].ultima.min >= HUECO_CORTADO) {
-        tramos.push({ desde, hasta: toques[i].ultima.min })
-        if (siguiente) desde = siguiente.primera.min
-      }
+    for (let i = 0; i < toques.length; i += 2) {
+      tramos.push({ desde: toques[i].primera.min, hasta: toques[i + 1].ultima.min })
     }
   }
 

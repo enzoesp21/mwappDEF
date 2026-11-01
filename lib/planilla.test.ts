@@ -237,15 +237,39 @@ describe('dobles, impares y avisos', () => {
     assert.ok(r.avisos.some((a) => a.tipo === 'impar'))
   })
 
-  test('un corte de menos de 2 h no es horario cortado: cuenta de la primera a la última', () => {
+  test('el cortado de Facundo Viera del 11/10: corte de 1 h 40 → 6 h 13 + 4 h 22 = 10,5 h (no 12 de corrido)', () => {
+    const r = dia('2026-10-11', [
+      reloj('2026-10-11 11:17'),
+      reloj('2026-10-11 17:30'),
+      reloj('2026-10-11 19:10'),
+      reloj('2026-10-11 23:32'),
+    ])
+    assert.deepEqual(
+      r.tramos.map((t) => `${hhmm(t.desde)}-${hhmm(t.hasta)}`),
+      ['11:17-17:30', '19:10-23:32']
+    )
+    assert.equal(r.minutos, 6 * 60 + 13 + 4 * 60 + 22)
+    assert.equal(r.horas, 10.5)
+  })
+
+  test('cualquier salida y vuelta es un corte, aunque sea de una hora', () => {
     const r = dia(VIERNES, [
       reloj('2026-10-23 08:00'),
       reloj('2026-10-23 12:00'),
       reloj('2026-10-23 13:00'),
       reloj('2026-10-23 17:00'),
     ])
-    assert.equal(r.tramos.length, 1)
-    assert.equal(r.horas, 9)
+    assert.equal(r.tramos.length, 2)
+    assert.equal(r.horas, 8)
+  })
+
+  test('Zulma con día calendario: entra de madrugada y sale al mediodía, todo en el mismo día', () => {
+    const marcas = [reloj('2026-10-26 04:36'), reloj('2026-10-26 11:57')]
+    const r = dia('2026-10-26', marcas, { calendario: true })
+    assert.equal(r.horas, 7.5)
+    assert.equal(hhmm(r.entrada!), '04:36')
+    // Sin día calendario la entrada de las 04:36 sería del domingo anterior.
+    assert.equal(calcularDia({ fecha: '2026-10-26', marcas, calendario: false, horario: null })?.estado, 'incompleto')
   })
 
   test('fichó en día de franco según horario', () => {

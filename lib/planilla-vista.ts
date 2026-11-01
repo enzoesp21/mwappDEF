@@ -130,6 +130,20 @@ export function armarFilas(
   })
 }
 
+/** Cómo quedó un día, para avisar después de cargar: "8,5 h (07:30 a 16:00)". */
+export function textoHorasDeCelda(
+  c: { horas: number | null; estado: string; entrada: string | null; salida: string | null; codigo: string | null } | null
+): string {
+  if (!c) return 'sin datos ese día'
+  if (c.codigo) return c.codigo
+  if (c.horas !== null) {
+    const rango = c.entrada && c.salida ? ` (${c.entrada.slice(0, 5)} a ${c.salida.slice(0, 5)})` : ''
+    return `${textoHoras(Number(c.horas))} h${rango}`
+  }
+  if (c.estado === 'incompleto') return 'sigue incompleto (falta una hora)'
+  return 'sin horas'
+}
+
 /** "2026-10" y el día → "2026-10-23". */
 export function fechaDelDia(mes: string, dia: number): string {
   return `${mes}-${String(dia).padStart(2, '0')}`
