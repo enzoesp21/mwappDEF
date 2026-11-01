@@ -193,6 +193,61 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   las 4. Pantalla en `/admin/fichadas`, que se refresca sola cada 30 s. Nadie usa las teclas
   de break.
 
+### Planilla maestra (se arma por partes, según el pedido de Enzo)
+
+- Tablas en `supabase/add_fichadas_planilla.sql`, todas solo para admin:
+  - `planilla_empleados`: el orden de la hoja. Los nuevos van al final, la baja es
+    `activo = false` y nunca se borran.
+  - `planilla_reloj_alias`: número del reloj → empleado, o `ignorar`.
+  - `planilla_meses` y `planilla_celdas`: una celda por empleado y día. Si está `bloqueada`
+    o su origen es manual, papel o código, el proceso automático no la pisa.
+  - `fichadas_manuales`: lo cargado desde papel.
+  - `planilla_eventos`: quién cerró o reabrió cada mes.
+  - Un trigger no deja tocar las celdas de un mes cerrado.
+- La jornada de la planilla va de 07:00 a 06:59 (regla de Enzo para la planilla), no de 4 a 4
+  como la pantalla de quién está adentro. Zulma (`jornada_calendario`) usa el día calendario.
+- `nombres_horario` es una lista, porque algunos figuran con dos nombres. Lo verificado
+  contra las fichadas:
+  - Ignacio López es "Ignacio Gaston" en Barra e "Ignacio Lopez" en Caja.
+  - Lucho Pelizardi (Barra, reloj 307) es Luciano Pellizardi. El "Luciano Pelizardi" de
+    Cocina es otra persona.
+  - El "Santiago" de Cocina no coincide con las fichadas de Velardez.
+  - Bruno Molina tiene dos números en el reloj (240 y 275): los dos son él.
+- La cuenta de horas está en `lib/planilla.ts` y es pura (no lee la base ni la hora).
+  `npm test` corre `lib/planilla.test.ts` con Node, sin instalar nada (`scripts/pruebas/`
+  resuelve los `@/`). Ahí están los casos del pedido: si se toca una regla, correrlas.
+- Lo que el pedido no decía y se decidió así:
+  - El "habitual" y el desempate de 12 a 17 miran los 30 días anteriores a ese día, no el
+    mes. Así un día ya calculado no cambia cuando llegan días nuevos.
+  - Con 3 fichadas o más en número impar, la celda queda incompleta y muestra "de la
+    primera a la última".
+  - Mientras corre la jornada, el que entró figura "adentro", no incompleto.
+  - Un día con fichadas de papel queda con origen 'papel', y el proceso ya no lo toca.
+- Probado con las fichadas reales de octubre (9.349 h, 51 celdas incompletas). Con la
+  jornada desde las 07:00 se rompen 4 días: gente que entró entre las 05:57 y las 06:56.
+  Desde las 05:00 quedaban bien, pero Enzo eligió dejar las 07:00 (`INICIO_JORNADA`).
+  También confirmó el cierre: 21:00, o 01:00 los días con noche.
+- Proceso automático (`supabase/add_planilla_proceso.sql` y `lib/planilla-proceso.ts`):
+  - pg_cron, con `20 */2 * * *` en UTC (07:20, 09:20... en Argentina), manda con pg_net un
+    `POST /api/planilla/actualizar` con la clave de `planilla_config` en `x-clave`.
+  - No hay usuario ni variables nuevas en Vercel: la clave la valida la base.
+  - Las RPC `planilla_datos` y `planilla_guardar` las puede usar un admin con su sesión o
+    quien traiga la clave.
+  - El freno está en `planilla_guardar`:
+    - no pisa celdas bloqueadas, manuales, de código ni de papel;
+    - no toca meses cerrados;
+    - borra lo del reloj que ya no corresponde;
+    - suma al final de la hoja del mes a quien tenga horas o sea nuevo;
+    - rehace los totales.
+  - Cada pasada recalcula hoy, la jornada anterior y 3 días más. Un mes que nunca se
+    calculó se calcula entero (así se arma octubre).
+  - "Actualizar ahora" es `actualizarPlanillaAction`; con un mes, lo recalcula entero.
+  - Para ver si anda: `select status_code, content from net._http_response order by created desc`.
+  - Si cambia el dominio de la app, cambiar `planilla_config.url`.
+- El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
+  parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
+  se corrige a mano.
+
 ## Seguridad
 
 - RLS en todas las tablas. Función `is_admin()` en la base.
