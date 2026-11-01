@@ -34,6 +34,8 @@ interface Props {
   hoy: string
   esMesActual: boolean
   sinMeses: boolean
+  /** Personas del reloj que ficharon y no están asociadas a nadie. */
+  sinAsociar: number
 }
 
 const INICIAL = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
@@ -208,6 +210,19 @@ export default function GrillaPlanilla(p: Props) {
           Reloj: {p.aviso.titulo}
         </span>
       </div>
+
+      {p.sinAsociar > 0 && (
+        <Link
+          href="/admin/fichadas/reloj"
+          className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:border-amber-400"
+        >
+          <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>
+            {p.sinAsociar === 1 ? 'Hay 1 persona del reloj sin asociar' : `Hay ${p.sinAsociar} personas del reloj sin asociar`}: sus
+            fichadas no llegan a la planilla. <span className="font-semibold underline underline-offset-2">Asociarlas</span>
+          </span>
+        </Link>
+      )}
 
       {mensaje && (
         <p

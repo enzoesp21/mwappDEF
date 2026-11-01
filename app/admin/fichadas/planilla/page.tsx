@@ -60,14 +60,15 @@ export default async function PlanillaPage({ searchParams }: { searchParams: { m
   const pedido = /^\d{4}-(0[1-9]|1[0-2])$/.test(searchParams.mes ?? '') ? searchParams.mes! : actual
 
   // El mes pedido se trae a la vez que lo demás; si no existe, se trae el último que haya.
-  const [mesesRes, empleadosRes, estadoRes, celdasPedidas] = await Promise.all([
+  const [mesesRes, empleadosRes, estadoRes, celdasPedidas, aliasRes] = await Promise.all([
     supabase.from('planilla_meses').select('periodo, estado, empleados, ultima_actualizacion').order('periodo', { ascending: false }),
     supabase.from('planilla_empleados').select('id, nombre, cargo'),
     supabase.from('fichero_estado').select('ultima_conexion, ultima_fichada_crosschex, error').maybeSingle(),
     traerCeldas(supabase, `${pedido}-01`),
+    supabase.from('planilla_reloj_alias').select('userid'),
   ])
 
-  const error = mesesRes.error ?? empleadosRes.error ?? estadoRes.error ?? celdasPedidas.error
+  const error = mesesRes.error ?? empleadosRes.error ?? estadoRes.error ?? celdasPedidas.error ?? aliasRes.error
   const meses = (mesesRes.data ?? []) as MesGuardado[]
   const elegido = meses.find((m) => m.periodo.startsWith(pedido)) ?? meses[0]
   const celdas =
@@ -86,6 +87,13 @@ export default async function PlanillaPage({ searchParams }: { searchParams: { m
   }
 
   const mes = elegido ? elegido.periodo.slice(0, 7) : actual
+
+  // Personas del reloj que ficharon y no están asociadas a nadie (ni ignoradas).
+  const conocidos = (aliasRes.data ?? []).map((a) => `"${a.userid}"`).join(',')
+  let sueltas = supabase.from('fichadas').select('userid').limit(1000)
+  if (conocidos) sueltas = sueltas.not('userid', 'in', `(${conocidos})`)
+  const { data: sinAlias } = await sueltas
+  const sinAsociar = new Set((sinAlias ?? []).map((f) => f.userid as string)).size
   const actuales = new Map((empleadosRes.data ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, cargo: e.cargo as string | null }]))
 
   return (
@@ -99,6 +107,7 @@ export default async function PlanillaPage({ searchParams }: { searchParams: { m
       hoy={ubicarEnJornada(ahora, false).fecha}
       esMesActual={mes === actual}
       sinMeses={meses.length === 0}
+      sinAsociar={sinAsociar}
     />
   )
 }

@@ -247,6 +247,10 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     tarda unos segundos en ver las funciones nuevas. Pasó al instalarlo el 01/11; la tarea de
     las 17:20 ya anduvo y armó octubre (9.346,5 h, 51 celdas incompletas).
   - Si cambia el dominio de la app, cambiar `planilla_config.url`.
+- Nuevos de octubre, al final de la hoja (orden 69 a 75, sin cargo, ver
+  `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
+  Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone
+  (615, Enzo confirmó que es la del usuario de la app) y Abril Castro (646) y Moises (647).
 - El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
   parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
   se corrige a mano.
