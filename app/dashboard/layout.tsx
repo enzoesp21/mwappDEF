@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import BottomNav from '@/components/BottomNav'
-import Logo from '@/components/Logo'
+import LogoInicio from '@/components/navegacion/LogoInicio'
+import TirarParaActualizar from '@/components/navegacion/TirarParaActualizar'
 import NotificationBell from '@/components/NotificationBell'
 import PendingApproval from '@/components/PendingApproval'
 import Onboarding from '@/components/Onboarding'
@@ -70,7 +71,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-screen bg-brand-dark">
       <header className="sticky top-0 z-30 bg-brand-dark/95 backdrop-blur-sm border-b border-brand-border">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto">
-          <Logo size="sm" />
+          <LogoInicio href="/dashboard" />
           <NotificationBell initialCount={unreadCount} notifications={notifList} />
         </div>
       </header>
@@ -80,6 +81,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </main>
 
       <BottomNav />
+      <TirarParaActualizar />
     </div>
   )
 }

@@ -27,8 +27,8 @@ import {
   type Pago,
   type PersonaPropina,
 } from '@/lib/propinas'
-import { borrarDiaPropinasAction, guardarPropinasAction, horasDelRelojAction } from '@/app/actions/propinas'
-import { emparejarHoras } from '@/lib/planilla-reloj'
+import { borrarDiaPropinasAction, guardarPropinasAction, relojParaPropinasAction } from '@/app/actions/propinas'
+import { armarDesdeReloj, type ParaOfrecer, type ResultadoReloj } from '@/lib/propinas-reloj'
 import { datosNivel, grupoDeNivel } from '@/lib/progresion'
 
 interface Fila {
@@ -81,6 +81,55 @@ function aHoras(texto: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
+/** 6.5 -> "6,5", como se escriben a mano. */
+const textoHoras = (h: number) => String(h).replace('.', ',')
+
+interface AvisoReloj {
+  ok: boolean
+  texto: string
+  detalles: { titulo: string; nombres: string; pista: string }[]
+}
+
+const juntar = (nombres: string[]) => nombres.join(', ')
+
+/** El resumen de lo que hizo "Traer horas del reloj". */
+function avisoDelReloj(r: ResultadoReloj, filas: Fila[]): AvisoReloj {
+  const nombreDe = new Map(filas.map((f) => [f.key, f.nombre.trim()]))
+  const deLaLista = (tipo: string) =>
+    Array.from(r.filas)
+      .filter(([, e]) => e.tipo === tipo)
+      .map(([clave]) => nombreDe.get(clave) ?? '')
+  const sumados = (motivo: string) => r.mozos.filter((m) => m.motivo === motivo).map((m) => m.nombre)
+
+  const conHoras = deLaLista('horas').length + sumados('horas').length
+  const incompletas = [...deLaLista('incompleta'), ...sumados('incompleta')]
+  const sinFichadas = [...deLaLista('sin_fichadas'), ...sumados('sin_fichadas')]
+  const noEstan = deLaLista('no_esta')
+
+  const detalles: AvisoReloj['detalles'] = []
+  if (incompletas.length > 0) {
+    detalles.push({ titulo: 'Incompletas en el reloj', nombres: juntar(incompletas), pista: 'Poneles las horas a mano.' })
+  }
+  if (sinFichadas.length > 0) {
+    detalles.push({
+      titulo: 'Con turno en Horarios y sin fichadas',
+      nombres: juntar(sinFichadas),
+      pista: 'Si trabajaron, poneles las horas a mano.',
+    })
+  }
+  if (noEstan.length > 0) {
+    detalles.push({ titulo: 'No ficharon ese día', nombres: juntar(noEstan), pista: 'Si no trabajaron, dejalos sin horas.' })
+  }
+  const n = r.mozos.length
+  return {
+    ok: true,
+    texto:
+      `Horas del reloj para ${conHoras} ${conHoras === 1 ? 'persona' : 'personas'}` +
+      (n > 0 ? `: sumé ${n} ${n === 1 ? 'mozo que no estaba' : 'mozos que no estaban'} en la lista.` : '.'),
+    detalles,
+  }
+}
+
 function aPersona(f: Fila): PersonaPropina {
   return {
     nombre: f.nombre,
@@ -120,7 +169,17 @@ export default function EditorPropinas(props: Props) {
   const [error, setError] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
   const [trayendo, setTrayendo] = useState(false)
-  const [avisoReloj, setAvisoReloj] = useState<{ ok: boolean; texto: string } | null>(null)
+  const [avisoReloj, setAvisoReloj] = useState<AvisoReloj | null>(null)
+  // Runners y gente sin sector que ficharon: se suman solo si se los toca.
+  const [ofrecidos, setOfrecidos] = useState<ParaOfrecer[]>([])
+  // Lo que puso el reloj (horas por fila y filas que sumó), para poder
+  // corregirlo si se vuelve a traer con otra fecha sin pisar lo escrito a mano.
+  const puestasPorReloj = useRef(new Map<string, string>())
+  const sumadasPorReloj = useRef(new Set<string>())
+  const filasActuales = useRef(filas)
+  useEffect(() => {
+    filasActuales.current = filas
+  }, [filas])
 
   const personas = useMemo(() => filas.map(aPersona), [filas])
   const totalN = aPesos(total)
@@ -148,34 +207,89 @@ export default function EditorPropinas(props: Props) {
     setError(null)
   }
 
-  /** Completa las horas con las de la planilla maestra de ese día (el reloj). */
+  /** Una fila nueva que pone el reloj, con el grupo de su nivel si tiene. */
+  function filaDelReloj(nombre: string, horas: number | null): Fila {
+    const fila = {
+      ...aFila({ nombre, grupo: grupoSegunNivel(nombre) ?? 'camarero', horas: 0, pago: null, efectivo: null }),
+      horas: horas !== null ? textoHoras(horas) : '',
+    }
+    sumadasPorReloj.current.add(fila.key)
+    if (horas !== null) puestasPorReloj.current.set(fila.key, fila.horas)
+    return fila
+  }
+
+  /**
+   * Arma la lista con la planilla maestra de ese día (el reloj): les pone las
+   * horas a los que están, suma a los mozos que faltan y ofrece a los runners.
+   */
   async function traerHoras() {
     setTrayendo(true)
     setAvisoReloj(null)
-    const res = await horasDelRelojAction(fecha)
+    setOfrecidos([])
+    const res = await relojParaPropinasAction(fecha)
     setTrayendo(false)
     if (!res.ok) {
-      setAvisoReloj({ ok: false, texto: res.error })
+      setAvisoReloj({ ok: false, texto: res.error, detalles: [] })
       return
     }
-    const delReloj = res.value ?? []
-    if (delReloj.length === 0) {
-      setAvisoReloj({ ok: false, texto: 'La planilla no tiene horas de ese día todavía.' })
-      return
-    }
-    const { horas, sinHoras } = emparejarHoras(
-      filas.map((f) => ({
+    // Si la planilla todavía no tiene ese día, igual se pasa (vacío): así se saca
+    // lo que el reloj había puesto con otra fecha. Horarios solo no alcanza para
+    // decir quién faltó.
+    const vacio = (res.value?.personas.length ?? 0) === 0
+    const datos = vacio || !res.value ? { personas: [], sinReloj: [] } : res.value
+
+    const actuales = filasActuales.current
+    const r = armarDesdeReloj(
+      actuales.map((f) => ({
         clave: f.key,
         nombre: f.nombre,
         usuarioId: f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null,
       })),
-      delReloj
+      datos,
+      props.usuarios
     )
-    setFilas((prev) =>
-      prev.map((f) => (horas.has(f.key) ? { ...f, horas: String(horas.get(f.key)).replace('.', ',') } : f))
+
+    const previas = puestasPorReloj.current
+    puestasPorReloj.current = new Map()
+    const siguientes: Fila[] = []
+    for (const f of actuales) {
+      // Las horas que tiene son las que puso el reloj antes (con otra fecha): se pueden sacar.
+      const delReloj = previas.get(f.key) === f.horas && f.horas !== ''
+      const estado = r.filas.get(f.key)
+      if (!estado) {
+        // Sin nombre: si está vacía, afuera; si tiene horas, queda (al guardar se avisa).
+        if (f.horas.trim()) siguientes.push(f)
+      } else if (estado.tipo === 'horas') {
+        const horas = textoHoras(estado.horas)
+        puestasPorReloj.current.set(f.key, horas)
+        siguientes.push({ ...f, horas })
+      } else if (estado.tipo === 'no_esta' && sumadasPorReloj.current.has(f.key) && (delReloj || !f.horas.trim())) {
+        // La había sumado el reloj para otra fecha y este día no trabajó: afuera.
+      } else {
+        siguientes.push(delReloj ? { ...f, horas: '' } : f)
+      }
+    }
+    for (const m of r.mozos) siguientes.push(filaDelReloj(m.nombre, m.horas))
+
+    setFilas(siguientes.length > 0 ? siguientes : [aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })])
+    setOfrecidos(r.ofrecer)
+    setAvisoReloj(
+      vacio
+        ? {
+            ok: false,
+            texto: 'La planilla todavía no tiene a nadie ese día. Se actualiza sola cada 2 horas: probá más tarde.',
+            detalles: [],
+          }
+        : avisoDelReloj(r, actuales)
     )
-    const faltan = sinHoras.length > 0 ? ` Sin horas en el reloj ese día: ${sinHoras.join(', ')} (revisalos a mano).` : ''
-    setAvisoReloj({ ok: true, texto: `Horas del reloj para ${horas.size} ${horas.size === 1 ? 'persona' : 'personas'}.${faltan}` })
+    setError(null)
+  }
+
+  /** Suma a la lista a los runners (o sin sector) que se tocaron. */
+  function sumarOfrecidos(cuales: ParaOfrecer[]) {
+    const nuevas = cuales.map((o) => filaDelReloj(o.nombre, o.horas))
+    setFilas((prev) => [...prev.filter((f) => f.nombre.trim() || f.horas.trim()), ...nuevas])
+    setOfrecidos((prev) => prev.filter((o) => !cuales.includes(o)))
   }
 
   // Desde la planilla ("Pasar a Propinas") se llega con ?traer=reloj: se traen solas, una vez.
@@ -263,7 +377,20 @@ export default function EditorPropinas(props: Props) {
             <input
               type="date"
               value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              onChange={(e) => {
+                setFecha(e.target.value)
+                // Lo que dijo el reloj era de la otra fecha.
+                setOfrecidos([])
+                setAvisoReloj(
+                  puestasPorReloj.current.size > 0 || filas.some((f) => sumadasPorReloj.current.has(f.key))
+                    ? {
+                        ok: false,
+                        texto: 'Cambiaste la fecha: tocá "Traer horas del reloj" de nuevo, así las horas son las de ese día.',
+                        detalles: [],
+                      }
+                    : null
+                )
+              }}
               className={cn(inputBase, 'mt-1')}
             />
           </label>
@@ -328,13 +455,72 @@ export default function EditorPropinas(props: Props) {
             </button>
           </div>
           {avisoReloj && (
-            <p
+            <div
               role="status"
-              className={cn('text-xs mt-2 leading-relaxed', avisoReloj.ok ? 'text-brand-success' : 'text-brand-error')}
+              className={cn(
+                'mt-2 rounded-xl border px-3 py-2.5 text-xs leading-relaxed space-y-1.5',
+                avisoReloj.ok ? 'border-brand-accent/30 bg-brand-accent/5' : 'border-brand-error/30 bg-brand-error/10'
+              )}
             >
-              {avisoReloj.texto}
-            </p>
+              <p
+                className={cn(
+                  'flex items-start gap-1.5 font-semibold',
+                  avisoReloj.ok ? 'text-brand-success' : 'text-brand-error'
+                )}
+              >
+                {avisoReloj.ok ? (
+                  <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                )}
+                {avisoReloj.texto}
+              </p>
+              {avisoReloj.detalles.map((d) => (
+                <p key={d.titulo} className="text-brand-text">
+                  <span className="font-semibold">{d.titulo}:</span> {d.nombres}.{' '}
+                  <span className="text-brand-muted">{d.pista}</span>
+                </p>
+              ))}
+            </div>
           )}
+          {(['runner', 'sin_sector'] as const).map((tipo) => {
+            const delTipo = ofrecidos.filter((o) => o.tipo === tipo)
+            if (delTipo.length === 0) return null
+            return (
+              <div key={tipo} className="mt-2 rounded-xl border border-brand-border bg-brand-card-hover/60 px-3 py-2.5">
+                <p className="text-xs font-semibold text-brand-text">
+                  {tipo === 'runner' ? 'Runners y comisses que ficharon' : 'Ficharon y no figuran en Horarios'}
+                </p>
+                <p className="text-[11px] text-brand-muted leading-relaxed">
+                  {tipo === 'runner'
+                    ? 'No se suman solos: tocá a los que entran en el reparto.'
+                    : 'Si alguno es del salón, tocalo para sumarlo.'}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {delTipo.map((o, i) => (
+                    <button
+                      key={o.nombre + i}
+                      type="button"
+                      onClick={() => sumarOfrecidos([o])}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-brand-accent/40 bg-brand-card text-xs font-medium text-brand-accent hover:bg-brand-accent/5 cursor-pointer min-h-[34px]"
+                    >
+                      <Plus className="w-3 h-3" />
+                      {o.nombre} · {textoHoras(o.horas)} h
+                    </button>
+                  ))}
+                  {tipo === 'runner' && delTipo.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => sumarOfrecidos(delTipo)}
+                      className="px-2.5 py-1.5 rounded-full text-xs font-semibold text-brand-muted hover:text-brand-accent underline underline-offset-2 cursor-pointer min-h-[34px]"
+                    >
+                      Sumar a los {delTipo.length}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         <datalist id="nombres-propinas">

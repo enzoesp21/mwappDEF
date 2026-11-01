@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AdminNav from '@/components/admin/AdminNav'
 import NotificationBell from '@/components/NotificationBell'
+import TirarParaActualizar from '@/components/navegacion/TirarParaActualizar'
 import type { Notification } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -59,6 +60,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
         <main className="min-h-screen p-4 md:p-6 lg:px-8 lg:pb-8 lg:pt-2">{children}</main>
       </div>
+      <TirarParaActualizar />
     </div>
   )
 }

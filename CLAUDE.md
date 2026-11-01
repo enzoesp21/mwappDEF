@@ -30,6 +30,14 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
   costado según la dirección (`lib/navegacion.ts`), a lo de adentro sube apenas. Termina en
   `transform: none` (no romper elementos `fixed`).
 - `BottomNav` y `AdminNav` marcan la sección al tocar, sin esperar a que cargue.
+- El logo de arriba (`LogoInicio`) lleva al inicio; si ya estás ahí, sube arriba de todo.
+- Tirar para actualizar, como Instagram (`TirarParaActualizar`, en los layouts de dashboard y
+  admin; instalada como app, el teléfono no lo trae): arriba de todo, arrastrar hacia abajo y
+  soltar hace `router.refresh()`, sin perder lo escrito. No arranca sobre campos, la firma,
+  ventanas (`role="dialog"`), lo que se arrastra ni lo marcado con `data-sin-tirar`. Las
+  escuchas se ponen una sola vez (el router va en una ref): si se vuelven a poner al dibujar,
+  el gesto se corta a la mitad. `globals.css` le saca al navegador su propio "tirar para
+  recargar" (`overscroll-behavior-y: none`).
 - `BarraProgreso` (en el layout raíz) arranca al tocar un link interno.
 - `experimental.staleTimes` (30 s): volver a una sección reciente es instantáneo.
 - Las páginas piden sus datos con `Promise.all`, no de a uno: Inicio hacía ~10 en fila.
@@ -274,11 +282,26 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Las fórmulas se recalculan al abrir (`fullCalcOnLoad`): ExcelJS no guarda un resultado 0.
   - El segundo DIAS es la cantidad de días con horas. OTROS = VAC + CERT + LIC.
 - "Pasar a Propinas": la planilla abre `/admin/propinas/<fecha>?traer=reloj`. Si ese día no se
-  cargó, se abre como día nuevo con esa fecha. En el editor, "Traer horas del reloj" llama a
-  la RPC `horas_para_propinas` (`add_planilla_propinas.sql`), que la puede usar quien carga
-  propinas aunque no sea admin, y empareja con `emparejarHoras` en `lib/planilla-reloj.ts`:
-  primero por usuario, después por nombre (planilla o Horarios) y después por la regla de las
-  2 palabras. Ante la duda no pone nada.
+  cargó, se abre como día nuevo con esa fecha.
+- "Traer horas del reloj" (en el editor de propinas) arma la lista con la planilla de ese día.
+  Antes solo completaba a los que ya estaban en la lista: el 31/10 arrancó con 2 nombres y trajo
+  1, y Enzo pidió que ponga a todos los mozos.
+  - Usa la RPC `reloj_para_propinas` (`add_propinas_mozos_reloj.sql`, devuelve jsonb). La
+    puede usar quien carga propinas aunque no sea admin. Trae a todos los que tienen ese día en
+    la planilla (con horas o incompletos), con su sector de Horarios y su celda ese día, y a
+    los que tenían turno en Horarios y no ficharon. Reemplaza a `horas_para_propinas`, que
+    quedó sin uso.
+  - La lógica es pura, en `lib/propinas-reloj.ts`, con pruebas del 31/10 real.
+  - Empareja cada fila de la lista: por usuario, por nombre (planilla o Horarios) y por la
+    regla de las 2 palabras. Ante la duda no pone nada.
+  - Suma solos a los mozos que faltan, con horas, incompletos (sin horas) o con turno y sin
+    fichadas (sin horas). Mozo = sector Camareros de Horarios donde tiene turno ese día; si esa
+    semana no figura, cargo MOZO de la planilla ("MOZO DE MOSTRADOR" es barra) o, sin cargo, el
+    puesto Mozos de su usuario. El encargado no entra.
+  - A los runners y comisses, y a los que ficharon sin sector conocido, no los suma: los ofrece
+    con un toque. No está confirmado que siempre entren en el reparto.
+  - Si se vuelve a traer con otra fecha, saca lo que había puesto el reloj y no toca lo escrito
+    a mano.
 - Cierre de mes (`app/actions/planilla-cierre.ts` y `components/planilla/CierreMes.tsx`):
   - Solo para un mes que ya terminó (`mesTerminado`: desde las 07:00 del 1° siguiente).
   - Antes de cerrar se recalcula el mes una última vez. Si quedan incompletas, pide

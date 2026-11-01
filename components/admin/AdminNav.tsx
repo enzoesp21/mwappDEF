@@ -22,7 +22,7 @@ import {
   Fingerprint,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import Logo from '@/components/Logo'
+import LogoInicio from '@/components/navegacion/LogoInicio'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -101,7 +101,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
         >
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
-        <Logo size="sm" />
+        <LogoInicio href="/admin" onClick={() => alTocar('/admin')} />
       </header>
 
       {/* Mobile drawer overlay */}
@@ -109,11 +109,13 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
         <div
           className="lg:hidden fixed inset-0 z-30 bg-black/60"
           onClick={() => setMobileOpen(false)}
+          data-sin-tirar
         />
       )}
 
       {/* Mobile drawer */}
       <aside
+        data-sin-tirar
         className={cn(
           'lg:hidden fixed top-14 left-0 bottom-0 z-40 w-64 bg-brand-card border-r border-brand-border flex flex-col transition-transform duration-300',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -133,7 +135,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col fixed top-0 left-0 bottom-0 w-60 bg-brand-card border-r border-brand-border z-30">
         <div className="p-5 border-b border-brand-border">
-          <Logo size="md" />
+          <LogoInicio href="/admin" size="md" onClick={() => alTocar('/admin')} />
         </div>
 
         <div className="px-4 py-4 border-b border-brand-border">

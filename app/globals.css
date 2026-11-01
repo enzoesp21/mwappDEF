@@ -284,6 +284,13 @@ h2 {
 html {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Tirar para actualizar lo hace la app (TirarParaActualizar): que el navegador
+   no recargue la página entera ni la haga rebotar arriba. */
+html,
+body {
+  overscroll-behavior-y: none;
+}
 a.rounded-2xl:active,
 a.rounded-xl:active,
 button.rounded-2xl:active,
