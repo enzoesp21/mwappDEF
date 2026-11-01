@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   AlertCircle,
   Check,
   Copy,
+  Fingerprint,
   Loader2,
   Plus,
   Save,
@@ -26,7 +27,8 @@ import {
   type Pago,
   type PersonaPropina,
 } from '@/lib/propinas'
-import { borrarDiaPropinasAction, guardarPropinasAction } from '@/app/actions/propinas'
+import { borrarDiaPropinasAction, guardarPropinasAction, horasDelRelojAction } from '@/app/actions/propinas'
+import { emparejarHoras } from '@/lib/planilla-reloj'
 import { datosNivel, grupoDeNivel } from '@/lib/progresion'
 
 interface Fila {
@@ -117,6 +119,8 @@ export default function EditorPropinas(props: Props) {
   const [borrando, setBorrando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [trayendo, setTrayendo] = useState(false)
+  const [avisoReloj, setAvisoReloj] = useState<{ ok: boolean; texto: string } | null>(null)
 
   const personas = useMemo(() => filas.map(aPersona), [filas])
   const totalN = aPesos(total)
@@ -143,6 +147,46 @@ export default function EditorPropinas(props: Props) {
     setFilas((prev) => prev.map((f) => (f.key === key ? { ...f, ...cambio } : f)))
     setError(null)
   }
+
+  /** Completa las horas con las de la planilla maestra de ese día (el reloj). */
+  async function traerHoras() {
+    setTrayendo(true)
+    setAvisoReloj(null)
+    const res = await horasDelRelojAction(fecha)
+    setTrayendo(false)
+    if (!res.ok) {
+      setAvisoReloj({ ok: false, texto: res.error })
+      return
+    }
+    const delReloj = res.value ?? []
+    if (delReloj.length === 0) {
+      setAvisoReloj({ ok: false, texto: 'La planilla no tiene horas de ese día todavía.' })
+      return
+    }
+    const { horas, sinHoras } = emparejarHoras(
+      filas.map((f) => ({
+        clave: f.key,
+        nombre: f.nombre,
+        usuarioId: f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null,
+      })),
+      delReloj
+    )
+    setFilas((prev) =>
+      prev.map((f) => (horas.has(f.key) ? { ...f, horas: String(horas.get(f.key)).replace('.', ',') } : f))
+    )
+    const faltan = sinHoras.length > 0 ? ` Sin horas en el reloj ese día: ${sinHoras.join(', ')} (revisalos a mano).` : ''
+    setAvisoReloj({ ok: true, texto: `Horas del reloj para ${horas.size} ${horas.size === 1 ? 'persona' : 'personas'}.${faltan}` })
+  }
+
+  // Desde la planilla ("Pasar a Propinas") se llega con ?traer=reloj: se traen solas, una vez.
+  const parametros = useSearchParams()
+  const yaTrajo = useRef(false)
+  useEffect(() => {
+    if (yaTrajo.current || parametros.get('traer') !== 'reloj') return
+    yaTrajo.current = true
+    traerHoras()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parametros])
 
   function agregar() {
     setFilas((prev) => [...prev, aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })])
@@ -266,10 +310,31 @@ export default function EditorPropinas(props: Props) {
 
       <section className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
         <div className="px-4 pt-4 pb-2">
-          <h2 className="text-sm font-semibold text-brand-text">Horas de cada uno</h2>
-          <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">
-            Quien no trabajó, dejalo sin horas: no entra en el reparto.
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-brand-text">Horas de cada uno</h2>
+              <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">
+                Quien no trabajó, dejalo sin horas: no entra en el reparto.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={traerHoras}
+              disabled={trayendo}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-brand-accent/50 text-xs font-semibold text-brand-accent hover:bg-brand-accent/5 cursor-pointer disabled:opacity-60 whitespace-nowrap min-h-[40px]"
+            >
+              {trayendo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Fingerprint className="w-3.5 h-3.5" />}
+              Traer horas del reloj
+            </button>
+          </div>
+          {avisoReloj && (
+            <p
+              role="status"
+              className={cn('text-xs mt-2 leading-relaxed', avisoReloj.ok ? 'text-brand-success' : 'text-brand-error')}
+            >
+              {avisoReloj.texto}
+            </p>
+          )}
         </div>
 
         <datalist id="nombres-propinas">

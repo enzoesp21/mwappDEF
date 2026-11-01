@@ -266,6 +266,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     solo al usarlo, o CSV. El .xls viejo no se lee. Las fichadas que el reloj ya tiene
     (misma persona, menos de 1 minuto de diferencia) se saltean. Acciones en
     `app/actions/planilla-papel.ts`.
+- Excel (`lib/planilla-excel.ts`, con ExcelJS), probado contra el formato del pedido en
+  `lib/planilla-excel.test.ts`:
+  - Planilla del mes o quincena: `GET /api/planilla/excel?mes=2026-10&parte=mes|q1|q2`.
+  - Horas para propinas (Empleado | Horas Calculadas): `GET /api/planilla/horas?desde&hasta`.
+  - Las dos son solo para admin. Se bajan desde "Excel y propinas" en la planilla.
+  - Las fórmulas se recalculan al abrir (`fullCalcOnLoad`): ExcelJS no guarda un resultado 0.
+  - El segundo DIAS es la cantidad de días con horas. OTROS = VAC + CERT + LIC.
+- "Pasar a Propinas": la planilla abre `/admin/propinas/<fecha>?traer=reloj`. Si ese día no se
+  cargó, se abre como día nuevo con esa fecha. En el editor, "Traer horas del reloj" llama a
+  la RPC `horas_para_propinas` (`add_planilla_propinas.sql`), que la puede usar quien carga
+  propinas aunque no sea admin, y empareja con `emparejarHoras` en `lib/planilla-reloj.ts`:
+  primero por usuario, después por nombre (planilla o Horarios) y después por la regla de las
+  2 palabras. Ante la duda no pone nada.
 - Nuevos de octubre, al final de la hoja (orden 69 a 75, sin cargo, ver
   `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
   Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone

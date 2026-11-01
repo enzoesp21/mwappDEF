@@ -19,6 +19,7 @@ import {
 } from '@/lib/planilla-vista'
 import { actualizarPlanillaAction } from '@/app/actions/planilla'
 import PanelCelda from '@/components/planilla/PanelCelda'
+import ExportarPlanilla from '@/components/planilla/ExportarPlanilla'
 
 interface Props {
   /** "2026-10" */
@@ -240,6 +241,8 @@ export default function GrillaPlanilla(p: Props) {
           <span className="text-brand-muted">Se ve como quedó; para cambiar algo hay que reabrirlo.</span>
         </div>
       )}
+
+      {!p.sinMeses && <ExportarPlanilla mes={p.mes} hoy={p.hoy} />}
 
       {p.sinMeses ? (
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 text-center text-sm text-brand-muted">

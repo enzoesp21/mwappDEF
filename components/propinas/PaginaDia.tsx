@@ -49,11 +49,14 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
     esNuevo ? plantillaDiaNuevo(supabase) : Promise.resolve([]),
     nivelesPorUsuario(supabase),
   ])
-  if (dia && !dia.error && !dia.dia) notFound()
+  // Una fecha que todavía no se cargó se abre como día nuevo con esa fecha
+  // (así llega "Pasar a Propinas" desde la planilla).
+  const sinCargar = !esNuevo && dia !== null && !dia.error && !dia.dia
+  const plantillaNueva = sinCargar ? await plantillaDiaNuevo(supabase) : plantilla
 
   return (
     <div className="space-y-4 max-w-2xl animate-slide-up">
-      <Volver base={base} titulo={esNuevo ? 'Cargar un día' : 'Propinas del día'} />
+      <Volver base={base} titulo={esNuevo || sinCargar ? 'Cargar un día' : 'Propinas del día'} />
 
       {dia?.error ? (
         <AvisoPropinas error={dia.error} />
@@ -61,11 +64,11 @@ export default async function PaginaDia({ base, userId, fecha }: Props) {
         <EditorPropinas
           base={base}
           // Se carga al día siguiente: por defecto, ayer.
-          fecha={dia?.dia?.fecha ?? sumarDias(hoyEnArgentina(), -1)}
-          esNuevo={esNuevo}
+          fecha={dia?.dia?.fecha ?? (sinCargar ? fecha : sumarDias(hoyEnArgentina(), -1))}
+          esNuevo={esNuevo || sinCargar}
           total={dia?.dia?.total ?? null}
           general={dia?.dia?.general ?? null}
-          personas={dia?.dia?.personas ?? plantilla}
+          personas={dia?.dia?.personas ?? plantillaNueva}
           version={dia?.dia?.version ?? null}
           usuarios={usuarios}
           sugerencias={sugerencias}

@@ -2,32 +2,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { avisoConexion, type EstadoFichero } from '@/lib/fichadas'
 import { ubicarEnJornada } from '@/lib/planilla'
-import { armarFilas, mesDeHoy, type CeldaPlanilla, type EmpleadoDeHoja } from '@/lib/planilla-vista'
+import { armarFilas, mesDeHoy, type EmpleadoDeHoja } from '@/lib/planilla-vista'
+import { traerCeldas } from '@/lib/planilla-datos'
 import GrillaPlanilla from '@/components/planilla/GrillaPlanilla'
 
 export const dynamic = 'force-dynamic'
-
-const COLUMNAS =
-  'empleado_id, dia, horas, codigo, origen, estado, entrada, salida, tramos, minutos, horario, sugerencia, avisos, nota, bloqueada'
-const POR_PAGINA = 1000 // Supabase no devuelve más de 1000 filas por consulta; un mes son más de 2000 celdas
-
-type Cliente = Awaited<ReturnType<typeof createClient>>
-
-async function traerCeldas(supabase: Cliente, periodo: string) {
-  const todas: CeldaPlanilla[] = []
-  for (let fila = 0; ; fila += POR_PAGINA) {
-    const { data, error } = await supabase
-      .from('planilla_celdas')
-      .select(COLUMNAS)
-      .eq('periodo', periodo)
-      .order('empleado_id')
-      .order('dia')
-      .range(fila, fila + POR_PAGINA - 1)
-    if (error) return { data: null, error }
-    todas.push(...((data ?? []) as CeldaPlanilla[]))
-    if (!data || data.length < POR_PAGINA) return { data: todas, error: null }
-  }
-}
 
 /** "hoy 17:20", "ayer 07:20" o "30/10 07:20", en hora de Argentina. */
 function cuandoFue(iso: string | null, ahora: number): string | null {

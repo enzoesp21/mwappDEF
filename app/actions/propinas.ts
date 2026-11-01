@@ -121,3 +121,34 @@ export async function borrarDiaPropinasAction(fecha: string): Promise<Resultado>
   revalidarTodo(fecha)
   return { ok: true }
 }
+
+export interface HorasDelRelojDia {
+  nombre: string
+  profileId: string | null
+  nombresHorario: string[]
+  horas: number
+}
+
+/**
+ * "Traer horas del reloj": las horas de ese día según la planilla maestra,
+ * para completar la lista de propinas sin copiarlas a mano. Pueden usarlo los
+ * admin y quien carga propinas (la función de la base se fija).
+ */
+export async function horasDelRelojAction(fecha: string): Promise<Resultado<HorasDelRelojDia[]>> {
+  const { supabase, session } = await requireCargador()
+  if (!session) return { ok: false, error: 'No tenés permiso para cargar propinas.' }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, error: 'Elegí la fecha del día.' }
+  const { data, error } = await supabase.rpc('horas_para_propinas', { p_fecha: fecha })
+  if (error) {
+    if (/horas_para_propinas|schema cache/i.test(error.message)) {
+      return { ok: false, error: 'Falta correr el SQL de propinas y reloj (supabase/add_planilla_propinas.sql) en Supabase.' }
+    }
+    return { ok: false, error: error.message }
+  }
+  return {
+    ok: true,
+    value: ((data ?? []) as { nombre: string; profile_id: string | null; nombres_horario: string[] | null; horas: number }[]).map(
+      (r) => ({ nombre: r.nombre, profileId: r.profile_id, nombresHorario: r.nombres_horario ?? [], horas: Number(r.horas) })
+    ),
+  }
+}
