@@ -29,6 +29,12 @@ function diaMes(fecha: string): string {
   return `${fecha.slice(8)}/${fecha.slice(5, 7)}`
 }
 
+/** Los meses cerrados ("2026-10"): ahí no se carga ni se borra nada. */
+async function mesesCerrados(supabase: Cliente): Promise<Set<string>> {
+  const { data } = await supabase.from('planilla_meses').select('periodo').eq('estado', 'cerrado')
+  return new Set((data ?? []).map((m) => (m.periodo as string).slice(0, 7)))
+}
+
 /**
  * Recalcula esas jornadas rehaciendo lo de papel (de a 31 días: el proceso
  * acepta hasta 2 meses por vez). Devuelve un texto si algo falló.
@@ -53,6 +59,9 @@ export async function cargarPapelAction(empleadoId: string, fecha: string, horas
   const limpias = Array.from(new Set(horas.map((h) => h.trim()).filter(Boolean)))
   if (limpias.length === 0) return { ok: false, error: 'Escribí al menos una hora.' }
   if (limpias.length > 6 || limpias.some((h) => !HORA.test(h))) return { ok: false, error: 'Las horas van así: 07:30 (hasta 6).' }
+  if ((await mesesCerrados(supabase)).has(fecha.slice(0, 7))) {
+    return { ok: false, error: 'Ese mes está cerrado: para cargar papel hay que reabrirlo desde la planilla.' }
+  }
 
   const { data: empleado, error: errorEmpleado } = await supabase
     .from('planilla_empleados')
@@ -106,9 +115,12 @@ export async function borrarPapelAction(id: number): Promise<Resultado> {
   if (!fila) return { ok: false, error: 'Esa fichada ya no está: recargá la página.' }
   const { data: empleado } = await supabase.from('planilla_empleados').select('jornada_calendario').eq('id', fila.empleado_id).single()
 
+  const { fecha, min } = ubicarEnJornada(Date.parse(fila.fecha_hora), Boolean(empleado?.jornada_calendario))
+  if ((await mesesCerrados(supabase)).has(fecha.slice(0, 7))) {
+    return { ok: false, error: 'Ese mes está cerrado: para borrar hay que reabrirlo desde la planilla.' }
+  }
   const { error: errorBorrar } = await supabase.from('fichadas_manuales').delete().eq('id', id)
   if (errorBorrar) return { ok: false, error: errorBorrar.message }
-  const { fecha, min } = ubicarEnJornada(Date.parse(fila.fecha_hora), Boolean(empleado?.jornada_calendario))
   const aviso = await recalcularRango(supabase, fecha, fecha)
   revalidatePath('/admin/fichadas', 'layout')
   return { ok: true, mensaje: `Borrada la de las ${hhmm(min)} del ${diaMes(fecha)}.${aviso}` }
@@ -161,9 +173,11 @@ export async function importarFichadasAction(filas: { empleadoId: string; ms: nu
     }
   }
 
+  const cerrados = await mesesCerrados(supabase)
   const vistas = new Set<string>()
   let enReloj = 0
   let repetidas = 0
+  let deMesCerrado = 0
   const nuevas: { empleado_id: string; fecha_hora: string; fuente: string; nota: string; created_by: string }[] = []
   for (const f of filas) {
     const clave = `${f.empleadoId}|${Math.floor(f.ms / 60_000)}`
@@ -172,6 +186,10 @@ export async function importarFichadasAction(filas: { empleadoId: string; ms: nu
       continue
     }
     vistas.add(clave)
+    if (cerrados.has(ubicarEnJornada(f.ms, calendario.get(f.empleadoId) ?? false).fecha.slice(0, 7))) {
+      deMesCerrado++
+      continue
+    }
     if ((delReloj.get(f.empleadoId) ?? []).some((r) => Math.abs(r - f.ms) < 60_000)) {
       enReloj++
       continue
@@ -198,6 +216,7 @@ export async function importarFichadasAction(filas: { empleadoId: string; ms: nu
   const saltadas = [
     enReloj > 0 && `${enReloj} ya estaban en el reloj`,
     repetidas > 0 && `${repetidas} repetidas en el archivo`,
+    deMesCerrado > 0 && `${deMesCerrado} de meses cerrados`,
     nuevas.length - insertadas > 0 && `${nuevas.length - insertadas} ya estaban importadas`,
   ].filter(Boolean)
   const detalle = saltadas.length > 0 ? ` (se saltearon: ${saltadas.join(', ')})` : ''

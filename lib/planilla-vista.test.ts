@@ -54,3 +54,26 @@ describe('planilla en pantalla', () => {
     assert.equal(textoDias(178 / 8.5), '20,94')
   })
 })
+
+describe('cierre del mes', () => {
+  test('totales: horas, incompletas y DÍAS por empleado (solo los que tienen horas)', async () => {
+    const { totalesDelMes } = await import('@/lib/planilla-vista')
+    const t = totalesDelMes([
+      { empleadoId: 'a', nombre: 'ESPIÑO', cargo: null, celdas: {}, horas: 111, dias: 111 / 8.5, incompletas: 13 },
+      { empleadoId: 'b', nombre: 'SACHETT ANGEL', cargo: null, celdas: {}, horas: 0, dias: 0, incompletas: 0 },
+      { empleadoId: 'c', nombre: 'ZULMA', cargo: null, celdas: {}, horas: 189, dias: 189 / 8.5, incompletas: 1 },
+    ])
+    assert.equal(t.horas_total, 300)
+    assert.equal(t.incompletos, 14)
+    assert.equal(t.empleados_con_horas, 2)
+    assert.deepEqual(t.por_empleado.a, { nombre: 'ESPIÑO', horas: 111, dias: 13.06 })
+    assert.equal(t.por_empleado.b, undefined)
+  })
+
+  test('octubre se puede cerrar desde las 07:00 del 1° de noviembre, no antes', async () => {
+    const { mesTerminado } = await import('@/lib/planilla-vista')
+    assert.equal(mesTerminado('2026-10', Date.parse('2026-11-01T06:30:00-03:00')), false)
+    assert.equal(mesTerminado('2026-10', Date.parse('2026-11-01T07:30:00-03:00')), true)
+    assert.equal(mesTerminado('2026-11', Date.parse('2026-11-15T12:00:00-03:00')), false)
+  })
+})

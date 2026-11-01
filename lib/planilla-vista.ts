@@ -148,3 +148,30 @@ export function textoHorasDeCelda(
 export function fechaDelDia(mes: string, dia: number): string {
   return `${mes}-${String(dia).padStart(2, '0')}`
 }
+
+export interface TotalesDelMes {
+  horas_total: number
+  incompletos: number
+  empleados_con_horas: number
+  /** Por empleado: HORAS y DÍAS (= horas / 8,5). */
+  por_empleado: Record<string, { nombre: string; horas: number; dias: number }>
+}
+
+/** Los totales que se guardan al cerrar el mes (y que muestra el archivo). */
+export function totalesDelMes(filas: FilaPlanilla[]): TotalesDelMes {
+  const por_empleado: TotalesDelMes['por_empleado'] = {}
+  for (const f of filas) {
+    if (f.horas > 0) por_empleado[f.empleadoId] = { nombre: f.nombre, horas: f.horas, dias: Math.round((f.horas / HORAS_POR_DIA) * 100) / 100 }
+  }
+  return {
+    horas_total: filas.reduce((s, f) => s + f.horas, 0),
+    incompletos: filas.reduce((s, f) => s + f.incompletas, 0),
+    empleados_con_horas: Object.keys(por_empleado).length,
+    por_empleado,
+  }
+}
+
+/** ¿Ya terminó ese mes? Se puede cerrar desde las 07:00 del 1° del mes siguiente. */
+export function mesTerminado(mes: string, ahora: number): boolean {
+  return mes < mesDeHoy(ahora)
+}

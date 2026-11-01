@@ -20,6 +20,7 @@ import {
 import { actualizarPlanillaAction } from '@/app/actions/planilla'
 import PanelCelda from '@/components/planilla/PanelCelda'
 import ExportarPlanilla from '@/components/planilla/ExportarPlanilla'
+import CierreMes, { type DatosCierre } from '@/components/planilla/CierreMes'
 
 interface Props {
   /** "2026-10" */
@@ -37,6 +38,7 @@ interface Props {
   sinMeses: boolean
   /** Personas del reloj que ficharon y no están asociadas a nadie. */
   sinAsociar: number
+  cierre: DatosCierre
 }
 
 const INICIAL = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
@@ -235,12 +237,7 @@ export default function GrillaPlanilla(p: Props) {
         </p>
       )}
 
-      {p.cerrado && (
-        <div className="bg-brand-card border border-brand-border rounded-2xl px-4 py-3 text-sm text-brand-text">
-          <span className="font-semibold">{nombreDelMes(p.mes)} está cerrado.</span>{' '}
-          <span className="text-brand-muted">Se ve como quedó; para cambiar algo hay que reabrirlo.</span>
-        </div>
-      )}
+      {!p.sinMeses && <CierreMes mes={p.mes} cerrado={p.cerrado} incompletas={incompletas} cierre={p.cierre} />}
 
       {!p.sinMeses && <ExportarPlanilla mes={p.mes} hoy={p.hoy} />}
 

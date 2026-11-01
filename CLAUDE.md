@@ -279,6 +279,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   propinas aunque no sea admin, y empareja con `emparejarHoras` en `lib/planilla-reloj.ts`:
   primero por usuario, después por nombre (planilla o Horarios) y después por la regla de las
   2 palabras. Ante la duda no pone nada.
+- Cierre de mes (`app/actions/planilla-cierre.ts` y `components/planilla/CierreMes.tsx`):
+  - Solo para un mes que ya terminó (`mesTerminado`: desde las 07:00 del 1° siguiente).
+  - Antes de cerrar se recalcula el mes una última vez. Si quedan incompletas, pide
+    confirmar (`incompletas` en la respuesta).
+  - El Excel se guarda en el bucket privado `planillas` como
+    `<mes>/planilla-<mes>-cierre-<fecha>.xlsx`: uno por cierre, así un mes que se reabre y se
+    vuelve a cerrar conserva el anterior.
+  - Se guardan `totales` (`totalesDelMes`), `xlsx_path`, `cerrado_por` y `cerrado_en`.
+  - La base anota cada cierre y reapertura en `planilla_eventos` (trigger), y la app le
+    agrega el detalle: el resumen al cerrar, el motivo al reabrir (que es obligatorio).
+  - Con el mes cerrado, la base no deja tocar sus celdas, el proceso lo saltea y Papel no
+    carga, borra ni importa nada de ese mes.
+  - El Excel del cierre se baja con un link firmado de 1 minuto (`excelDelCierreAction`).
 - Nuevos de octubre, al final de la hoja (orden 69 a 75, sin cargo, ver
   `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
   Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone
