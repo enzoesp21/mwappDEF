@@ -146,10 +146,13 @@ export type ResultadoProceso =
   | { ok: true; desde: string; hasta: string; guardadas: number; borradas: number; mesesCerrados: string[] }
   | { ok: false; error: string; sinPermiso?: boolean }
 
-/** Traduce el error de la base; si falta el SQL, dice cuál correr. */
+/** Traduce el error de la base; si falta el SQL, dice cuál correr. Siempre con el detalle original. */
 function fallo(error: { message: string; code?: string }): ResultadoProceso {
-  if (/planilla_(datos|guardar)|schema cache/i.test(error.message)) {
-    return { ok: false, error: 'Falta correr el SQL del proceso (supabase/add_planilla_proceso.sql) en Supabase.' }
+  if (/could not find the function|schema cache/i.test(error.message)) {
+    return {
+      ok: false,
+      error: `Falta correr el SQL del proceso (supabase/add_planilla_proceso.sql) en Supabase. Detalle: ${error.message}`,
+    }
   }
   return { ok: false, error: error.message, sinPermiso: error.code === '42501' }
 }

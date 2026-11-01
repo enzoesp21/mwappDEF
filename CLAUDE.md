@@ -243,6 +243,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     calculó se calcula entero (así se arma octubre).
   - "Actualizar ahora" es `actualizarPlanillaAction`; con un mes, lo recalcula entero.
   - Para ver si anda: `select status_code, content from net._http_response order by created desc`.
+  - Recién corrido el SQL, la primera llamada puede contestar "Falta correr el SQL": Supabase
+    tarda unos segundos en ver las funciones nuevas. Pasó al instalarlo el 01/11; la tarea de
+    las 17:20 ya anduvo y armó octubre (9.346,5 h, 51 celdas incompletas).
   - Si cambia el dominio de la app, cambiar `planilla_config.url`.
 - El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
   parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
