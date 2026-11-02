@@ -43,14 +43,17 @@ export async function leerMes(
   const periodo = `${mes}-01`
   const [mesRes, empleadosRes, celdasRes] = await Promise.all([
     supabase.from('planilla_meses').select('estado, empleados').eq('periodo', periodo).maybeSingle(),
-    supabase.from('planilla_empleados').select('id, nombre, cargo'),
+    supabase.from('planilla_empleados').select('id, nombre, cargo, activo'),
     traerCeldas(supabase, periodo),
   ])
   const error = mesRes.error ?? empleadosRes.error ?? celdasRes.error
   if (error) return { data: null, error }
   if (!mesRes.data) return { data: null, error: null }
   const actuales = new Map(
-    (empleadosRes.data ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, cargo: e.cargo as string | null }])
+    (empleadosRes.data ?? []).map((e) => [
+      e.id as string,
+      { nombre: e.nombre as string, cargo: e.cargo as string | null, activo: e.activo !== false },
+    ])
   )
   return {
     data: {

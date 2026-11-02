@@ -35,6 +35,26 @@ describe('planilla en pantalla', () => {
     assert.deepEqual(filas[2].celdas, {})
   })
 
+  test('quien se dio de baja y no tiene nada en el mes no sale (como en la planilla de Enzo)', () => {
+    const foto = [
+      { empleado_id: 'a', nombre: 'ESPIÑO', cargo: 'MOZO', orden: 1 },
+      { empleado_id: 'm', nombre: 'MATIAS MILLAN', cargo: 'MOZO DE MOSTRADOR', orden: 2 },
+      { empleado_id: 'j', nombre: 'FERNANDEZ JAZMIN', cargo: null, orden: 3 },
+      { empleado_id: 's', nombre: 'SACHETT ANGEL', cargo: null, orden: 4 },
+    ]
+    const actuales = new Map([
+      ['a', { nombre: 'ESPIÑO ENZO LUCIANO', cargo: 'MOZO', activo: true }],
+      ['m', { nombre: 'MATIAS MILLAN', cargo: 'MOZO DE MOSTRADOR', activo: false }],
+      ['j', { nombre: 'FERNANDEZ JAZMIN', cargo: null, activo: false }],
+      ['s', { nombre: 'SACHETT ANGEL', cargo: null, activo: true }],
+    ])
+    // Jazmín se dio de baja pero trabajó el 2: sale. Matías, de baja y solo con un
+    // día vacío (tenía turno y no fichó): no. Sachett está activo y sin nada: sale
+    // vacío, como siempre.
+    const filas = armarFilas(foto, actuales, [celda('a', 1, 8), celda('j', 2, 6), celda('m', 3, null)])
+    assert.deepEqual(filas.map((f) => f.empleadoId), ['a', 'j', 's'])
+  })
+
   test('días del mes y del calendario', () => {
     assert.equal(diasDelMes('2026-10'), 31)
     assert.equal(diasDelMes('2026-02'), 28)

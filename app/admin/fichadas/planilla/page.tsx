@@ -47,7 +47,7 @@ export default async function PlanillaPage({ searchParams }: { searchParams: { m
       .from('planilla_meses')
       .select('periodo, estado, empleados, ultima_actualizacion, cerrado_en, cerrado_por, xlsx_path')
       .order('periodo', { ascending: false }),
-    supabase.from('planilla_empleados').select('id, nombre, cargo'),
+    supabase.from('planilla_empleados').select('id, nombre, cargo, activo'),
     supabase.from('fichero_estado').select('ultima_conexion, ultima_fichada_crosschex, error').maybeSingle(),
     traerCeldas(supabase, `${pedido}-01`),
     supabase.from('planilla_reloj_alias').select('userid'),
@@ -82,7 +82,12 @@ export default async function PlanillaPage({ searchParams }: { searchParams: { m
   if (conocidos) sueltas = sueltas.not('userid', 'in', `(${conocidos})`)
   const { data: sinAlias } = await sueltas
   const sinAsociar = new Set((sinAlias ?? []).map((f) => f.userid as string)).size
-  const actuales = new Map((empleadosRes.data ?? []).map((e) => [e.id as string, { nombre: e.nombre as string, cargo: e.cargo as string | null }]))
+  const actuales = new Map(
+    (empleadosRes.data ?? []).map((e) => [
+      e.id as string,
+      { nombre: e.nombre as string, cargo: e.cargo as string | null, activo: e.activo !== false },
+    ])
+  )
   const nombreDe = new Map((perfilesRes.data ?? []).map((p) => [p.id as string, ((p.full_name as string | null) ?? '').trim() || 'alguien']))
   const historial = (eventosRes.data ?? [])
     .filter((e) => (e.periodo as string).startsWith(mes))

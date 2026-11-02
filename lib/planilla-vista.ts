@@ -103,7 +103,7 @@ export function textoDias(dias: number): string {
  */
 export function armarFilas(
   foto: EmpleadoDeHoja[],
-  actuales: Map<string, { nombre: string; cargo: string | null }>,
+  actuales: Map<string, { nombre: string; cargo: string | null; activo?: boolean }>,
   celdas: CeldaPlanilla[]
 ): FilaPlanilla[] {
   const porEmpleado = new Map<string, CeldaPlanilla[]>()
@@ -113,8 +113,14 @@ export function armarFilas(
   const enLaFoto = new Set(orden)
   const sueltos = Array.from(porEmpleado.keys()).filter((id) => !enLaFoto.has(id))
   const deLaFoto = new Map(foto.map((e) => [e.empleado_id, e]))
+  // Quien ya se dio de baja y no tiene nada en el mes no sale (como en la planilla
+  // de Enzo, que no los pone). Si tiene algo ese mes, sale igual. Una celda vacía
+  // (tenía turno y no fichó) no cuenta como algo.
+  const conAlgo = (c: CeldaPlanilla) => c.horas !== null || c.codigo !== null || c.estado !== 'ok'
+  const deBajaSinNada = (id: string) =>
+    actuales.get(id)?.activo === false && !(porEmpleado.get(id) ?? []).some(conAlgo)
 
-  return [...orden, ...sueltos].map((id) => {
+  return [...orden, ...sueltos].filter((id) => !deBajaSinNada(id)).map((id) => {
     const propias = porEmpleado.get(id) ?? []
     const horas = propias.reduce((s, c) => s + (c.horas ?? 0), 0)
     const datos = actuales.get(id) ?? deLaFoto.get(id)

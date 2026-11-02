@@ -297,8 +297,27 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     solo al usarlo, o CSV. El .xls viejo no se lee. Las fichadas que el reloj ya tiene
     (misma persona, menos de 1 minuto de diferencia) se saltean. Acciones en
     `app/actions/planilla-papel.ts`.
-- Excel (`lib/planilla-excel.ts`, con ExcelJS), probado contra el formato del pedido en
-  `lib/planilla-excel.test.ts`:
+- El Excel de la planilla copia la de Enzo, `AsistenciaOctubreDEF2026.xlsx` (02/11: la de la
+  app le parecía horrible). Probado en `lib/planilla-excel.test.ts`. Cómo es:
+  - Encabezado celeste en Arial 9 negrita itálica. EMPLEADO y CARGO van combinadas en dos
+    filas; los días van con número y nombre, en horizontal.
+  - Una franja azul oscuro en la fila 4.
+  - Las horas en Calibri 10 sobre celeste clarito; HORAS y DIAS en Arial 9.
+  - VAC en amarillo, CERT y LIC en verde. Lo incompleto o para revisar (más de 17 h, etc.) va
+    en rojo, con un comentario.
+  - El nombre de quien no tiene cargo va en gris.
+  - Anchos 43, 35,86 y 10,71; zoom 62 %; paneles fijos en C5.
+  - Los colores son los del tema de Office de Enzo, ya calculados con su tono (`CELESTE`,
+    `CELESTE_CLARO`, `AZUL_FRANJA`). ExcelJS escribe su propio tema, y con colores de tema
+    saldrían otros.
+  - En la de Enzo, DIAS (el segundo), FRANCO, NO VINO y OTROS están vacías. Acá se calculan,
+    sin mostrar los ceros.
+- Quien se dio de baja y no tiene nada en el mes no sale ni en la grilla ni en el Excel
+  (`armarFilas`). Un día vacío (tenía turno y no fichó) no cuenta como algo.
+- En el Excel de octubre de Enzo, de Martina Barcia a Luciano Alfaro los cargos quedaron
+  corridos, al parecer al sacar a Matias Millan. Los de la app están bien (coinciden con
+  Horarios).
+- Excel (`lib/planilla-excel.ts`, con ExcelJS):
   - Planilla del mes o quincena: `GET /api/planilla/excel?mes=2026-10&parte=mes|q1|q2`.
   - Horas para propinas (Empleado | Horas Calculadas): `GET /api/planilla/horas?desde&hasta`.
   - Las dos son solo para admin. Se bajan desde "Excel y propinas" en la planilla.
