@@ -216,6 +216,11 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     cada tramo si cortó, o "No figura en el reloj ese día".
   - Si un encargado ya le puso las horas a mano, no hay aviso, pero se dice. Los textos salen de
     `leerDetalle` (`lib/propinas-reloj.ts`).
+- El 01/11 y el 02/11 se hicieron con la calculadora vieja y se subieron desde los reportes de
+  WhatsApp, tal cual (`fix_propinas_1_y_2_noviembre.sql`). La cuenta de la app da los mismos
+  montos. El 02/11 reemplazó a la prueba de Enzo ("Prueba11").
+  - Nicolás Fuentes tiene dos usuarios: el segundo se creó el 03/11. Con los dos, "Nicolás
+    Fuentes" no se vincula a ninguno (`vincularUsuario` no elige): hay que borrar el que sobra.
 - Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
   `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
 - Quién ve qué (RLS, `ve_propinas_de_todos()`): quien carga y el puesto Mozos ("Mozos y
@@ -277,7 +282,27 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   con costos: errarle a la tecla 1, olvidarse de fichar 3, turno de 12-14 h 1.5, de 14-16 h 2,
   de más de 16 h imposible, empezar saliendo 1). Probado con casos reales: los que entran y
   salen con "Entrada", turnos dobles (8:44 a 23:07), cierres pasada la medianoche, limpieza
-  que entra a las 4. Si se tocan los costos, volver a probar esos casos.
+  que entra a las 4. Si se tocan los costos, volver a probar esos casos (`lib/fichadas.test.ts`,
+  con `npm test`).
+- Empezar saliendo cuesta 1 solo si la primera fichada de alguien está a menos de 16 h del
+  principio de lo pedido. Ese principio son los `inicios` que la página le pasa a
+  `leerFichadas`; ahí la entrada pudo quedar antes. Si está más lejos, cuesta como un olvido
+  (3), porque la entrada tendría que estar entre lo pedido.
+  - Lo mostró Miguel Sachett el 03/11: no venía hacía días y fichó 07:55 con Salida y 16:34
+    con Entrada. Del día lo daba bien y Ahora lo daba adentro.
+  - Con las 431 fichadas reales de noviembre, el arreglo cambió solo esas dos.
+  - Si un mes viejo y las de ahora no se tocan, el corte entre los dos vuelve a empezar.
+- Lo resuelto a mano en la planilla también cuenta en Ahora.
+  - Vale si un encargado, después de la última entrada de esa persona, le puso a ese día
+    horas, la salida que faltaba o un código. Es decir, una celda con origen manual, papel o
+    código.
+  - Entonces ya no figura adentro ni en "no fichó la salida", y en "Se fueron" dice "salida a
+    mano" (`cerradaAMano`, `lib/fichadas.ts`).
+  - La página trae esas celdas de las últimas 48 h y los números del reloj de
+    `planilla_reloj_alias`.
+  - Caso: Fernández Ornella el 03/11. Entró 11:18, no fichó la salida, Enzo le puso 3,5 h y
+    seguía adentro.
+  - Si vuelve a fichar después de la corrección, cuenta lo nuevo.
 - Dobles: otra fichada de la misma persona a menos de 30 min es la misma. Se piden 48 h para
   ver cómo venía cada uno. Presente = su última fichada deducida es entrada; con más de 13 h
   va al recuadro de "no fichó la salida"; con más de 24 h no se muestra. La jornada arranca a

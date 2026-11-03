@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { desdeParaPedir, type EstadoFichero, type Fichada, type PersonaFichero } from '@/lib/fichadas'
+import {
+  desdeParaPedir,
+  type CierreAMano,
+  type EstadoFichero,
+  type Fichada,
+  type PersonaFichero,
+} from '@/lib/fichadas'
 import { lunesDe, sumarDias } from '@/lib/horarios'
 import type { SemanaConDatos } from '@/lib/fichadas-reporte'
 import VistaFichadas, { Encabezado } from '@/components/fichadas/VistaFichadas'
@@ -64,7 +70,7 @@ export default async function FichadasPage({ searchParams }: { searchParams: { m
   const semanasDesde = sumarDias(lunesDe(`${mes}-01`), -7)
   const semanasHasta = lunesDe(hoy)
 
-  const [mesRes, recientesRes, personasRes, estadoRes, semanasRes, primeraRes] = await Promise.all([
+  const [mesRes, recientesRes, personasRes, estadoRes, semanasRes, primeraRes, celdasRes, aliasRes] = await Promise.all([
     traerFichadas(supabase, desdeMes, hastaMes),
     esteMes ? Promise.resolve({ data: [] as Fichada[], error: null }) : traerFichadas(supabase, desdeAhora, new Date(ahora).toISOString()),
     supabase.from('fichero_personas').select('userid, nombre, sector'),
@@ -76,10 +82,25 @@ export default async function FichadasPage({ searchParams }: { searchParams: { m
       .lte('week_start', semanasHasta)
       .order('week_start', { ascending: true }),
     supabase.from('fichadas').select('fecha_hora').order('fecha_hora', { ascending: true }).limit(1),
+    // Los días que un encargado resolvió a mano en la planilla en las últimas
+    // 48 h (horas, la salida que faltaba o un código): esa gente ya no está adentro.
+    supabase
+      .from('planilla_celdas')
+      .select('empleado_id, periodo, dia, horas, codigo, updated_at')
+      .in('origen', ['manual', 'papel', 'codigo'])
+      .gte('updated_at', desdeAhora),
+    supabase.from('planilla_reloj_alias').select('userid, empleado_id').eq('ignorar', false),
   ])
 
   const error =
-    mesRes.error ?? recientesRes.error ?? personasRes.error ?? estadoRes.error ?? semanasRes.error ?? primeraRes.error
+    mesRes.error ??
+    recientesRes.error ??
+    personasRes.error ??
+    estadoRes.error ??
+    semanasRes.error ??
+    primeraRes.error ??
+    celdasRes.error ??
+    aliasRes.error
   if (error) {
     return (
       <div className="max-w-3xl space-y-5 animate-fade-in">
@@ -98,10 +119,32 @@ export default async function FichadasPage({ searchParams }: { searchParams: { m
   const porLogid = new Map<number, Fichada>()
   for (const f of [...(mesRes.data ?? []), ...(recientesRes.data ?? [])]) porLogid.set(f.logid, f)
   const primera = primeraRes.data?.[0]?.fecha_hora as string | undefined
+  // Desde dónde hay fichadas sin cortes, para deducir bien la primera de cada
+  // uno: el principio del mes pedido y, si es otro mes y no se tocan, el de las
+  // recientes.
+  const inicios = esteMes || desdeAhora <= hastaMes ? [desdeMes] : [desdeMes, desdeAhora]
+
+  // Cada día resuelto a mano, para cada número del reloj de esa persona.
+  const relojesDe = new Map<string, string[]>()
+  for (const a of aliasRes.data ?? []) {
+    if (!a.empleado_id) continue
+    relojesDe.set(a.empleado_id as string, [...(relojesDe.get(a.empleado_id as string) ?? []), a.userid as string])
+  }
+  const cierres: CierreAMano[] = (celdasRes.data ?? [])
+    .filter((c) => (c.horas !== null && Number(c.horas) > 0) || c.codigo)
+    .flatMap((c) =>
+      (relojesDe.get(c.empleado_id as string) ?? []).map((userid) => ({
+        userid,
+        fecha: `${(c.periodo as string).slice(0, 8)}${String(c.dia).padStart(2, '0')}`,
+        cuando: c.updated_at as string,
+      }))
+    )
 
   return (
     <VistaFichadas
       fichadas={Array.from(porLogid.values())}
+      inicios={inicios}
+      cierres={cierres}
       personas={(personasRes.data ?? []) as PersonaFichero[]}
       estado={estadoRes.data as EstadoFichero | null}
       semanas={(semanasRes.data ?? []) as SemanaConDatos[]}

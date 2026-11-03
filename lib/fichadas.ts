@@ -3,6 +3,7 @@
 // adentro; la pantalla es /admin/fichadas. La base: supabase/add_fichadas.sql.
 
 import { formatearNombre } from '@/lib/nombres'
+import { ubicarEnJornada } from '@/lib/planilla'
 
 export interface Fichada {
   logid: number
@@ -80,6 +81,8 @@ const COSTO_TURNO_LARGO = 1.5 // un turno de 12 a 14 horas existe, pero es raro
 const COSTO_TURNO_DOBLE = 2 // de 14 a 16 horas pasa muy poco (dobles): ahí desempata la tecla
 const COSTO_IMPOSIBLE = 10 // un turno de más de 16 horas no existe: se olvidó de fichar
 const COSTO_EMPIEZA_SALIENDO = 1 // sin nada antes para comparar, lo primero suele ser una entrada
+/** Ningún turno dura más que esto. */
+const TURNO_MAXIMO = 16 * HORA
 
 /**
  * Deduce si cada fichada es entrada o salida.
@@ -91,9 +94,22 @@ const COSTO_EMPIEZA_SALIENDO = 1 // sin nada antes para comparar, lo primero sue
  * Se elige, para cada persona, la secuencia completa que menos cosas raras
  * necesita suponer (algoritmo de Viterbi, con los costos de arriba).
  *
+ * `inicios`: desde cuándo se pidieron las fichadas sin cortes (el principio de
+ * cada tramo pedido). Si la primera fichada de alguien está a más de 16 horas
+ * de ese principio, su entrada tendría que estar entre lo pedido. Si no está,
+ * empezar con una salida es suponer que se olvidó de fichar la entrada, y
+ * cuesta eso.
+ * Caso que lo mostró: Miguel Sachett el 03/11, que no venía hacía días. Fichó
+ * 07:55 con la tecla Salida y 16:34 con la de Entrada, y figuraba adentro.
+ * Sin `inicios`, lo primero cuesta lo de antes.
+ *
  * Las dobles (a menos de 30 minutos de la anterior) se descartan.
  */
-export function leerFichadas(fichadas: Fichada[]): FichadaLeida[] {
+export function leerFichadas(fichadas: Fichada[], inicios: string[] = []): FichadaLeida[] {
+  const cortes = inicios
+    .map((i) => Date.parse(i))
+    .filter((ms) => Number.isFinite(ms))
+    .sort((a, b) => a - b)
   const porPersona = new Map<string, Fichada[]>()
   for (const f of [...fichadas].sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora))) {
     const lista = porPersona.get(f.userid) ?? []
@@ -109,11 +125,11 @@ export function leerFichadas(fichadas: Fichada[]): FichadaLeida[] {
   }
 
   const resultado: FichadaLeida[] = []
-  porPersona.forEach((lista) => resultado.push(...deducirSentidos(lista)))
+  porPersona.forEach((lista) => resultado.push(...deducirSentidos(lista, cortes)))
   return resultado.sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora))
 }
 
-function deducirSentidos(lista: Fichada[]): FichadaLeida[] {
+function deducirSentidos(lista: Fichada[], cortes: number[]): FichadaLeida[] {
   const SENTIDOS: Sentido[] = ['entrada', 'salida']
   const costoTecla = (f: Fichada, s: Sentido) => {
     const tecla = sentidoDeTecla(f.tipo)
@@ -122,11 +138,25 @@ function deducirSentidos(lista: Fichada[]): FichadaLeida[] {
   const costoPaso = (de: Sentido, a: Sentido, horas: number) => {
     if (de === a) return COSTO_OLVIDO
     if (de === 'entrada') {
-      if (horas > 16) return COSTO_IMPOSIBLE
+      if (horas > TURNO_MAXIMO / HORA) return COSTO_IMPOSIBLE
       if (horas > 14) return COSTO_TURNO_DOBLE
       if (horas > 12) return COSTO_TURNO_LARGO
     }
     return 0
+  }
+  // El principio de lo pedido justo antes de una hora (o null si no se sabe).
+  const corteAntes = (ms: number) => {
+    let corte: number | null = null
+    for (const c of cortes) if (c <= ms) corte = c
+    return corte
+  }
+  // Empezar (o volver a empezar después de un corte de lo pedido) con una
+  // salida: si la entrada pudo quedar antes de lo pedido, es la duda de
+  // siempre; si no, es que no fichó la entrada.
+  const costoEmpezar = (s: Sentido, ms: number) => {
+    if (s === 'entrada') return 0
+    const corte = corteAntes(ms)
+    return corte === null || ms - corte <= TURNO_MAXIMO ? COSTO_EMPIEZA_SALIENDO : COSTO_OLVIDO
   }
 
   // costos[i][s]: lo mínimo que cuesta explicar hasta la fichada i terminando en s.
@@ -135,15 +165,21 @@ function deducirSentidos(lista: Fichada[]): FichadaLeida[] {
   lista.forEach((f, i) => {
     costos.push([])
     desde.push([])
+    const ms = Date.parse(f.fecha_hora)
     SENTIDOS.forEach((s, j) => {
       if (i === 0) {
-        costos[i][j] = costoTecla(f, s) + (s === 'salida' ? COSTO_EMPIEZA_SALIENDO : 0)
+        costos[i][j] = costoTecla(f, s) + costoEmpezar(s, ms)
         return
       }
-      const horas = (Date.parse(f.fecha_hora) - Date.parse(lista[i - 1].fecha_hora)) / HORA
+      const antes = Date.parse(lista[i - 1].fecha_hora)
+      const horas = (ms - antes) / HORA
+      // Entre las dos hay un corte de lo pedido (otro mes y las de ahora): no se
+      // sabe qué pasó en el medio, así que se vuelve a empezar.
+      const corte = corteAntes(ms)
+      const reinicio = corte !== null && corte > antes
       let mejor = Infinity
       SENTIDOS.forEach((previo, k) => {
-        const costo = costos[i - 1][k] + costoPaso(previo, s, horas)
+        const costo = costos[i - 1][k] + (reinicio ? costoEmpezar(s, ms) : costoPaso(previo, s, horas))
         // A igual costo, se prefiere alternar.
         if (costo < mejor || (costo === mejor && previo !== s)) {
           mejor = costo
@@ -179,11 +215,43 @@ export function nombreDe(persona: PersonaFichero | undefined, userid: string): s
 }
 
 /**
+ * Un día que un encargado resolvió a mano en la planilla: le puso las horas,
+ * la salida que faltaba (sugerencia o papel) o un código. Si lo hizo después
+ * de la última entrada de esa persona, ya no está adentro.
+ * Caso que lo mostró: Fernández Ornella el 03/11. Entró 11:18 y se olvidó de
+ * fichar la salida; Enzo le puso las horas y seguía figurando adentro.
+ */
+export interface CierreAMano {
+  userid: string
+  /** El día de la planilla, "2026-11-03". */
+  fecha: string
+  /** Cuándo lo resolvió (ISO). */
+  cuando: string
+}
+
+/**
+ * Si un encargado ya resolvió a mano el día de esa entrada, después de que
+ * entró. Se mira el día de la planilla (de 07:00 a 06:59) y el calendario
+ * (Zulma). Si volvió a fichar después, cuenta lo nuevo.
+ */
+export function cerradaAMano(entrada: Pick<Fichada, 'userid' | 'fecha_hora'>, cierres: CierreAMano[]): boolean {
+  const ms = Date.parse(entrada.fecha_hora)
+  const dias = [ubicarEnJornada(ms, false).fecha, ubicarEnJornada(ms, true).fecha]
+  return cierres.some((c) => c.userid === entrada.userid && dias.includes(c.fecha) && Date.parse(c.cuando) > ms)
+}
+
+/**
  * Quién está adentro ahora: aquellos cuya última fichada (ya deducida) es una
  * entrada. Si entró hace más de 13 horas va aparte (seguramente no fichó la
- * salida); si fue hace más de un día, ya no se muestra.
+ * salida); si fue hace más de un día, ya no se muestra. Si un encargado ya le
+ * resolvió ese día a mano en la planilla (`cierres`), tampoco.
  */
-export function presentes(leidas: FichadaLeida[], personas: Map<string, PersonaFichero>, ahora: number): Presente[] {
+export function presentes(
+  leidas: FichadaLeida[],
+  personas: Map<string, PersonaFichero>,
+  ahora: number,
+  cierres: CierreAMano[] = []
+): Presente[] {
   const ultima = new Map<string, FichadaLeida>()
   for (const f of leidas) {
     if (Date.parse(f.fecha_hora) <= ahora + 5 * MINUTO) ultima.set(f.userid, f)
@@ -192,7 +260,7 @@ export function presentes(leidas: FichadaLeida[], personas: Map<string, PersonaF
   const resultado: Presente[] = []
   ultima.forEach((f, userid) => {
     const hace = ahora - Date.parse(f.fecha_hora)
-    if (f.sentido !== 'entrada' || hace > ENTRADA_VIEJA) return
+    if (f.sentido !== 'entrada' || hace > ENTRADA_VIEJA || cerradaAMano(f, cierres)) return
     const persona = personas.get(userid)
     resultado.push({
       userid,

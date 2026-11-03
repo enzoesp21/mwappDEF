@@ -4,12 +4,14 @@ import { cn } from '@/lib/utils'
 import { DIAS_CORTOS } from '@/lib/horarios'
 import {
   avisoConexion,
+  cerradaAMano,
   horaArgentina,
   jornadaDe,
   leerFichadas,
   nombreDe,
   presentes,
   TURNO_LARGO,
+  type CierreAMano,
   type EstadoFichero,
   type Fichada,
   type PersonaFichero,
@@ -37,6 +39,10 @@ const MESES = [
 
 interface Props {
   fichadas: Fichada[]
+  /** Desde dónde se pidieron las fichadas sin cortes (ver leerFichadas). */
+  inicios: string[]
+  /** Los días que un encargado resolvió a mano en la planilla (ver presentes). */
+  cierres: CierreAMano[]
   personas: PersonaFichero[]
   estado: EstadoFichero | null
   semanas: SemanaConDatos[]
@@ -53,16 +59,26 @@ function moverMes(mes: string, delta: number): string {
 }
 
 /** La pantalla de fichadas: quién está adentro ahora y el mes día por día. */
-export default function VistaFichadas({ fichadas, personas: listaPersonas, estado, semanas, ahora, mes, primerMes }: Props) {
+export default function VistaFichadas({
+  fichadas,
+  inicios,
+  cierres,
+  personas: listaPersonas,
+  estado,
+  semanas,
+  ahora,
+  mes,
+  primerMes,
+}: Props) {
   const personas = new Map(listaPersonas.map((p) => [p.userid, p]))
   const aviso = avisoConexion(estado, ahora)
 
   // Entrada o salida se deduce por el orden, no por la tecla (ver leerFichadas).
-  const leidas = leerFichadas(fichadas)
+  const leidas = leerFichadas(fichadas, inicios)
   const horario = vincularHorarios(semanas, listaPersonas, new Set(fichadas.map((f) => f.userid)))
   const hoy = jornadaDe(new Date(ahora).toISOString())
 
-  const lista = presentes(leidas, personas, ahora)
+  const lista = presentes(leidas, personas, ahora, cierres)
   const adentro = lista.filter((p) => p.situacion === 'adentro')
   const sinSalida = lista.filter((p) => p.situacion === 'sin-salida')
   const grupos = agruparPorSector(adentro, (p) => horario.sectorDe(p.userid, hoy), horario.orden)
@@ -75,7 +91,8 @@ export default function VistaFichadas({ fichadas, personas: listaPersonas, estad
       nombre: lista.find((p) => p.userid === userid)?.nombre ?? nombreDe(personas.get(userid), userid),
       sector: horario.sectorDe(userid, hoy),
       entradaHorario: entradaSegunHorario(horario.celdaDe(userid, hoy)),
-    })
+    }),
+    (userid, entrada) => cerradaAMano({ userid, fecha_hora: entrada }, cierres)
   )
 
   // Los días del mes, hasta hoy.
@@ -325,12 +342,14 @@ export function Encabezado() {
 
 /**
  * Quiénes vinieron hoy y, de ellos, quiénes ya se fueron (no siguen adentro),
- * con su horario del día. Los que se fueron, el más reciente primero.
+ * con su horario del día. Los que se fueron, el más reciente primero. Si no
+ * fichó la salida pero un encargado le resolvió el día a mano, se dice eso.
  */
 function quienesHoy(
   turnosDeHoy: Turno[],
   siguen: Set<string>,
-  datos: (userid: string) => { nombre: string; sector: string | null; entradaHorario: string }
+  datos: (userid: string) => { nombre: string; sector: string | null; entradaHorario: string },
+  cerroAMano: (userid: string, entrada: string) => boolean
 ): { fueron: FilaDelDia[]; vinieron: FilaDelDia[] } {
   const porPersona = new Map<string, Turno[]>()
   for (const t of turnosDeHoy) porPersona.set(t.userid, [...(porPersona.get(t.userid) ?? []), t])
@@ -342,8 +361,11 @@ function quienesHoy(
     const primera = ts[0].entrada ?? ts[0].salida!
     const ultima = ts[ts.length - 1]
     const ms = ts.reduce((s, t) => s + t.ms, 0)
-    const horario = ts.map((t) => textoTramo(t)).join(' · ')
     const sigue = siguen.has(userid)
+    const aMano = !sigue && !ultima.salida && ultima.entrada !== null && cerroAMano(userid, ultima.entrada)
+    const horario = ts
+      .map((t, i) => (aMano && i === ts.length - 1 ? `entró ${horaArgentina(t.entrada!)} · salida a mano` : textoTramo(t)))
+      .join(' · ')
 
     vinieron.push({
       userid,
@@ -351,7 +373,13 @@ function quienesHoy(
       sector,
       entradaHorario,
       principal: horaArgentina(primera),
-      secundario: sigue ? 'sigue adentro' : ultima.salida ? 'se fue ' + horaArgentina(ultima.salida) : horario,
+      secundario: sigue
+        ? 'sigue adentro'
+        : ultima.salida
+          ? 'se fue ' + horaArgentina(ultima.salida)
+          : aMano
+            ? 'salida a mano'
+            : horario,
       orden: Date.parse(primera),
     })
     if (!sigue) {
@@ -361,7 +389,7 @@ function quienesHoy(
         nombre,
         sector,
         entradaHorario,
-        principal: ultima.salida ? 'se fue ' + horaArgentina(ultima.salida) : 'sin salida',
+        principal: ultima.salida ? 'se fue ' + horaArgentina(ultima.salida) : aMano ? 'salida a mano' : 'sin salida',
         secundario: ms > 0 ? `${horario} · ${duracion(ms)}` : horario,
         orden: -Date.parse(salida),
       })
