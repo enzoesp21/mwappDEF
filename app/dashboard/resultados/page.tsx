@@ -3,7 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { Trophy, Medal, Award, CheckCircle } from 'lucide-react'
 import { formatDateTime, cn } from '@/lib/utils'
 import { buildRanking } from '@/lib/ranking'
+import { EN_BETA } from '@/lib/beta'
 import RankingByGuide from '@/components/RankingByGuide'
+import EnBeta from '@/components/EnBeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +21,17 @@ export default async function ResultadosPage() {
     data: { session },
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
+
+  // En fase beta no se pide nada: el personal no ve el ranking.
+  if (EN_BETA.resultados) {
+    return (
+      <EnBeta
+        titulo="Resultados"
+        icono={Trophy}
+        descripcion="Acá vas a ver el ranking de los exámenes de todo el equipo."
+      />
+    )
+  }
 
   const { totalPassed, overall, byGuide, recent } = await buildRanking(supabase)
 

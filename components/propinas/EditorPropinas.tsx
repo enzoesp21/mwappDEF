@@ -18,6 +18,7 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { EN_BETA } from '@/lib/beta'
 import {
   GRUPOS,
   PAGOS,
@@ -588,7 +589,10 @@ export default function EditorPropinas(props: Props) {
         {trabajo && configurado && configurado.grupo !== f.grupo && (
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-amber-700 font-medium">
             <span>
-              {configurado.origen === 'progresion' ? 'Su nivel de Progresión es' : 'Está configurado al'}{' '}
+              {/* Mientras Progresión está en fase beta, la cajera no ve que existe. */}
+              {configurado.origen === 'progresion' && (!EN_BETA.progresion || props.base.startsWith('/admin'))
+                ? 'Su nivel de Progresión es'
+                : 'Está configurado al'}{' '}
               {porcentaje(configurado.grupo)}: hoy lo pusiste al {porcentaje(f.grupo)}.
             </span>
             <button

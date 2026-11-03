@@ -40,7 +40,7 @@ export default function BottomNav() {
             }}
           />
         )}
-        {SECCIONES.map(({ href, icon: Icon, label }, i) => {
+        {SECCIONES.map(({ href, icon: Icon, label, beta }, i) => {
           const esActiva = i === activa
           return (
             <Link
@@ -52,13 +52,24 @@ export default function BottomNav() {
               className="group relative flex-1 flex flex-col items-center justify-center gap-1 pt-1 cursor-pointer select-none"
               aria-current={esActiva ? 'page' : undefined}
             >
-              <Icon
-                className={cn(
-                  'w-5 h-5 transition-all duration-200 group-active:scale-90',
-                  esActiva ? 'text-brand-accent scale-110' : 'text-brand-muted'
+              <span className="relative">
+                <Icon
+                  className={cn(
+                    'w-5 h-5 transition-all duration-200 group-active:scale-90',
+                    esActiva ? 'text-brand-accent scale-110' : 'text-brand-muted'
+                  )}
+                  strokeWidth={esActiva ? 2.4 : 1.9}
+                />
+                {/* Las secciones en fase beta (lib/beta.ts) llevan su marca. */}
+                {beta && (
+                  <span
+                    aria-hidden
+                    className="absolute -top-1.5 left-2.5 px-1 rounded-full bg-brand-accent text-white text-[6.5px] font-bold uppercase leading-[11px] tracking-[0.06em]"
+                  >
+                    Beta
+                  </span>
                 )}
-                strokeWidth={esActiva ? 2.4 : 1.9}
-              />
+              </span>
               <span
                 className={cn(
                   'text-[8.5px] leading-none tracking-[-0.02em] whitespace-nowrap transition-colors duration-200',
@@ -66,6 +77,7 @@ export default function BottomNav() {
                 )}
               >
                 {label}
+                {beta && <span className="sr-only">, en fase beta</span>}
               </span>
             </Link>
           )

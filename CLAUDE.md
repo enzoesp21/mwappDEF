@@ -30,6 +30,14 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
   costado según la dirección (`lib/navegacion.ts`), a lo de adentro sube apenas. Termina en
   `transform: none` (no romper elementos `fixed`).
 - `BottomNav` y `AdminNav` marcan la sección al tocar, sin esperar a que cargue.
+- **Secciones en fase beta** (`lib/beta.ts`, Enzo, 03/11: "se van a empezar a registrar el
+  personal"): Resultados y Progresión.
+  - El personal las ve en el menú (Resultados con la marca "Beta") y en la tarjeta de Inicio
+    de los mozos. Adentro solo dice "Fase beta · Se habilitará próximamente" (`EnBeta`).
+  - No se pide ningún dato: ni el ranking ni el nivel.
+  - La cajera no ve que el porcentaje sale de Progresión.
+  - Los encargados las siguen usando desde el panel de admin.
+  - Para habilitar una, ponerla en `false` en `EN_BETA`.
 - El logo de arriba (`LogoInicio`) lleva al inicio; si ya estás ahí, sube arriba de todo.
 - Tirar para actualizar, como Instagram (`TirarParaActualizar`, en los layouts de dashboard y
   admin; instalada como app, el teléfono no lo trae): arriba de todo, arrastrar hacia abajo y

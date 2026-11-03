@@ -3,8 +3,10 @@ import { TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cargarProgresion } from '@/lib/progresion-datos'
 import { datosNivel } from '@/lib/progresion'
+import { EN_BETA } from '@/lib/beta'
 import TimelineNiveles from '@/components/progresion/TimelineNiveles'
 import AvisoProgresion from '@/components/progresion/AvisoProgresion'
+import EnBeta from '@/components/EnBeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +17,17 @@ export default async function MiProgresionPage() {
     data: { session },
   } = await supabase.auth.getSession()
   if (!session) redirect('/login')
+
+  // En fase beta no se pide nada: el mozo no ve su nivel ni los requisitos.
+  if (EN_BETA.progresion) {
+    return (
+      <EnBeta
+        titulo="Tu progresión"
+        icono={TrendingUp}
+        descripcion="Acá vas a ver tu nivel en la propina y qué te falta para subir al siguiente."
+      />
+    )
+  }
 
   const { puesto, estado, error } = await cargarProgresion(supabase, session.user.id)
   if (!error && puesto !== 'Mozos') redirect('/dashboard')

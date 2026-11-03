@@ -11,6 +11,7 @@ import type { GuideWithStatus } from '@/lib/types'
 import { misPropinas } from '@/lib/propinas-datos'
 import { fechaConDia, pesos } from '@/lib/propinas'
 import { datosNivel } from '@/lib/progresion'
+import { EN_BETA } from '@/lib/beta'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -88,8 +89,9 @@ export default async function DashboardPage() {
           .lte('meal_date', weekDays[weekDays.length - 1].date)
       : Promise.resolve({ count: 0 }),
     misPropinas(supabase, session.user.id),
-    // Progresión: solo para mozos. Si todavía no se corrió el SQL, no aparece.
-    profile.puesto === 'Mozos'
+    // Progresión: solo para mozos, y no en fase beta (no se muestra el nivel).
+    // Si todavía no se corrió el SQL, no aparece.
+    profile.puesto === 'Mozos' && !EN_BETA.progresion
       ? supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
       : Promise.resolve({ data: null }),
   ])
@@ -235,14 +237,26 @@ export default async function DashboardPage() {
           <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
             <TrendingUp className="w-5 h-5 text-brand-accent" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-brand-text">
-              {nivelActual ? `Tu nivel: ${nivelActual.porcentaje} % de la propina` : 'Tu progresión en la propina'}
-            </p>
-            <p className="text-xs text-brand-muted">
-              {nivelActual && nivelActual.nivel < 3 ? 'Mirá qué te falta para subir' : 'Del 50 % al 100 % en tres niveles'}
-            </p>
-          </div>
+          {EN_BETA.progresion ? (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-brand-text flex items-center gap-2">
+                Tu progresión en la propina
+                <span className="px-1.5 py-0.5 rounded-full bg-brand-accent/10 text-brand-accent text-[9px] font-bold uppercase tracking-[0.12em]">
+                  Beta
+                </span>
+              </p>
+              <p className="text-xs text-brand-muted">En fase beta: se habilitará próximamente</p>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-brand-text">
+                {nivelActual ? `Tu nivel: ${nivelActual.porcentaje} % de la propina` : 'Tu progresión en la propina'}
+              </p>
+              <p className="text-xs text-brand-muted">
+                {nivelActual && nivelActual.nivel < 3 ? 'Mirá qué te falta para subir' : 'Del 50 % al 100 % en tres niveles'}
+              </p>
+            </div>
+          )}
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
         </Link>
       )}
