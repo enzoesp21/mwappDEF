@@ -298,3 +298,83 @@ export function armarHorasExcel(filas: { nombre: string; horas: number }[], titu
   hoja.getColumn(2).width = 17
   return libro
 }
+
+// ---------------------------------------------------------------------------
+// Propina del resto del personal (quincena): Salón 60 % y Cocina 40 %
+// ---------------------------------------------------------------------------
+
+export interface ParteExcel {
+  /** "SALÓN · 60 %" */
+  titulo: string
+  pozo: number
+  horas: number
+  porHora: number
+  filas: { nombre: string; detalle: string; horas: number; monto: number }[]
+}
+
+const PLATA = '"$" #,##0'
+
+/** El reparto de la quincena, con el mismo estilo de la planilla. */
+export function armarPropinaGeneralExcel(o: { titulo: string; monto: number; partes: ParteExcel[]; notas: string[] }): ExcelJS.Workbook {
+  const libro = new ExcelJS.Workbook()
+  libro.creator = 'Mirador Waikiki'
+  const hoja = libro.addWorksheet('Hoja1')
+  const poner = (fila: number, col: number, valor: ExcelJS.CellValue | undefined, f: Formato) => {
+    const celda = hoja.getCell(fila, col)
+    if (valor !== undefined) celda.value = valor
+    celda.style = estilo(f)
+    return celda
+  }
+  const encabezado = (extra: Partial<Formato> = {}): Formato => ({
+    font: ENCABEZADO,
+    fondo: CELESTE,
+    horizontal: 'center',
+    vertical: 'middle',
+    ...extra,
+  })
+
+  poner(1, 1, o.titulo, encabezado({ horizontal: 'left' }))
+  for (let c = 2; c <= 4; c++) poner(1, c, undefined, encabezado())
+  hoja.mergeCells(1, 1, 1, 4)
+  poner(2, 1, 'Monto de la quincena', { font: ENCABEZADO, vertical: 'middle' })
+  for (let c = 2; c <= 3; c++) poner(2, c, undefined, { font: CUERPO })
+  hoja.mergeCells(2, 1, 2, 3)
+  poner(2, 4, o.monto, { font: ENCABEZADO, horizontal: 'center', vertical: 'middle', numFmt: PLATA })
+
+  let r = 4
+  for (const parte of o.partes) {
+    poner(r, 1, parte.titulo, { font: ENCABEZADO, fondo: AZUL_FRANJA, vertical: 'middle' })
+    poner(r, 2, `${Math.round(parte.porHora).toLocaleString('es-AR')} por hora`, { font: { ...ENCABEZADO_DIA, color: { argb: BLANCO } }, fondo: AZUL_FRANJA, horizontal: 'center' })
+    poner(r, 3, parte.horas, { font: { ...ENCABEZADO_DIA, color: { argb: BLANCO } }, fondo: AZUL_FRANJA, horizontal: 'center' })
+    poner(r, 4, parte.pozo, { font: { ...ENCABEZADO, color: { argb: BLANCO } }, fondo: AZUL_FRANJA, horizontal: 'center', numFmt: PLATA })
+    hoja.getCell(r, 1).font = { ...ENCABEZADO, color: { argb: BLANCO } }
+    r++
+    ;['EMPLEADO', 'SECTOR', 'HORAS', 'MONTO'].forEach((t, i) => poner(r, i + 1, t, encabezado()))
+    r++
+    const primera = r
+    for (const f of parte.filas) {
+      poner(r, 1, f.nombre, { font: CUERPO, vertical: 'middle' })
+      poner(r, 2, f.detalle, { font: CUERPO, vertical: 'middle' })
+      poner(r, 3, f.horas, { font: CUERPO, fondo: CELESTE_CLARO, horizontal: 'center', vertical: 'middle' })
+      poner(r, 4, f.monto, { font: CUERPO, fondo: CELESTE_CLARO, horizontal: 'center', vertical: 'middle', numFmt: PLATA })
+      r++
+    }
+    poner(r, 1, 'TOTAL', { font: ENCABEZADO, vertical: 'middle' })
+    poner(r, 2, undefined, { font: CUERPO })
+    const ultima = Math.max(primera, r - 1)
+    poner(r, 3, { formula: `SUM(C${primera}:C${ultima})`, result: parte.filas.reduce((s, f) => s + f.horas, 0) }, { font: TOTALES, fondo: CELESTE_CLARO, horizontal: 'center' })
+    poner(r, 4, { formula: `SUM(D${primera}:D${ultima})`, result: parte.filas.reduce((s, f) => s + f.monto, 0) }, { font: TOTALES, fondo: CELESTE_CLARO, horizontal: 'center', numFmt: PLATA })
+    r += 2
+  }
+  for (const nota of o.notas) {
+    hoja.getCell(r, 1).value = nota
+    hoja.getCell(r, 1).style = { font: { name: 'Calibri', size: 10, italic: true } }
+    r++
+  }
+  hoja.getColumn(1).width = ANCHO_EMPLEADO
+  hoja.getColumn(2).width = 26
+  hoja.getColumn(3).width = ANCHO_DIA
+  hoja.getColumn(4).width = 16
+  libro.calcProperties.fullCalcOnLoad = true
+  return libro
+}

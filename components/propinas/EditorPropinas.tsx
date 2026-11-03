@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
+  Clock,
   Copy,
   Fingerprint,
   Loader2,
@@ -28,8 +31,20 @@ import {
   type PersonaPropina,
 } from '@/lib/propinas'
 import { borrarDiaPropinasAction, guardarPropinasAction, relojParaPropinasAction } from '@/app/actions/propinas'
-import { armarDesdeReloj, type ParaOfrecer, type ResultadoReloj } from '@/lib/propinas-reloj'
-import { grupoConfigurado, type GrupoConfigurado, type GrupoDeAlguien } from '@/lib/propinas-grupos'
+import {
+  armarDesdeReloj,
+  emparejar,
+  leerDetalle,
+  type DatosRelojPropinas,
+  type ParaOfrecer,
+  type ResultadoReloj,
+} from '@/lib/propinas-reloj'
+import {
+  grupoConfigurado,
+  marcadoNoMozo,
+  type GrupoConfigurado,
+  type GrupoDeAlguien,
+} from '@/lib/propinas-grupos'
 
 interface Fila {
   key: string
@@ -102,8 +117,12 @@ interface AvisoReloj {
 
 const juntar = (nombres: string[]) => nombres.join(', ')
 
-/** El resumen de lo que hizo "Traer horas del reloj". */
-function avisoDelReloj(r: ResultadoReloj, filas: Fila[]): AvisoReloj {
+/**
+ * El resumen de lo que hizo "Traer horas del reloj". `conDetalle`: la base
+ * mandó las entradas y salidas, y a quien le falta una fichada ya se lo marca
+ * en su fila (no se repite acá).
+ */
+function avisoDelReloj(r: ResultadoReloj, filas: Fila[], conDetalle: boolean): AvisoReloj {
   const nombreDe = new Map(filas.map((f) => [f.key, f.nombre.trim()]))
   const deLaLista = (tipo: string) =>
     Array.from(r.filas)
@@ -117,7 +136,7 @@ function avisoDelReloj(r: ResultadoReloj, filas: Fila[]): AvisoReloj {
   const noEstan = deLaLista('no_esta')
 
   const detalles: AvisoReloj['detalles'] = []
-  if (incompletas.length > 0) {
+  if (incompletas.length > 0 && !conDetalle) {
     detalles.push({ titulo: 'Incompletas en el reloj', nombres: juntar(incompletas), pista: 'Poneles las horas a mano.' })
   }
   if (sinFichadas.length > 0) {
@@ -158,23 +177,25 @@ export default function EditorPropinas(props: Props) {
   const [fecha, setFecha] = useState(props.fecha)
   const [total, setTotal] = useState(props.total ? String(props.total) : '')
   const [general, setGeneral] = useState(props.general ? String(props.general) : '')
+  const usuarioDe = (nombre: string) => (nombre.trim() ? vincularUsuario(nombre, props.usuarios) : null)
   // El grupo de cada uno: el de su nivel de Progresión o el que configuró un encargado.
   const configuradoDe = (nombre: string): GrupoDeAlguien | null =>
-    grupoConfigurado(
-      nombre,
-      nombre.trim() ? vincularUsuario(nombre, props.usuarios) : null,
-      props.nivelPorUsuario,
-      props.grupos ?? []
-    )
+    grupoConfigurado(nombre, usuarioDe(nombre), props.nivelPorUsuario, props.grupos ?? [])
+  // Los que un encargado marcó como que no son mozos (Enzo).
+  const noEsMozo = (nombre: string) => marcadoNoMozo(nombre, usuarioDe(nombre), props.grupos ?? [])
 
-  const [filas, setFilas] = useState<Fila[]>(() =>
-    props.personas.length > 0
-      ? props.personas.map((p) =>
-          // En un día nuevo cada uno arranca en su grupo; uno ya guardado queda como está.
-          aFila(props.esNuevo ? { ...p, grupo: configuradoDe(p.nombre)?.grupo ?? p.grupo } : p)
-        )
+  const [filas, setFilas] = useState<Fila[]>(() => {
+    // En un día nuevo cada uno arranca en su grupo, y los que no son mozos no
+    // vienen de la lista anterior; uno ya guardado queda como está.
+    const personas = props.esNuevo
+      ? props.personas
+          .filter((p) => !noEsMozo(p.nombre))
+          .map((p) => ({ ...p, grupo: configuradoDe(p.nombre)?.grupo ?? p.grupo }))
+      : props.personas
+    return personas.length > 0
+      ? personas.map(aFila)
       : [aFila({ nombre: '', grupo: 'camarero', horas: 0, pago: null, efectivo: null })]
-  )
+  })
   // Filas a las que la cajera les eligió el grupo a mano: el configurado ya no las mueve.
   const elegidasAMano = useRef(new Set<string>())
   // El nombre que tenía cada fila al entrar a escribirlo, para saber si cambió.
@@ -196,6 +217,49 @@ export default function EditorPropinas(props: Props) {
   useEffect(() => {
     filasActuales.current = filas
   }, [filas])
+
+  // A qué hora entró y salió cada uno ese día (la planilla maestra), para que
+  // la cajera controle. Se pide solo al abrir y al cambiar la fecha; no toca
+  // las horas de la lista (eso lo hace "Traer horas del reloj").
+  const [reloj, setReloj] = useState<{ fecha: string; datos: DatosRelojPropinas } | null>(null)
+  const [verHorarios, setVerHorarios] = useState(false)
+  const pedidoReloj = useRef(0)
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return
+    const pedido = ++pedidoReloj.current
+    // Si falla, no se muestra nada de esto: "Traer horas del reloj" dice el error.
+    relojParaPropinasAction(fecha)
+      .then((res) => {
+        if (pedido === pedidoReloj.current) setReloj(res.ok && res.value ? { fecha, datos: res.value } : null)
+      })
+      .catch(() => {
+        if (pedido === pedidoReloj.current) setReloj(null)
+      })
+  }, [fecha])
+
+  // Qué dice el reloj de cada fila de la lista (por usuario o por nombre).
+  const relojDeFila = useMemo(() => {
+    const mapa = new Map<string, { linea: string; alerta: string | null }>()
+    if (!reloj || reloj.fecha !== fecha) return mapa
+    const pares = emparejar(
+      filas.map((f) => ({ clave: f.key, nombre: f.nombre, usuarioId: usuarioDe(f.nombre) })),
+      reloj.datos.personas
+    )
+    pares.forEach((i, clave) => {
+      const p = reloj.datos.personas[i]
+      if (p.detalle) mapa.set(clave, leerDetalle(p.detalle, p.minutos))
+    })
+    return mapa
+    // usuarioDe solo depende de props.usuarios.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filas, reloj, fecha, props.usuarios])
+  // Si la base ya manda las entradas y salidas (falta el SQL nuevo si no).
+  const hayDetalle = reloj?.fecha === fecha && reloj.datos.personas.some((p) => p.detalle !== null)
+  // A quién de la lista le falta una fichada o hay que revisarle algo.
+  const paraRevisar = filas.flatMap((f) => {
+    const alerta = relojDeFila.get(f.key)?.alerta
+    return alerta && f.nombre.trim() ? [{ nombre: f.nombre.trim(), alerta }] : []
+  })
 
   const personas = useMemo(() => filas.map(aPersona), [filas])
   const totalN = aPesos(total)
@@ -242,6 +306,7 @@ export default function EditorPropinas(props: Props) {
     setTrayendo(true)
     setAvisoReloj(null)
     setOfrecidos([])
+    const pedido = ++pedidoReloj.current
     const res = await relojParaPropinasAction(fecha)
     setTrayendo(false)
     if (!res.ok) {
@@ -252,17 +317,16 @@ export default function EditorPropinas(props: Props) {
     // lo que el reloj había puesto con otra fecha. Horarios solo no alcanza para
     // decir quién faltó.
     const vacio = (res.value?.personas.length ?? 0) === 0
-    const datos = vacio || !res.value ? { personas: [], sinReloj: [] } : res.value
+    const datos: DatosRelojPropinas = vacio || !res.value ? { personas: [], sinReloj: [] } : res.value
+    if (pedido === pedidoReloj.current) setReloj({ fecha, datos })
 
     const actuales = filasActuales.current
     const r = armarDesdeReloj(
-      actuales.map((f) => ({
-        clave: f.key,
-        nombre: f.nombre,
-        usuarioId: f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null,
-      })),
+      actuales.map((f) => ({ clave: f.key, nombre: f.nombre, usuarioId: usuarioDe(f.nombre) })),
       datos,
-      props.usuarios
+      props.usuarios,
+      // A los que no son mozos (Enzo) no los suma ni los ofrece.
+      (props.grupos ?? []).filter((g) => g.grupo === 'afuera')
     )
 
     const previas = puestasPorReloj.current
@@ -296,7 +360,7 @@ export default function EditorPropinas(props: Props) {
             texto: 'La planilla todavía no tiene a nadie ese día. Se actualiza sola cada 2 horas: probá más tarde.',
             detalles: [],
           }
-        : avisoDelReloj(r, actuales)
+        : avisoDelReloj(r, actuales, datos.personas.some((p) => p.detalle !== null))
     )
     setError(null)
   }
@@ -408,8 +472,9 @@ export default function EditorPropinas(props: Props) {
     const f = filas[i]
     const p = personas[i]
     const trabajo = p.horas > 0
-    const vinculado = f.nombre.trim() ? vincularUsuario(f.nombre, props.usuarios) : null
+    const vinculado = usuarioDe(f.nombre)
     const configurado = configuradoDe(f.nombre)
+    const delReloj = relojDeFila.get(f.key)
     return (
       <li key={f.key} className={cn('px-4 py-3 space-y-2', !trabajo && 'bg-brand-card-hover/60')}>
         <div className="flex items-center gap-2">
@@ -456,6 +521,29 @@ export default function EditorPropinas(props: Props) {
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
+
+        {/* El reloj: si le falta una fichada, siempre; la entrada y la salida, si se pidió verlas. */}
+        {delReloj?.alerta ? (
+          <p className="flex items-start gap-1.5 text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 leading-snug">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+            <span>{delReloj.linea}</span>
+          </p>
+        ) : (
+          verHorarios &&
+          hayDetalle &&
+          f.nombre.trim() && (
+            <p className="flex items-start gap-1.5 text-[11px] text-brand-muted leading-snug tabular-nums">
+              <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+              <span>{delReloj ? delReloj.linea : 'No figura en el reloj ese día'}</span>
+            </p>
+          )
+        )}
+
+        {f.nombre.trim() && noEsMozo(f.nombre) && (
+          <p className="text-[11px] text-amber-700 font-medium">
+            Un encargado lo marcó como que no es mozo: si hoy no trabajó de mozo, sacalo de la lista.
+          </p>
+        )}
 
         {trabajo && (
           <div className="flex items-center gap-2">
@@ -606,6 +694,22 @@ export default function EditorPropinas(props: Props) {
               <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">
                 De a cuarto (8, 8,25, 8,5, 8,75). Quien no trabajó, dejalo sin horas: no entra en el reparto.
               </p>
+              {hayDetalle && (
+                <button
+                  type="button"
+                  aria-pressed={verHorarios}
+                  onClick={() => setVerHorarios((v) => !v)}
+                  className={cn(
+                    'mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer min-h-[34px]',
+                    verHorarios
+                      ? 'bg-brand-accent/10 border-brand-accent/40 text-brand-accent'
+                      : 'bg-brand-card border-brand-border text-brand-text hover:border-brand-accent'
+                  )}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  {verHorarios ? 'Ocultar entradas y salidas' : 'Ver entradas y salidas'}
+                </button>
+              )}
             </div>
             <button
               type="button"
@@ -692,6 +796,28 @@ export default function EditorPropinas(props: Props) {
           ))}
         </datalist>
 
+        {paraRevisar.length > 0 && (
+          <div
+            role="status"
+            className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900"
+          >
+            <p className="flex items-start gap-1.5 font-semibold">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              {paraRevisar.length === 1
+                ? 'Revisá las fichadas de 1 persona'
+                : `Revisá las fichadas de ${paraRevisar.length} personas`}
+            </p>
+            <ul className="mt-1 space-y-0.5 pl-5">
+              {paraRevisar.map((r, i) => (
+                <li key={r.nombre + i}>
+                  <span className="font-semibold">{r.nombre}</span>: {r.alerta}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 pl-5 text-amber-800/90">Si trabajaron, poneles las horas a mano.</p>
+          </div>
+        )}
+
         {props.errorGrupos && (
           <p className="mx-4 mb-3 flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2 leading-relaxed">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
@@ -731,13 +857,21 @@ export default function EditorPropinas(props: Props) {
           )
         })}
 
-        <div className="px-4 py-3 border-t border-brand-border/70">
+        <div className="px-4 py-3 border-t border-brand-border/70 space-y-2">
           <p className="flex items-start gap-1.5 text-[11px] text-brand-muted leading-relaxed">
             <UserCheck className="w-3.5 h-3.5 flex-shrink-0 mt-px text-brand-accent" />
             Tiene usuario en la app y ve lo que le tocó. Si alguien no lo tiene, revisá que el nombre
-            y apellido estén igual que en su usuario. Cada uno cae solo en su grupo, el que configuró un
-            encargado; si hoy cobra distinto, cambiáselo.
+            y apellido estén igual que en su usuario. Cada uno cae solo en su sección, según el porcentaje
+            que le puso un encargado; si hoy cobra distinto, cambiáselo.
           </p>
+          {props.base.startsWith('/admin') && (
+            <Link
+              href="/admin/propinas/grupos"
+              className="inline-flex text-[11px] font-semibold text-brand-accent underline underline-offset-2"
+            >
+              Cambiar el porcentaje de cada mozo
+            </Link>
+          )}
         </div>
       </section>
 

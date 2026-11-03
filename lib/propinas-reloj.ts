@@ -17,11 +17,18 @@
  * Las horas van de a cuarto (8 · 8,25 · 8,5 · 8,75): así las cuentan los mozos
  * para la propina. La planilla sigue de a media hora (ver horasParaPropina).
  *
+ * Quien un encargado marcó como que no es mozo (Enzo: su cargo en la planilla
+ * es MOZO, pero es el encargado de salón) no se suma ni se ofrece solo.
+ *
+ * Para que la cajera controle (pedido de Enzo, 03/11), de cada uno viene
+ * también a qué hora entró y salió, y si le falta una fichada (ver
+ * leerDetalle).
+ *
  * Ante la duda no se pone nada. Todo es puro: no lee la base ni la hora.
  */
 
 import { normalizarNombre, tipoCelda } from '@/lib/horarios'
-import { redondearCuartoHora, redondearMediaHora } from '@/lib/planilla'
+import { duracion, hhmm, redondearCuartoHora, redondearMediaHora } from '@/lib/planilla'
 import { coincidencias, palabras } from '@/lib/planilla-reloj'
 import { vincularUsuario } from '@/lib/propinas'
 
@@ -31,6 +38,21 @@ export interface UbicacionHorario {
   sector: string
   /** Lo que dice su celda ese día ("11C", "X"); null si esa semana no está en Horarios. */
   celda: string | null
+}
+
+/** A qué hora entró y salió alguien ese día, según la planilla maestra. */
+export interface DetalleReloj {
+  /** "10:53"; null si no fichó la entrada. */
+  entrada: string | null
+  /** "20:55"; null si no fichó la salida. */
+  salida: string | null
+  /** Cada tramo trabajado (más de uno si cortó), en minutos de la jornada: una salida a la 01:20 es 1520. */
+  tramos: { desde: number; hasta: number }[]
+  estado: 'ok' | 'incompleto' | 'revisar'
+  /** Si fichó una sola vez: la que le falta. */
+  falta: 'entrada' | 'salida' | null
+  /** 'reloj', 'papel' o 'manual' (las horas las puso un encargado). */
+  origen: string | null
 }
 
 /** Alguien que tiene ese día en la planilla maestra. */
@@ -48,6 +70,8 @@ export interface PersonaDelReloj {
   puesto: string | null
   /** Dónde figura en Horarios esa semana (puede estar en dos sectores). */
   horario: UbicacionHorario[]
+  /** Entrada, salida y si falta algo. null si la base todavía no lo manda (falta el SQL). */
+  detalle: DetalleReloj | null
 }
 
 /** Alguien con algo escrito en Horarios ese día y nada en la planilla. */
@@ -208,17 +232,27 @@ export interface ResultadoReloj {
 
 const alfabetico = (a: { nombre: string }, b: { nombre: string }) => a.nombre.localeCompare(b.nombre, 'es')
 
+type Identidad = Pick<PersonaDelReloj, 'nombre' | 'profileId' | 'nombresHorario'>
+
 export function armarDesdeReloj(
   lista: { clave: string; nombre: string; usuarioId: string | null }[],
   datos: DatosRelojPropinas,
-  usuarios: Usuario[]
+  usuarios: Usuario[],
+  /** Los que un encargado marcó como que no son mozos: no se suman ni se ofrecen solos. */
+  noSonMozos: Identidad[] = []
 ): ResultadoReloj {
   const pares = emparejar(lista, datos.personas)
   const usadas = new Set(pares.values())
 
+  // El nombre de la planilla es único, y lo traen las dos funciones de la base.
+  const afuera = new Set(noSonMozos.map((p) => igual(p.nombre)))
+  const afueraUsuarios = new Set(noSonMozos.flatMap((p) => (p.profileId ? [p.profileId] : [])))
+  const afueraHorario = new Set(noSonMozos.flatMap((p) => p.nombresHorario.map(igual)).filter(Boolean))
+  const noEsMozo = (p: Identidad) => afuera.has(igual(p.nombre)) || (p.profileId !== null && afueraUsuarios.has(p.profileId))
+
   // Mozos con turno en Horarios ese día que no ficharon.
   const faltaron = datos.sinReloj.filter(
-    (s) => tipoDeSector(s.sector) === 'mozo' && tipoCelda(s.celda ?? '') === 'turno'
+    (s) => tipoDeSector(s.sector) === 'mozo' && tipoCelda(s.celda ?? '') === 'turno' && !afueraHorario.has(igual(s.nombre))
   )
 
   const filas = new Map<string, EstadoFila>()
@@ -236,7 +270,7 @@ export function armarDesdeReloj(
   const mozos: ParaSumar[] = []
   const ofrecer: ParaOfrecer[] = []
   datos.personas.forEach((p, i) => {
-    if (usadas.has(i)) return
+    if (usadas.has(i) || noEsMozo(p)) return
     const tipo = tipoEnElSalon(p)
     const nombre = nombreParaPropinas(p, usuarios)
     const horas = horasParaPropina(p)
@@ -265,6 +299,44 @@ export function armarDesdeReloj(
   }
 }
 
+/**
+ * Lo que ve la cajera de un día del reloj, para controlar: la línea con la
+ * entrada y la salida (cada tramo, si cortó) y, si le falta una fichada o algo
+ * no cierra, la alerta corta ("no fichó la salida"). Si un encargado ya le
+ * puso las horas a mano, no hay alerta (está resuelto), pero se dice qué
+ * faltaba.
+ */
+export function leerDetalle(d: DetalleReloj, minutos: number | null): { linea: string; alerta: string | null } {
+  const real = minutos !== null && minutos > 0 ? ` (${duracion(minutos)})` : ''
+  const aMano = d.origen === 'manual' ? 'un encargado le puso las horas a mano' : null
+  const incompleta = d.estado === 'incompleto'
+
+  if (d.falta === 'salida' || (d.entrada && !d.salida && d.falta !== 'entrada')) {
+    const linea = `Entró ${d.entrada ?? '?'} · no fichó la salida`
+    return incompleta || !aMano ? { linea, alerta: 'no fichó la salida' } : { linea: `${linea}: ${aMano}`, alerta: null }
+  }
+  if (d.falta === 'entrada' || (!d.entrada && d.salida)) {
+    const linea = `No fichó la entrada · salió ${d.salida ?? '?'}`
+    return incompleta || !aMano ? { linea, alerta: 'no fichó la entrada' } : { linea: `${linea}: ${aMano}`, alerta: null }
+  }
+  if (!d.entrada && !d.salida) {
+    return { linea: aMano ? `Sin fichadas: ${aMano}` : 'Sin fichadas ese día', alerta: null }
+  }
+  if (incompleta) {
+    // Tres fichadas o más, en número impar: falta o sobra una.
+    return {
+      linea: `Fichó de ${d.entrada} a ${d.salida}, con una fichada de más o de menos`,
+      alerta: 'una fichada de más o de menos',
+    }
+  }
+  const horario =
+    d.tramos.length > 1
+      ? `${d.tramos.map((t) => `${hhmm(t.desde)} a ${hhmm(t.hasta)}`).join(' y ')}${real}`
+      : `Entró ${d.entrada} · salió ${d.salida}${real}`
+  const linea = horario + (aMano ? ` · ${aMano}` : d.origen === 'papel' ? ' · fichó en papel' : '')
+  return d.estado === 'revisar' ? { linea: `${linea} · más de 17 h, revisar`, alerta: 'más de 17 h' } : { linea, alerta: null }
+}
+
 /** Lo que devuelve la función de la base (jsonb), con cuidado por si algo viene raro. */
 export function leerDatosReloj(crudo: unknown): DatosRelojPropinas {
   const objeto = (crudo ?? {}) as Record<string, unknown>
@@ -275,6 +347,22 @@ export function leerDatosReloj(crudo: unknown): DatosRelojPropinas {
     if (v === null || v === undefined || v === '') return null
     const n = Number(v)
     return Number.isFinite(n) && n > 0 ? n : null
+  }
+  const horaHHMM = (v: unknown) => (typeof v === 'string' && /^\d{2}:\d{2}/.test(v) ? v.slice(0, 5) : null)
+  const detalle = (p: Record<string, unknown>): DetalleReloj | null => {
+    // Antes de correr el SQL nuevo, la base no manda la entrada ni la salida.
+    if (!('entrada' in p) && !('salida' in p)) return null
+    const estado = p.estado === 'incompleto' || p.estado === 'revisar' ? p.estado : 'ok'
+    return {
+      entrada: horaHHMM(p.entrada),
+      salida: horaHHMM(p.salida),
+      tramos: lista(p.tramos)
+        .map((t) => ({ desde: Number(t?.desde), hasta: Number(t?.hasta) }))
+        .filter((t) => Number.isFinite(t.desde) && Number.isFinite(t.hasta) && t.hasta > t.desde),
+      estado,
+      falta: p.falta === 'entrada' || p.falta === 'salida' ? p.falta : null,
+      origen: texto(p.origen),
+    }
   }
   return {
     personas: lista(objeto.personas)
@@ -290,6 +378,7 @@ export function leerDatosReloj(crudo: unknown): DatosRelojPropinas {
         horario: lista(p.horario)
           .filter((u) => typeof u?.sector === 'string')
           .map((u) => ({ sector: u.sector as string, celda: texto(u.celda) })),
+        detalle: detalle(p),
       })),
     sinReloj: lista(objeto.sin_reloj)
       .filter((s) => typeof s?.nombre === 'string' && typeof s?.sector === 'string')

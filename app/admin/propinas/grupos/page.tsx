@@ -3,14 +3,16 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { hoyEnArgentina, type SectorHorario } from '@/lib/horarios'
-import type { Grupo } from '@/lib/propinas'
-import { armarListaGrupos } from '@/lib/propinas-grupos'
-import GruposPropina from '@/components/propinas/GruposPropina'
+import { armarListaGrupos, esGrupoGuardado, type GrupoGuardado } from '@/lib/propinas-grupos'
+import PorcentajeMozos from '@/components/propinas/PorcentajeMozos'
 
 export const dynamic = 'force-dynamic'
 
-/** Quién cobra la hora al 100, al 75 o al 50 %. Solo para encargados (lo cuida el layout de admin). */
-export default async function GruposPropinaPage() {
+/**
+ * El porcentaje de cada mozo (al 100, 75, 50 o 25 %) y quién no es mozo.
+ * Solo para encargados (lo cuida el layout de admin).
+ */
+export default async function PorcentajeMozosPage() {
   const supabase = await createClient()
   const {
     data: { session },
@@ -23,7 +25,7 @@ export default async function GruposPropinaPage() {
     supabase.from('propina_grupos').select('empleado_id, grupo'),
     supabase.from('profiles').select('id, puesto'),
     supabase.from('mozo_niveles').select('user_id, nivel'),
-    // La semana de Horarios de ahora (o la última): de ahí sale quién es del salón.
+    // La semana de Horarios de ahora (o la última): de ahí sale quién es mozo.
     supabase
       .from('schedule_weeks')
       .select('data')
@@ -46,15 +48,15 @@ export default async function GruposPropinaPage() {
           <ArrowLeft className="w-3.5 h-3.5" />
           Propinas
         </Link>
-        <h1 className="text-2xl font-semibold text-brand-accent mt-1">Grupos de propina</h1>
+        <h1 className="text-2xl font-semibold text-brand-accent mt-1">Porcentaje de cada mozo</h1>
         <p className="text-brand-muted text-sm mt-0.5 leading-relaxed">
-          Quién cobra la hora al 100, al 75 o al 50 %. Cuando la cajera carga un día, cada uno ya aparece en su sección.
+          Tocá un mozo y elegí a cuánto cobra la hora. Cuando se cargan las propinas, cada uno ya aparece en su sección.
         </p>
       </div>
 
       {error ? (
         <div className="bg-brand-error/10 border border-brand-error/30 rounded-2xl p-4 text-sm text-brand-error">
-          <p className="font-semibold">No se pudieron leer los grupos.</p>
+          <p className="font-semibold">No se pudieron leer los porcentajes.</p>
           <p className="mt-1">
             {faltaSql
               ? 'Falta correr el SQL de grupos de propina (supabase/add_propina_grupos.sql) en Supabase.'
@@ -62,7 +64,7 @@ export default async function GruposPropinaPage() {
           </p>
         </div>
       ) : (
-        <GruposPropina
+        <PorcentajeMozos
           filas={armarListaGrupos({
             empleados: (empleadosRes.data ?? []).map((e) => ({
               id: e.id as string,
@@ -71,7 +73,9 @@ export default async function GruposPropinaPage() {
               nombresHorario: (e.nombres_horario as string[] | null) ?? [],
               profileId: (e.profile_id as string | null) ?? null,
             })),
-            grupos: (gruposRes.data ?? []).map((g) => ({ empleadoId: g.empleado_id as string, grupo: g.grupo as Grupo })),
+            grupos: (gruposRes.data ?? [])
+              .filter((g) => esGrupoGuardado(g.grupo))
+              .map((g) => ({ empleadoId: g.empleado_id as string, grupo: g.grupo as GrupoGuardado })),
             puestoPorUsuario: new Map((perfilesRes.data ?? []).map((p) => [p.id as string, (p.puesto as string | null) ?? null])),
             // Sin la tabla de Progresión, nadie tiene nivel.
             nivelPorUsuario: new Map((nivelesRes.data ?? []).map((n) => [n.user_id as string, n.nivel as number])),

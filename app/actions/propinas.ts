@@ -2,15 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import {
-  GRUPOS,
-  calcularReparto,
-  validarCarga,
-  vincularUsuario,
-  type Grupo,
-  type PersonaPropina,
-} from '@/lib/propinas'
+import { calcularReparto, validarCarga, vincularUsuario, type PersonaPropina } from '@/lib/propinas'
+import { esGrupoGuardado, type GrupoGuardado } from '@/lib/propinas-grupos'
 import { leerDatosReloj, type DatosRelojPropinas } from '@/lib/propinas-reloj'
+
+/** El grupo al 25 % y "no es mozo" necesitan add_propina_25.sql: antes, la base los rechaza. */
+const FALTA_SQL_25 = 'Falta correr el SQL nuevo de propinas (supabase/add_propina_25.sql) en Supabase.'
+const faltaSql25 = (mensaje: string) => /tip_entries_grupo_check|propina_grupos_grupo_check/i.test(mensaje)
 
 type Resultado<T = undefined> = { ok: true; value?: T } | { ok: false; error: string }
 
@@ -110,6 +108,7 @@ export async function guardarPropinasAction(
     p_version: version,
   })
   if (errorGuardar) {
+    if (faltaSql25(errorGuardar.message)) return { ok: false, error: FALTA_SQL_25 }
     const falta = /guardar_propinas|schema cache/i.test(errorGuardar.message)
     return {
       ok: false,
@@ -139,32 +138,35 @@ export async function borrarDiaPropinasAction(fecha: string): Promise<Resultado>
 const FALTA_SQL_GRUPOS = 'Falta correr el SQL de grupos de propina (supabase/add_propina_grupos.sql) en Supabase.'
 
 /**
- * El grupo de propina de alguien de la planilla (al 100, 75 o 50 %), o null
- * para dejarlo sin definir. Solo un encargado. Las cajeras lo ven en el
- * editor: cada uno cae solo en su sección.
+ * El porcentaje de uno o varios empleados de la planilla (al 100, 75, 50 o
+ * 25 %), o 'afuera': no es mozo. Solo un encargado. Las cajeras lo ven en el
+ * editor: cada uno cae solo en su sección, y el reloj no suma a los que no
+ * son mozos.
  */
-export async function guardarGrupoPropinaAction(empleadoId: string, grupo: Grupo | null): Promise<Resultado> {
+export async function guardarGrupoPropinaAction(empleadoIds: string[], grupo: GrupoGuardado): Promise<Resultado> {
   const { supabase, session } = await requireAdmin()
-  if (!session) return { ok: false, error: 'Solo un encargado puede cambiar los grupos.' }
-  if (!/^[0-9a-f-]{36}$/i.test(empleadoId)) return { ok: false, error: 'No se encontró a esa persona.' }
-  if (grupo !== null && !GRUPOS.some((g) => g.valor === grupo)) return { ok: false, error: 'Ese grupo no existe.' }
+  if (!session) return { ok: false, error: 'Solo un encargado puede cambiar el porcentaje.' }
+  const ids = Array.from(new Set(empleadoIds))
+  if (ids.length === 0 || ids.length > 300 || !ids.every((id) => /^[0-9a-f-]{36}$/i.test(id))) {
+    return { ok: false, error: 'No se encontró a esa persona.' }
+  }
+  if (!esGrupoGuardado(grupo)) return { ok: false, error: 'Ese porcentaje no existe.' }
   const falta = (m: string) => /propina_grupos/i.test(m) && /does not exist|schema cache|could not find/i.test(m)
 
-  if (grupo === null) {
-    const { error } = await supabase.from('propina_grupos').delete().eq('empleado_id', empleadoId)
-    if (error) return { ok: false, error: falta(error.message) ? FALTA_SQL_GRUPOS : error.message }
-  } else {
-    const { data, error } = await supabase
-      .from('propina_grupos')
-      .upsert(
-        { empleado_id: empleadoId, grupo, updated_by: session.user.id, updated_at: new Date().toISOString() },
-        { onConflict: 'empleado_id' }
-      )
-      .select('empleado_id')
-    if (error) return { ok: false, error: falta(error.message) ? FALTA_SQL_GRUPOS : error.message }
-    // Sin error pero sin fila: la base no lo dejó guardar.
-    if (!data || data.length === 0) return { ok: false, error: 'No se guardó: recargá la página y probá de nuevo.' }
+  const ahora = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('propina_grupos')
+    .upsert(
+      ids.map((id) => ({ empleado_id: id, grupo, updated_by: session.user.id, updated_at: ahora })),
+      { onConflict: 'empleado_id' }
+    )
+    .select('empleado_id')
+  if (error) {
+    if (faltaSql25(error.message)) return { ok: false, error: FALTA_SQL_25 }
+    return { ok: false, error: falta(error.message) ? FALTA_SQL_GRUPOS : error.message }
   }
+  // Sin error pero sin todas las filas: la base no dejó guardar alguna.
+  if (!data || data.length !== ids.length) return { ok: false, error: 'No se guardó: recargá la página y probá de nuevo.' }
   revalidatePath('/admin/propinas/grupos')
   return { ok: true }
 }

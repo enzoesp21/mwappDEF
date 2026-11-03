@@ -4,7 +4,6 @@ import { sumarDias } from '@/lib/horarios'
 import { traerCeldas } from '@/lib/planilla-datos'
 import { armarHorasExcel } from '@/lib/planilla-excel'
 import { fechaDelDia } from '@/lib/planilla-vista'
-import { horasParaPropina } from '@/lib/propinas-reloj'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -43,24 +42,19 @@ export async function GET(request: Request) {
   const falla = celdas.find((c) => c.error)
   if (falla?.error) return NextResponse.json({ error: falla.error.message }, { status: 500 })
 
-  // Para la propina, cada día de a cuarto de hora (la planilla los tiene de a media).
   const horas = new Map<string, number>()
   celdas.forEach((c, i) => {
     for (const celda of c.data ?? []) {
       const fecha = fechaDelDia(meses[i], celda.dia)
-      if (fecha < desde || fecha > hasta) continue
-      const delDia = horasParaPropina({
-        horas: celda.horas === null ? null : Number(celda.horas),
-        minutos: celda.minutos === null ? null : Number(celda.minutos),
-      })
-      if (delDia) horas.set(celda.empleado_id, (horas.get(celda.empleado_id) ?? 0) + delDia)
+      if (fecha < desde || fecha > hasta || !celda.horas) continue
+      horas.set(celda.empleado_id, (horas.get(celda.empleado_id) ?? 0) + Number(celda.horas))
     }
   })
   const filas = (empleadosRes.data ?? [])
     .filter((e) => (horas.get(e.id as string) ?? 0) > 0)
     .map((e) => ({ nombre: e.nombre as string, horas: horas.get(e.id as string)! }))
 
-  const titulo = `Horas del ${corta(desde)} al ${corta(hasta)}/${hasta.slice(0, 4)}, según la planilla, de a cuarto de hora (como se cuentan para la propina).`
+  const titulo = `Horas del ${corta(desde)} al ${corta(hasta)}/${hasta.slice(0, 4)}, según la planilla.`
   const archivo = await armarHorasExcel(filas, titulo).xlsx.writeBuffer()
   const nombre = `Horas para propinas ${desde.slice(8)}-${desde.slice(5, 7)} al ${hasta.slice(8)}-${hasta.slice(5, 7)}.xlsx`
   return new Response(archivo as ArrayBuffer, {

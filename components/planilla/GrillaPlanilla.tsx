@@ -239,7 +239,7 @@ export default function GrillaPlanilla(p: Props) {
 
       {!p.sinMeses && <CierreMes mes={p.mes} cerrado={p.cerrado} incompletas={incompletas} cierre={p.cierre} />}
 
-      {!p.sinMeses && <ExportarPlanilla mes={p.mes} hoy={p.hoy} />}
+      {!p.sinMeses && <ExportarPlanilla mes={p.mes} />}
 
       {p.sinMeses ? (
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 text-center text-sm text-brand-muted">

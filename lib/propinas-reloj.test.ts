@@ -9,9 +9,11 @@ import {
   emparejar,
   horasParaPropina,
   leerDatosReloj,
+  leerDetalle,
   nombreParaPropinas,
   tipoEnElSalon,
   type DatosRelojPropinas,
+  type DetalleReloj,
   type PersonaDelReloj,
 } from '@/lib/propinas-reloj'
 import { validarCarga } from '@/lib/propinas'
@@ -27,7 +29,7 @@ const usuarios = [
 ]
 
 function persona(p: Partial<PersonaDelReloj> & { nombre: string }): PersonaDelReloj {
-  return { profileId: null, nombresHorario: [], horas: null, minutos: null, cargo: null, puesto: null, horario: [], ...p }
+  return { profileId: null, nombresHorario: [], horas: null, minutos: null, cargo: null, puesto: null, horario: [], detalle: null, ...p }
 }
 const en = (sector: string, celda: string | null) => [{ sector, celda }]
 
@@ -260,6 +262,97 @@ describe('el 31/10: traer horas del reloj suma a todos los mozos', () => {
   })
 })
 
+describe('los que no son mozos no se suman solos (Enzo, 03/11)', () => {
+  // El 01/11 Enzo fichó de 13:08 a 21:02: con cargo MOZO en la planilla, el reloj lo sumaba.
+  const dia: DatosRelojPropinas = {
+    personas: [
+      persona({ nombre: 'ESPIÑO ENZO LUCIANO', profileId: 'u-enzo', horas: 8, minutos: 474, cargo: 'MOZO', puesto: 'Mozos' }),
+      persona({ nombre: 'IBARRA LUCAS DAMIAN', nombresHorario: ['Lucas Ibarra'], horas: 7, minutos: 416, cargo: 'MOZO', horario: en('CAMAREROS', '10 a 17') }),
+    ],
+    sinReloj: [{ sector: 'CAMAREROS', nombre: 'Belen', celda: '11 a 19.30' }],
+  }
+  const enzo = { nombre: 'ESPIÑO ENZO LUCIANO', profileId: 'u-enzo', nombresHorario: [] }
+
+  test('sin marcarlo, entra como mozo; marcado, no se suma', () => {
+    assert.deepEqual(
+      armarDesdeReloj([], dia, usuarios).mozos.map((m) => m.nombre),
+      ['Belen', 'Enzo Espiño', 'Lucas Ibarra']
+    )
+    assert.deepEqual(
+      armarDesdeReloj([], dia, usuarios, [enzo]).mozos.map((m) => m.nombre),
+      ['Belen', 'Lucas Ibarra']
+    )
+  })
+
+  test('si la cajera lo escribe a mano, le trae sus horas igual', () => {
+    const r = armarDesdeReloj([{ clave: 'e', nombre: 'Enzo Espiño', usuarioId: 'u-enzo' }], dia, usuarios, [enzo])
+    assert.deepEqual(r.filas.get('e'), { tipo: 'horas', horas: 8 })
+  })
+
+  test('tampoco se suma si tenía turno en Horarios y no fichó', () => {
+    const belen = { nombre: 'GALLEGOS BELEN', profileId: null, nombresHorario: ['Belen'] }
+    assert.deepEqual(
+      armarDesdeReloj([], dia, usuarios, [belen]).mozos.map((m) => m.nombre),
+      ['Enzo Espiño', 'Lucas Ibarra']
+    )
+  })
+})
+
+describe('la entrada y la salida, para que la cajera controle', () => {
+  const detalle = (d: Partial<DetalleReloj>): DetalleReloj => ({
+    entrada: '10:53',
+    salida: '20:55',
+    tramos: [{ desde: 653, hasta: 1255 }],
+    estado: 'ok',
+    falta: null,
+    origen: 'reloj',
+    ...d,
+  })
+
+  test('un día normal: a qué hora entró y salió, y cuánto estuvo', () => {
+    assert.deepEqual(leerDetalle(detalle({}), 602), { linea: 'Entró 10:53 · salió 20:55 (10 h 02)', alerta: null })
+  })
+
+  test('si cortó, cada tramo (y una salida pasada la medianoche)', () => {
+    const cortado = detalle({ entrada: '11:00', salida: '00:30', tramos: [{ desde: 660, hasta: 900 }, { desde: 1140, hasta: 1470 }] })
+    assert.deepEqual(leerDetalle(cortado, 570), { linea: '11:00 a 15:00 y 19:00 a 00:30 (9 h 30)', alerta: null })
+  })
+
+  test('le falta la salida o la entrada: aviso', () => {
+    const sinSalida = detalle({ salida: null, tramos: [], estado: 'incompleto', falta: 'salida' })
+    assert.deepEqual(leerDetalle(sinSalida, null), { linea: 'Entró 10:53 · no fichó la salida', alerta: 'no fichó la salida' })
+    const sinEntrada = detalle({ entrada: null, salida: '16:03', tramos: [], estado: 'incompleto', falta: 'entrada' })
+    assert.deepEqual(leerDetalle(sinEntrada, null), { linea: 'No fichó la entrada · salió 16:03', alerta: 'no fichó la entrada' })
+  })
+
+  test('tres fichadas: falta o sobra una', () => {
+    const impar = detalle({ entrada: '10:02', salida: '18:30', tramos: [], estado: 'incompleto' })
+    assert.deepEqual(leerDetalle(impar, null), {
+      linea: 'Fichó de 10:02 a 18:30, con una fichada de más o de menos',
+      alerta: 'una fichada de más o de menos',
+    })
+  })
+
+  test('si un encargado ya le puso las horas a mano, no hay aviso pero se dice', () => {
+    // Baldiviezo el 01/11: entró 07:32, no fichó la salida y le pusieron 4,5 h.
+    const resuelta = detalle({ entrada: '07:32', salida: null, tramos: [], origen: 'manual' })
+    assert.deepEqual(leerDetalle(resuelta, null), {
+      linea: 'Entró 07:32 · no fichó la salida: un encargado le puso las horas a mano',
+      alerta: null,
+    })
+    const sinNada = detalle({ entrada: null, salida: null, tramos: [], origen: 'manual' })
+    assert.deepEqual(leerDetalle(sinNada, null), { linea: 'Sin fichadas: un encargado le puso las horas a mano', alerta: null })
+  })
+
+  test('más de 17 h: revisar', () => {
+    const larga = detalle({ entrada: '07:00', salida: '01:30', tramos: [{ desde: 420, hasta: 1530 }], estado: 'revisar' })
+    assert.deepEqual(leerDetalle(larga, 1110), {
+      linea: 'Entró 07:00 · salió 01:30 (18 h 30) · más de 17 h, revisar',
+      alerta: 'más de 17 h',
+    })
+  })
+})
+
 describe('lo que llega de la base', () => {
   test('pasa los nombres de la base a los de la app y aguanta datos raros', () => {
     const datos = leerDatosReloj({
@@ -293,12 +386,50 @@ describe('lo que llega de la base', () => {
           cargo: 'MOZO',
           puesto: null,
           horario: [{ sector: 'CAMAREROS', celda: '10 a 18.30' }],
+          // Antes del SQL nuevo no vienen la entrada ni la salida.
+          detalle: null,
         },
-        { nombre: 'AGUIRRE RAQUEL NOEMI', profileId: null, nombresHorario: [], horas: null, minutos: null, cargo: null, puesto: null, horario: [] },
+        {
+          nombre: 'AGUIRRE RAQUEL NOEMI',
+          profileId: null,
+          nombresHorario: [],
+          horas: null,
+          minutos: null,
+          cargo: null,
+          puesto: null,
+          horario: [],
+          detalle: null,
+        },
       ],
       sinReloj: [{ sector: 'CAMAREROS', nombre: 'Belen', celda: null }],
     })
     assert.deepEqual(leerDatosReloj(null), { personas: [], sinReloj: [] })
+  })
+
+  test('con el SQL nuevo, la entrada, la salida y lo que falta', () => {
+    const datos = leerDatosReloj({
+      personas: [
+        {
+          nombre: 'ESPIÑO ENZO LUCIANO',
+          horas: 8,
+          minutos: 474,
+          estado: 'ok',
+          origen: 'reloj',
+          entrada: '13:08',
+          salida: '21:02',
+          tramos: [{ desde: 788, hasta: 1262 }, { desde: 'x', hasta: 2 }],
+          falta: null,
+        },
+        { nombre: 'AGUIRRE RAQUEL NOEMI', horas: null, estado: 'incompleto', origen: 'reloj', entrada: '07:38:00', salida: null, tramos: null, falta: 'salida' },
+      ],
+    })
+    assert.deepEqual(
+      datos.personas.map((p) => p.detalle),
+      [
+        { entrada: '13:08', salida: '21:02', tramos: [{ desde: 788, hasta: 1262 }], estado: 'ok', falta: null, origen: 'reloj' },
+        { entrada: '07:38', salida: null, tramos: [], estado: 'incompleto', falta: 'salida', origen: 'reloj' },
+      ]
+    )
   })
 })
 

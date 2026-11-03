@@ -6,20 +6,24 @@
  *
  *   salón     = total - general
  *   horas     = horas de camareros + 75 % de las de reducidos + 50 % de las de prueba
+ *               + 25 % de las del grupo al 25 %
  *               (cada uno, de a cuarto de hora: 8 · 8,25 · 8,5 · 8,75)
  *   por hora  = salón / horas
  *   a cada uno = sus horas × su porcentaje × por hora
+ *
+ * El grupo al 25 % no estaba en la calculadora vieja: lo pidió Enzo el 03/11.
  */
 
 import { normalizarNombre } from '@/lib/horarios'
 
-export type Grupo = 'camarero' | 'reducido' | 'prueba'
+export type Grupo = 'camarero' | 'reducido' | 'prueba' | 'cuarto'
 export type Pago = 'tr' | 'ef' | 'tr_ef'
 
 export const GRUPOS: { valor: Grupo; opcion: string; corta: string; factor: number; titulo: string }[] = [
   { valor: 'camarero', opcion: 'Completa', corta: '100 %', factor: 1, titulo: 'Camareros' },
   { valor: 'reducido', opcion: 'Reducida 75 %', corta: '75 %', factor: 0.75, titulo: 'Reducidos (75%)' },
   { valor: 'prueba', opcion: 'Prueba 50 %', corta: '50 %', factor: 0.5, titulo: 'En prueba (50%)' },
+  { valor: 'cuarto', opcion: 'Al 25 %', corta: '25 %', factor: 0.25, titulo: 'Al 25%' },
 ]
 
 export const PAGOS: { valor: Pago; etiqueta: string; corta: string }[] = [

@@ -5,53 +5,21 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowRight, ChevronDown, Download, FileSpreadsheet, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { diasDelMes, fechaDelDia, nombreDelMes } from '@/lib/planilla-vista'
+import { bajarArchivo as bajar } from '@/lib/bajar-archivo'
 
 interface Props {
   /** "2026-10" */
   mes: string
-  /** "2026-11-01" */
-  hoy: string
 }
 
-/** Baja un archivo de la app; si el servidor contesta un error, lo devuelve en texto. */
-async function bajar(url: string): Promise<string | null> {
-  try {
-    const r = await fetch(url, { cache: 'no-store' })
-    if (!r.ok) {
-      const cuerpo = await r.json().catch(() => null)
-      return (cuerpo as { error?: string } | null)?.error ?? `No se pudo bajar (error ${r.status}).`
-    }
-    const disposicion = r.headers.get('Content-Disposition') ?? ''
-    const nombre = decodeURIComponent(
-      disposicion.match(/filename\*=UTF-8''([^;]+)/)?.[1] ?? disposicion.match(/filename="([^"]+)"/)?.[1] ?? 'planilla.xlsx'
-    )
-    const enlace = document.createElement('a')
-    enlace.href = URL.createObjectURL(await r.blob())
-    enlace.download = nombre
-    document.body.appendChild(enlace)
-    enlace.click()
-    enlace.remove()
-    setTimeout(() => URL.revokeObjectURL(enlace.href), 10_000)
-    return null
-  } catch {
-    return 'No se pudo bajar el archivo: revisá la conexión.'
-  }
-}
-
-/** Los Excel de la planilla y las horas para propinas. */
-export default function ExportarPlanilla({ mes, hoy }: Props) {
+/** Los Excel de la planilla, las horas y la propina del resto del personal. */
+export default function ExportarPlanilla({ mes }: Props) {
   const ultimo = diasDelMes(mes)
-  const ayer = (() => {
-    const d = new Date(hoy + 'T00:00:00Z')
-    d.setUTCDate(d.getUTCDate() - 1)
-    return d.toISOString().slice(0, 10)
-  })()
   const [abierto, setAbierto] = useState(false)
   const [bajando, setBajando] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [desde, setDesde] = useState(fechaDelDia(mes, 1))
   const [hasta, setHasta] = useState(fechaDelDia(mes, 15))
-  const [diaPropinas, setDiaPropinas] = useState(ayer.startsWith(mes) ? ayer : fechaDelDia(mes, 1))
 
   async function correr(clave: string, url: string) {
     setBajando(clave)
@@ -83,7 +51,9 @@ export default function ExportarPlanilla({ mes, hoy }: Props) {
         <FileSpreadsheet className="w-5 h-5 text-brand-accent flex-shrink-0" />
         <span className="flex-1 min-w-0">
           <span className="block text-sm font-semibold text-brand-text">Excel y propinas</span>
-          <span className="block text-xs text-brand-muted">La planilla de {nombreDelMes(mes).toLowerCase()} en Excel, quincenas y horas para propinas</span>
+          <span className="block text-xs text-brand-muted">
+            La planilla de {nombreDelMes(mes).toLowerCase()} en Excel, quincenas y la propina del resto del personal
+          </span>
         </span>
         <ChevronDown className={cn('w-4 h-4 text-brand-muted transition-transform', abierto && 'rotate-180')} />
       </button>
@@ -134,35 +104,26 @@ export default function ExportarPlanilla({ mes, hoy }: Props) {
                 Excel de horas
               </button>
             </div>
-            <p className="text-[11px] text-brand-muted">
-              Empleado y Horas Calculadas, sumadas en esas fechas. Cada día va de a cuarto de hora (8,25, 8,75), como
-              se cuenta para la propina; la planilla sigue de a media.
-            </p>
+            <p className="text-[11px] text-brand-muted">Empleado y Horas Calculadas (las de la planilla), sumadas en esas fechas.</p>
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-muted">Pasar a Propinas</h3>
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="block">
-                <span className="text-xs text-brand-muted">Día</span>
-                <input
-                  type="date"
-                  value={diaPropinas}
-                  max={hoy}
-                  onChange={(e) => setDiaPropinas(e.target.value)}
-                  className="mt-1 block h-11 px-3 rounded-xl border border-brand-border bg-brand-card text-sm text-brand-text"
-                />
-              </label>
-              <Link
-                href={`/admin/propinas/${diaPropinas}?traer=reloj`}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-accent text-white text-sm font-bold hover:bg-brand-accent-hover min-h-[44px]"
-              >
-                Abrir en Propinas <ArrowRight className="w-4 h-4" />
-              </Link>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-muted">
+              Propina del resto del personal
+            </h3>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {([1, 2] as const).map((q) => (
+                <Link
+                  key={q}
+                  href={`/admin/fichadas/planilla/propina?mes=${mes}&q=${q}`}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-brand-border text-sm font-semibold text-brand-text hover:border-brand-accent min-h-[44px]"
+                >
+                  {q === 1 ? '1ra quincena (1 al 15)' : `2da quincena (16 al ${ultimo})`} <ArrowRight className="w-4 h-4" />
+                </Link>
+              ))}
             </div>
             <p className="text-[11px] text-brand-muted">
-              Abre las propinas de ese día, suma a los mozos y completa sus horas con las del reloj, de a cuarto de
-              hora. Revisá y guardá como siempre.
+              Sin camareros. Ponés el monto y se reparte 60 % Salón y 40 % Cocina, según las horas de la quincena.
             </p>
           </div>
 

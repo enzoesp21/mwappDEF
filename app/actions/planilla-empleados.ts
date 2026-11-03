@@ -215,3 +215,35 @@ export async function desasociarRelojAction(userid: string): Promise<Resultado> 
   revalidar()
   return { ok: true, mensaje: `El ${userid} del reloj volvió a "sin asociar".${aviso}` }
 }
+
+/**
+ * Propina del resto del personal: fijar a mano en qué parte va alguien
+ * ('salon', 'cocina' o 'afuera'), o volver a lo automático (null: por su
+ * sector de Horarios o su cargo).
+ */
+export async function guardarGrupoGeneralAction(
+  empleadoId: string,
+  grupo: 'salon' | 'cocina' | 'afuera' | null
+): Promise<Resultado> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return SIN_PERMISO
+  if (!/^[0-9a-f-]{36}$/i.test(empleadoId)) return { ok: false, error: 'No se encontró a esa persona.' }
+  if (grupo !== null && !['salon', 'cocina', 'afuera'].includes(grupo)) return { ok: false, error: 'Esa parte no existe.' }
+  const { data, error } = await supabase
+    .from('planilla_empleados')
+    .update({ grupo_propina_general: grupo })
+    .eq('id', empleadoId)
+    .select('id')
+  if (error) {
+    const falta = /grupo_propina_general/i.test(error.message) && /column|schema cache|does not exist|could not find/i.test(error.message)
+    return {
+      ok: false,
+      error: falta
+        ? 'Falta correr el SQL de la propina del resto del personal (supabase/add_propina_general.sql) en Supabase.'
+        : error.message,
+    }
+  }
+  if (!data || data.length === 0) return { ok: false, error: 'No se guardó: recargá la página y probá de nuevo.' }
+  revalidatePath('/admin/fichadas/planilla/propina')
+  return { ok: true, mensaje: 'Guardado.' }
+}

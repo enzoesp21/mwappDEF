@@ -139,23 +139,75 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   mezclar. Con el reloj, `horasParaPropina` (`lib/propinas-reloj.ts`) redondea los minutos
   reales del día al cuarto más cercano con `redondearCuartoHora` (`lib/planilla.ts`):
   8 h 07 → 8, 8 h 08 → 8,25. Si las horas de la celda no salen de sus minutos (un encargado
-  las corrigió a mano), valen las del encargado. Se usa en "Traer horas del reloj" y en el
-  Excel de horas para propinas. `validarCarga` no deja guardar horas que no sean de a cuarto.
-- **Grupos de propina** (quién cobra la hora al 100, 75 o 50 %; Enzo, 01/11). Antes la cajera
-  elegía el grupo de cada uno a mano. Ahora:
-  - El encargado los configura una vez en `/admin/propinas/grupos` (link desde Propinas), por
-    empleado de la planilla. Así entran también los que no tienen usuario de la app, que son
-    casi todos los mozos.
+  las corrigió a mano), valen las del encargado. Se usa en "Traer horas del reloj".
+  `validarCarga` no deja guardar horas que no sean de a cuarto. Esto es solo para la de los
+  mozos: la propina del resto del personal va con las horas de la planilla.
+- **Propina del resto del personal** (todos menos los camareros; Enzo, 02/11). Es otra
+  propina, por quincena, aparte de la diaria de los mozos:
+  - Enzo pone el monto en `/admin/fichadas/planilla/propina?mes=2026-10&q=1|2` (desde
+    Planilla → Excel y propinas).
+  - Se reparte 60 % Salón y 40 % Cocina. Dentro de cada parte, por las horas de la planilla
+    en la quincena (de a media hora). No se pierde un peso: `repartirPozo` usa el mayor resto.
+  - Salón: Caja, Recepción, Barra, Bacha (sector Maestranza) y Comiss/Runners, más Zulma.
+  - Cocina: Cocina, Ensalada y Calienta platos. Pastelería no la nombró: va en Cocina por
+    ahora.
+  - No entran: los camareros, los encargados (Facundo Núñez, Enzo) ni los administrativos
+    (Romina, Germán).
+  - En qué parte va cada uno sale de `ubicar` (`lib/propina-general.ts`), en este orden: lo
+    fijado a mano, el sector de Horarios donde más turnos tuvo en la quincena, el cargo y el
+    puesto de su usuario. Si nada lo dice, queda "sin sector" y no cobra hasta que lo ubiquen.
+  - Lo fijado a mano va en `planilla_empleados.grupo_propina_general`
+    (`add_propina_general.sql`).
+  - Lo que lee de la base está en `lib/propina-general-datos.ts`. El Excel del reparto sale de
+    `GET /api/planilla/propina-general?mes&q&monto`.
+  - Ofrece usar como monto la suma de la General de los días cargados en Propinas.
+  - Gisel Vallejos (lavacopas) figura en Cocina en Horarios: va en Cocina salvo que Enzo la
+    pase.
+- **Porcentaje de cada mozo** (quién cobra la hora al 100, 75, 50 o 25 %; Enzo, 01/11 y
+  03/11). Antes la cajera elegía el grupo de cada uno a mano. Ahora:
+  - Enzo o Facu (los dos son admin) lo ponen una vez en `/admin/propinas/grupos` ("Porcentaje
+    de cada mozo", tarjeta verde arriba de todo en Propinas), por empleado de la planilla. Así
+    entran también los que no tienen usuario de la app, que son casi todos los mozos.
+  - La pantalla es la más simple posible (Enzo pidió "una manera más simple" el 03/11):
+    - los mozos separados como en la carga del día (Al 100, 75, 50 y 25 %), con su nombre en
+      una píldora;
+    - se toca el nombre y una ventana con botones grandes deja elegir 100 / 75 / 50 / 25 % o
+      "No es mozo". Se guarda solo;
+    - arriba, "Sin definir": los mozos sin porcentaje, con "Poner a los N al 100 %";
+    - abajo, "No son mozos" y, plegados, los runners y el resto del personal.
+    - Qué va en cada parte lo dice `seccionDe` (`lib/propinas-grupos.ts`).
+  - Grupo 25 %: valor `'cuarto'` (factor 0,25). Lo agregó `add_propina_25.sql`, que amplía el
+    CHECK de `tip_entries.grupo` y el de `propina_grupos.grupo`.
+  - "No es mozo": valor `'afuera'`, solo en `propina_grupos` (nunca en `tip_entries`).
+    - Enzo figura en la planilla con cargo MOZO, pero es el encargado de salón: el SQL lo deja
+      así.
+    - "Traer horas del reloj" no suma ni ofrece a quien está así, y un día nuevo no lo trae de
+      la lista anterior.
+    - Si la cajera lo escribe a mano, entra igual, con un aviso.
   - Se guardan en `propina_grupos` (`add_propina_grupos.sql`), que es solo de admin. La cajera
-    los lee con la RPC `grupos_para_propinas()`.
-  - Si alguien tiene nivel en Progresión, manda el nivel, y se cambia desde su ficha.
+    los lee con la RPC `grupos_para_propinas()`. Se guarda con
+    `guardarGrupoPropinaAction(ids, grupo)`.
+  - Si alguien tiene nivel en Progresión, manda el nivel (la píldora dice N1, N2 o N3) y se
+    cambia desde su ficha. El 25 % no es ningún nivel.
   - Sin grupo, va al 100 %.
-  - En el editor la lista va en tres secciones (Al 100 %, Al 75 %, Al 50 %), y cada uno cae
-    solo en la suya (`grupoConfigurado`, `lib/propinas-grupos.ts`). Pasa en un día nuevo, al
-    traer del reloj y al terminar de escribir un nombre.
+  - En el editor la lista va en cuatro secciones (Al 100 %, Al 75 %, Al 50 %, Al 25 %), y cada
+    uno cae solo en la suya (`grupoConfigurado`, `lib/propinas-grupos.ts`). Pasa en un día
+    nuevo, al traer del reloj y al terminar de escribir un nombre.
   - Lo del nombre se resuelve al salir del campo, no mientras se escribe, para que la fila no
     salte de sección.
   - Si la cajera lo cambia, queda lo suyo. Se avisa y hay un "Pasarlo al X %".
+- **La cajera controla las fichadas** (Enzo, 03/11: "que vean si algún mozo no fichó la
+  salida, y a qué hora entraron y salieron").
+  - Al abrir el editor (y al cambiar la fecha) se piden las entradas y salidas de ese día con
+    `reloj_para_propinas`. Esto no toca las horas de la lista.
+  - Desde `add_propina_25.sql`, esa RPC trae además entrada, salida, tramos, qué fichada falta
+    (`sugerencia->>'falta'`) y el origen de la celda.
+  - A quien le falta una fichada se le marca en su fila, y arriba de las secciones hay un
+    "Revisá las fichadas de N personas".
+  - "Ver entradas y salidas" muestra debajo de cada uno "Entró 10:23 · salió 18:32 (8 h 09)",
+    cada tramo si cortó, o "No figura en el reloj ese día".
+  - Si un encargado ya le puso las horas a mano, no hay aviso, pero se dice. Los textos salen de
+    `leerDetalle` (`lib/propinas-reloj.ts`).
 - Carga el cajero, a mano, al día siguiente. Pueden cargar los admin y quien tenga
   `profiles.carga_propinas` (se tilda en Usuarios). Freno en la base: `puede_cargar_propinas()`.
 - Quién ve qué (RLS, `ve_propinas_de_todos()`): quien carga y el puesto Mozos ("Mozos y
@@ -168,16 +220,16 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 
 ## Progresión de mozos
 
-- Tres niveles = los tres grupos de propinas: 1 · 50 % ("prueba"), 2 · 75 % ("reducido"),
-  3 · 100 % ("camarero"). Requisitos escritos en `lib/progresion.ts` (decisión de Enzo, el
+- Tres niveles = tres de los grupos de propinas: 1 · 50 % ("prueba"), 2 · 75 % ("reducido"),
+  3 · 100 % ("camarero"). El 25 % no es un nivel. Requisitos escritos en `lib/progresion.ts` (decisión de Enzo, el
   nivel 1 son sus cuatro criterios): manuales (los tilda un encargado), exámenes (se toman
   solos; la guía se reconoce por partes del título en `claveDeGuia`) y tiempo mínimo.
 - Tablas `mozo_niveles` (nivel, desde, tildes en JSONB con claves "n2_...") e historial.
   Se cambian solo con las RPC `cambiar_nivel_mozo` y `marcar_requisito_mozo` (admin). Al
   bajar se borran las tildes de los niveles perdidos y el tiempo vuelve a contar.
-- Sin fila = sin nivel: vale el grupo de Propinas → Grupos (o 100 %). Con nivel, manda el
-  nivel (también por encima de Grupos): la calculadora lo pone en su sección sola; el cajero lo
-  puede cambiar (se avisa).
+- Sin fila = sin nivel: vale Propinas → Porcentaje de cada mozo (o 100 %). Con nivel, manda el
+  nivel (también por encima de lo que se puso ahí): la calculadora lo pone en su sección sola;
+  el cajero lo puede cambiar (se avisa).
 - Pantallas: `/admin/progresion` (lista y ficha) y `/dashboard/progresion` (solo puesto Mozos).
 
 ## Fichadas (reloj EP300 Pro)
@@ -319,12 +371,15 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   Horarios).
 - Excel (`lib/planilla-excel.ts`, con ExcelJS):
   - Planilla del mes o quincena: `GET /api/planilla/excel?mes=2026-10&parte=mes|q1|q2`.
-  - Horas para propinas (Empleado | Horas Calculadas): `GET /api/planilla/horas?desde&hasta`.
+  - Horas para propinas (Empleado | Horas Calculadas, las de la planilla):
+    `GET /api/planilla/horas?desde&hasta`.
   - Las dos son solo para admin. Se bajan desde "Excel y propinas" en la planilla.
   - Las fórmulas se recalculan al abrir (`fullCalcOnLoad`): ExcelJS no guarda un resultado 0.
   - El segundo DIAS es la cantidad de días con horas. OTROS = VAC + CERT + LIC.
-- "Pasar a Propinas": la planilla abre `/admin/propinas/<fecha>?traer=reloj`. Si ese día no se
-  cargó, se abre como día nuevo con esa fecha.
+- "Excel y propinas" de la planilla ya no lleva a la propina de los mozos: Enzo dijo que ahí no
+  tiene sentido. Ahora abre la propina del resto del personal de cada quincena (ver Propinas).
+  `/admin/propinas/<fecha>?traer=reloj` sigue andando: un día sin cargar se abre como día nuevo
+  y trae las horas solo.
 - "Traer horas del reloj" (en el editor de propinas) arma la lista con la planilla de ese día.
   Antes solo completaba a los que ya estaban en la lista: el 31/10 arrancó con 2 nombres y trajo
   1, y Enzo pidió que ponga a todos los mozos.
@@ -339,7 +394,8 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Suma solos a los mozos que faltan, con horas, incompletos (sin horas) o con turno y sin
     fichadas (sin horas). Mozo = sector Camareros de Horarios donde tiene turno ese día; si esa
     semana no figura, cargo MOZO de la planilla ("MOZO DE MOSTRADOR" es barra) o, sin cargo, el
-    puesto Mozos de su usuario. El encargado no entra.
+    puesto Mozos de su usuario. El encargado no entra, ni quien está como "No es mozo" en
+    Porcentaje de cada mozo (Enzo).
   - A los runners y comisses, y a los que ficharon sin sector conocido, no los suma: los ofrece
     con un toque. No está confirmado que siempre entren en el reparto.
   - Si se vuelve a traer con otra fecha, saca lo que había puesto el reloj y no toca lo escrito
@@ -361,6 +417,14 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
   Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone
   (615, Enzo confirmó que es la del usuario de la app) y Abril Castro (646) y Moises (647).
+- Papel de octubre, según Enzo (02/11):
+  - Honorio Sachett es el hermano de Angel Sachett, no la misma persona. No tiene huella:
+    fichó en papel. Se agrega con sus fichadas de octubre con
+    `fix_octubre_honorio_sachett.sql`, con octubre reabierto, y después "Actualizar ahora".
+  - Corvino Morena (9 y 10/10 en papel) estuvo a prueba y no siguió. No va en la planilla.
+  - Lo que Enzo cargó del papel en octubre está como celdas a mano (origen manual), no
+    como fichadas de papel.
+  - No quiere que la app lea fotos de las planillas de papel con IA.
 - El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
   parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
   se corrige a mano.
