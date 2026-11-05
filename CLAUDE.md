@@ -136,6 +136,32 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   gratis y sin clave, 16 días adelante y 7 atrás, caché de 30 min). Si no contesta, el editor
   sigue andando y lo avisa en una línea: nunca puede frenar el armado del horario.
 - Lógica de totales y búsqueda en `lib/horarios.ts`; el PDF en `lib/horario-pdf.ts`.
+- **Pedidos de horario** (pedido de Facundo, 05/11): cada uno pide un cambio para una semana.
+  Puede ser que no puede venir algún día, que solo puede o no puede en una franja, u otro
+  cambio, siempre con el motivo. Los encargados lo aprueban o no. Lo que decidió Enzo:
+  - Aprobar NO cambia el horario: queda marcado en el editor, al lado de esa persona y ese
+    día. Punto verde si está aprobado, ámbar si está sin responder. Facu arma la semana con
+    eso.
+  - El plazo es hasta el jueves anterior a las 23:59 de Argentina y después se cierra
+    (`semanaAbierta`; en la base, `pedidos_horario_abierta`).
+  - Se puede pedir para la semana que viene y para cualquiera más adelante.
+  - Tabla `pedidos_horario` (`add_pedidos_horario.sql`): un pedido con uno o más días de la
+    misma semana. Cada uno ve los suyos y los admin, todos.
+  - Nadie escribe directo: se usan las RPC `pedir_cambio_horario` (con el freno del plazo),
+    `cancelar_pedido_horario` (solo si sigue sin respuesta y en plazo) y
+    `responder_pedido_horario` (admin).
+  - Al responder, a la persona le llega a la campanita (`notifications`). Un encargado puede
+    cambiar la respuesta o dejarlo sin responder.
+  - Personal: tarjeta arriba de todo en `/dashboard/horario` (`components/horario/PedidosHorario.tsx`),
+    con el plazo, el formulario y "Tus pedidos". Si no se corrió el SQL, no aparece.
+  - Encargados: `/admin/horarios/pedidos` por semana, con Aprobar / No aprobar y un
+    comentario (`components/admin/PedidosAdmin.tsx`). Tarjeta en Horarios y número en el menú
+    con los que faltan responder de esta semana en adelante.
+  - En el editor de la semana, el panel "Pedidos de esta semana" y las marcas. Las arma
+    `marcasDelEditor`, que busca a cada uno con `buscarEnHorario`, como en su pantalla. Si no
+    lo encuentra, lo avisa en el pedido.
+  - Lógica pura y pruebas en `lib/pedidos-horario.ts`. Lo que se lee de la base, en
+    `lib/pedidos-horario-datos.ts`.
 
 ## Propinas
 

@@ -44,6 +44,8 @@ interface AdminNavProps {
   adminName: string
   pendingCount?: number
   pendingCorrections?: number
+  /** Pedidos de horario sin responder, de esta semana en adelante. */
+  pedidosHorario?: number
 }
 
 function PendingBadge({ count }: { count: number }) {
@@ -55,9 +57,21 @@ function PendingBadge({ count }: { count: number }) {
   )
 }
 
-export default function AdminNav({ adminName, pendingCount = 0, pendingCorrections = 0 }: AdminNavProps) {
+export default function AdminNav({
+  adminName,
+  pendingCount = 0,
+  pendingCorrections = 0,
+  pedidosHorario = 0,
+}: AdminNavProps) {
+  // Los pedidos de horario sin responder van en Horarios.
   const badgeFor = (href: string) =>
-    href === '/admin/users' ? pendingCount : href === '/admin/correcciones' ? pendingCorrections : 0
+    href === '/admin/users'
+      ? pendingCount
+      : href === '/admin/correcciones'
+        ? pendingCorrections
+        : href === '/admin/horarios'
+          ? pedidosHorario
+          : 0
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -129,6 +143,7 @@ export default function AdminNav({ adminName, pendingCount = 0, pendingCorrectio
           onLogout={handleLogout}
           pendingCount={pendingCount}
           pendingCorrections={pendingCorrections}
+          pedidosHorario={pedidosHorario}
         />
       </aside>
 
@@ -189,6 +204,7 @@ function MobileNavContent({
   onLogout,
   pendingCount,
   pendingCorrections,
+  pedidosHorario,
 }: {
   adminName: string
   isActive: (href: string, exact: boolean) => boolean
@@ -197,9 +213,17 @@ function MobileNavContent({
   onLogout: () => void
   pendingCount: number
   pendingCorrections: number
+  pedidosHorario: number
 }) {
+  // Los pedidos de horario sin responder van en Horarios.
   const badgeFor = (href: string) =>
-    href === '/admin/users' ? pendingCount : href === '/admin/correcciones' ? pendingCorrections : 0
+    href === '/admin/users'
+      ? pendingCount
+      : href === '/admin/correcciones'
+        ? pendingCorrections
+        : href === '/admin/horarios'
+          ? pedidosHorario
+          : 0
   return (
     <>
       <div className="px-4 py-3 border-b border-brand-border">

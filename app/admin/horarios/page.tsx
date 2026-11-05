@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ChevronRight, CalendarDays } from 'lucide-react'
+import { ChevronRight, CalendarClock, CalendarDays } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cn, formatDateTime } from '@/lib/utils'
 import { MAX_DIAS_EXTRA, etiquetaSemana, hoyEnArgentina, lunesDe, sumarDias } from '@/lib/horarios'
@@ -23,17 +23,25 @@ export default async function AdminHorariosPage() {
     .single()
   if (me?.role !== 'admin') redirect('/dashboard')
 
-  // Sin el contenido: solo hace falta para listar, y son varios KB por semana.
-  // De adentro solo se pide cuántos días extra tiene, para el título.
-  const { data: semanas } = await supabase
-    .from('schedule_weeks')
-    .select('id, week_start, status, published_at, updated_at, dias_extra:data->diasExtra')
-    .order('week_start', { ascending: false })
-    .limit(20)
-
-  const lista = semanas ?? []
   const lunesActual = lunesDe(hoyEnArgentina())
   const lunesQueViene = sumarDias(lunesActual, 7)
+
+  // Sin el contenido: solo hace falta para listar, y son varios KB por semana.
+  // De adentro solo se pide cuántos días extra tiene, para el título.
+  const [{ data: semanas }, { count: pedidosSinResponder, error: errorPedidos }] = await Promise.all([
+    supabase
+      .from('schedule_weeks')
+      .select('id, week_start, status, published_at, updated_at, dias_extra:data->diasExtra')
+      .order('week_start', { ascending: false })
+      .limit(20),
+    supabase
+      .from('pedidos_horario')
+      .select('id', { count: 'exact', head: true })
+      .eq('estado', 'pendiente')
+      .gte('semana', lunesActual),
+  ])
+
+  const lista = semanas ?? []
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -44,6 +52,31 @@ export default async function AdminHorariosPage() {
           personal no la ve.
         </p>
       </div>
+
+      <Link
+        href="/admin/horarios/pedidos"
+        className="flex items-center gap-3 bg-brand-accent/10 border border-brand-accent/30 rounded-xl px-4 py-3 hover:border-brand-accent transition-colors"
+      >
+        <CalendarClock className="w-5 h-5 text-brand-accent flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-brand-text">Pedidos de horario</p>
+          <p className="text-xs text-brand-muted">
+            {errorPedidos
+              ? 'Lo que pide el personal hasta el jueves a la noche'
+              : pedidosSinResponder
+                ? pedidosSinResponder === 1
+                  ? '1 sin responder'
+                  : `${pedidosSinResponder} sin responder`
+                : 'Ninguno sin responder'}
+          </p>
+        </div>
+        {!errorPedidos && (pedidosSinResponder ?? 0) > 0 && (
+          <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-brand-error text-white text-[11px] font-bold flex items-center justify-center">
+            {pedidosSinResponder}
+          </span>
+        )}
+        <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+      </Link>
 
       <NuevaSemana lunesSugerido={lunesQueViene} hayAnterior={lista.length > 0} />
 

@@ -10,11 +10,14 @@ import {
   etiquetaSemana,
   hoyEnArgentina,
   lunesDe,
+  sumarDias,
   validarDatos,
   type DatosHorario,
 } from '@/lib/horarios'
+import { leerPedido, type PedidoHorario } from '@/lib/pedidos-horario'
 import MiSemana from '@/components/horario/MiSemana'
 import TablaHorario from '@/components/horario/TablaHorario'
+import PedidosHorario from '@/components/horario/PedidosHorario'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +36,7 @@ export default async function HorarioPage({ searchParams }: Props) {
   const lunesActual = lunesDe(hoy)
 
   // Solo lo publicado: la política de la base tampoco deja ver borradores.
-  const [{ data: semanas }, { data: yo }, { data: usuarios }] = await Promise.all([
+  const [{ data: semanas }, { data: yo }, { data: usuarios }, pedidosRes] = await Promise.all([
     supabase
       .from('schedule_weeks')
       .select('id, week_start, data')
@@ -42,7 +45,27 @@ export default async function HorarioPage({ searchParams }: Props) {
       .limit(6),
     supabase.from('profiles').select('full_name').eq('id', session.user.id).single(),
     supabase.from('profiles').select('full_name'),
+    // Sus pedidos de cambio, de la semana pasada en adelante.
+    supabase
+      .from('pedidos_horario')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .gte('semana', sumarDias(lunesActual, -7))
+      .order('semana', { ascending: true }),
   ])
+
+  // Si todavía no se corrió el SQL de los pedidos, la tarjeta no aparece.
+  const sinPedidos = pedidosRes.error && /pedidos_horario|schema cache|does not exist/i.test(pedidosRes.error.message)
+  const misPedidos = (pedidosRes.data ?? [])
+    .map((f) => leerPedido(f as Record<string, unknown>))
+    .filter((p): p is PedidoHorario => p !== null)
+  const pedidos = sinPedidos ? null : pedidosRes.error ? (
+    <p className="text-xs text-brand-error bg-brand-error/10 border border-brand-error/30 rounded-xl px-3 py-2">
+      No se pudieron leer tus pedidos de horario: {pedidosRes.error.message}
+    </p>
+  ) : (
+    <PedidosHorario pedidos={misPedidos} hoy={hoy} />
+  )
 
   const publicadas = (semanas ?? []).filter((s) => validarDatos(s.data))
 
@@ -61,6 +84,7 @@ export default async function HorarioPage({ searchParams }: Props) {
     return (
       <div className="space-y-4 animate-slide-up">
         <Encabezado />
+        {pedidos}
         <div className="bg-brand-card border border-brand-border rounded-2xl p-8 text-center space-y-2">
           <CalendarDays className="w-9 h-9 text-brand-muted mx-auto" />
           <p className="text-brand-text font-medium">Todavía no se publicó ningún horario</p>
@@ -90,6 +114,8 @@ export default async function HorarioPage({ searchParams }: Props) {
   return (
     <div className="space-y-4 animate-slide-up">
       <Encabezado />
+
+      {pedidos}
 
       {opciones.length > 1 && (
         <div className="flex gap-1 p-1 bg-brand-card border border-brand-border rounded-xl">

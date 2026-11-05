@@ -5,6 +5,7 @@ import AdminNav from '@/components/admin/AdminNav'
 import NotificationBell from '@/components/NotificationBell'
 import TirarParaActualizar from '@/components/navegacion/TirarParaActualizar'
 import type { Notification } from '@/lib/types'
+import { hoyEnArgentina, lunesDe } from '@/lib/horarios'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,12 +26,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   if (!profile || profile.role !== 'admin') redirect('/dashboard')
 
-  const [{ count: pendingCount }, { count: pendingCorrections }] = await Promise.all([
+  const [{ count: pendingCount }, { count: pendingCorrections }, { count: pedidosHorario }] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase
       .from('exam_results')
       .select('id', { count: 'exact', head: true })
       .eq('review_status', 'pending_review'),
+    // Pedidos de horario sin responder, de esta semana en adelante (sin el SQL, 0).
+    supabase
+      .from('pedidos_horario')
+      .select('id', { count: 'exact', head: true })
+      .eq('estado', 'pendiente')
+      .gte('semana', lunesDe(hoyEnArgentina())),
   ])
 
   const { data: rawNotifications } = await supabase
@@ -52,6 +59,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         adminName={profile.full_name}
         pendingCount={pendingCount ?? 0}
         pendingCorrections={pendingCorrections ?? 0}
+        pedidosHorario={pedidosHorario ?? 0}
       />
       {/* Desktop: offset for sidebar. Mobile: offset for top bar */}
       <div className="lg:pl-60 pt-14 lg:pt-0">

@@ -2,9 +2,19 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { cantidadDias, etiquetaSemana, semanaVacia, validarDatos } from '@/lib/horarios'
+import {
+  cantidadDias,
+  etiquetaSemana,
+  fechasDeLaSemana,
+  hoyEnArgentina,
+  semanaVacia,
+  sumarDias,
+  validarDatos,
+} from '@/lib/horarios'
 import EditorHorario from '@/components/admin/EditorHorario'
 import { pronosticoMarDelPlata } from '@/lib/clima'
+import { marcasDelEditor } from '@/lib/pedidos-horario'
+import { faltaSqlPedidos, traerPedidosConNombre } from '@/lib/pedidos-horario-datos'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +53,18 @@ export default async function EditarHorarioPage({ params }: Props) {
   const datos = validarDatos(semana.data) ? semana.data : semanaVacia()
   const etiqueta = etiquetaSemana(lunes, cantidadDias(datos))
 
+  // Los pedidos de cambio del personal para estos días (con los días extra,
+  // también los del lunes siguiente).
+  const dias = new Set(fechasDeLaSemana(lunes, cantidadDias(datos)))
+  const pedidosRes = await traerPedidosConNombre(supabase, { semanas: [lunes, sumarDias(lunes, 7)] })
+  const pedidos = pedidosRes.pedidos.filter((p) => p.fechas.some((f) => dias.has(f)))
+  const { marcas, sinFila } = marcasDelEditor(datos, lunes, pedidos, pedidosRes.usuarios)
+  const errorPedidos = pedidosRes.error
+    ? faltaSqlPedidos(pedidosRes.error)
+      ? 'Falta correr el SQL de pedidos de horario (supabase/add_pedidos_horario.sql) en Supabase.'
+      : 'No se pudieron leer los pedidos de horario: ' + pedidosRes.error
+    : null
+
   return (
     <div className="max-w-6xl mx-auto space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
@@ -69,6 +91,11 @@ export default async function EditarHorarioPage({ params }: Props) {
         datosIniciales={datos}
         versionInicial={semana.updated_at as string}
         clima={clima}
+        hoy={hoyEnArgentina()}
+        pedidos={pedidos}
+        marcas={marcas}
+        sinFila={sinFila}
+        errorPedidos={errorPedidos}
       />
     </div>
   )

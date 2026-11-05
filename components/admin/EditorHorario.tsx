@@ -18,6 +18,7 @@ import {
   FileDown,
   Moon,
   Sun,
+  CalendarClock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -26,6 +27,7 @@ import {
   cantidadDias,
   nombreDia,
   nombreDiaCorto,
+  normalizarNombre,
   numeroDeDia,
   quitarDiaExtra,
   ultimoDiaExtraTieneDatos,
@@ -42,7 +44,9 @@ import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/com
 import { guardarSemanaAction, publicarSemanaAction } from '@/app/actions/horarios'
 import ClimaSemana from '@/components/admin/ClimaSemana'
 import ResumenSemana from '@/components/admin/ResumenSemana'
+import PedidosAdmin from '@/components/admin/PedidosAdmin'
 import type { ClimaDia } from '@/lib/clima'
+import type { MarcaPedido, PedidoConNombre } from '@/lib/pedidos-horario'
 
 interface Props {
   id: string
@@ -54,6 +58,16 @@ interface Props {
   versionInicial: string
   /** Pronóstico de Mar del Plata por fecha; null si no se pudo pedir. */
   clima: Record<string, ClimaDia> | null
+  /** "2026-11-05", en Argentina. */
+  hoy: string
+  /** Los pedidos de cambio del personal para esta semana. */
+  pedidos: PedidoConNombre[]
+  /** Dónde va la marca de cada pedido: nombre de la fila (sin tildes) → día → marca. */
+  marcas: Record<string, Record<number, MarcaPedido>>
+  /** Pedidos de gente que no aparece en esta semana. */
+  sinFila: string[]
+  /** Si no se pudieron leer los pedidos (por ejemplo, falta el SQL). */
+  errorPedidos: string | null
 }
 
 type EstadoGuardado =
@@ -75,8 +89,14 @@ export default function EditorHorario({
   datosIniciales,
   versionInicial,
   clima,
+  hoy,
+  pedidos,
+  marcas,
+  sinFila,
+  errorPedidos,
 }: Props) {
   const router = useRouter()
+  const pedidosSinResponder = pedidos.filter((p) => p.estado === 'pendiente').length
   const [datos, setDatos] = useState<DatosHorario>(datosIniciales)
   const [estado, setEstado] = useState<EstadoGuardado>({ tipo: 'al_dia' })
   const [publicando, setPublicando] = useState(false)
@@ -488,6 +508,40 @@ export default function EditorHorario({
         </p>
       )}
 
+      {(pedidos.length > 0 || errorPedidos) && (
+        <details
+          className="group/pedidos bg-brand-card border border-brand-border rounded-xl"
+          open={pedidosSinResponder > 0}
+        >
+          <summary className="flex flex-wrap items-center gap-2 px-3 py-2.5 cursor-pointer text-sm font-semibold text-brand-text list-none">
+            <CalendarClock className="w-4 h-4 text-brand-accent flex-shrink-0" />
+            Pedidos de esta semana · {pedidos.length}
+            {pedidosSinResponder > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px]">
+                {pedidosSinResponder} sin responder
+              </span>
+            )}
+            <ChevronDown className="w-4 h-4 text-brand-muted ml-auto transition-transform group-open/pedidos:rotate-180" />
+          </summary>
+          <div className="px-3 pb-3 space-y-2">
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-brand-muted">
+              <span>En la grilla, al lado de esa persona y ese día:</span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-600" /> aprobado
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500" /> sin responder
+              </span>
+            </p>
+            {errorPedidos ? (
+              <p className="text-xs text-brand-error">{errorPedidos}</p>
+            ) : (
+              <PedidosAdmin pedidos={pedidos} hoy={hoy} enEditor sinFila={sinFila} />
+            )}
+          </div>
+        </details>
+      )}
+
       <ClimaSemana lunes={lunes} totalDias={totalDias} clima={clima} />
 
       <div className="bg-brand-card border border-brand-border rounded-xl p-3">
@@ -679,6 +733,7 @@ export default function EditorHorario({
                         onTecla={alPresionar}
                         findes={findes}
                         noches={noches}
+                        marcas={marcas[normalizarNombre(persona.nombre)]}
                       />
                     )
                   })}
@@ -752,6 +807,8 @@ interface FilaProps {
   onTecla: (e: React.KeyboardEvent<HTMLInputElement>) => void
   findes: boolean[]
   noches: boolean[]
+  /** Los pedidos de cambio de esta persona, por día (aprobados o sin responder). */
+  marcas?: Record<number, MarcaPedido>
 }
 
 // Memorizada: con 400 celdas, redibujar todo en cada tecla se nota en el celular.
@@ -770,6 +827,7 @@ const FilaPersona = memo(function FilaPersona({
   onTecla,
   findes,
   noches,
+  marcas,
 }: FilaProps) {
   const [menu, setMenu] = useState(false)
   const boton = useRef<HTMLButtonElement>(null)
@@ -814,25 +872,46 @@ const FilaPersona = memo(function FilaPersona({
           )}
         </div>
       </td>
-      {persona.dias.map((valor, dia) => (
-        <td key={dia} className={cn('p-0.5', claseColumna(findes[dia]))}>
-          <input
-            type="text"
-            value={valor}
-            onChange={(e) => onCelda(si, pi, dia, e.target.value)}
-            onKeyDown={onTecla}
-            onFocus={(e) => e.currentTarget.select()}
-            data-fila={fila}
-            data-col={dia}
-            maxLength={40}
-            aria-label={(persona.nombre || 'Persona') + ', ' + nombreDiaCorto(dia) + (dia >= 7 ? ' (semana siguiente)' : '')}
-            className={cn(
-              'w-full min-w-[78px] px-1.5 py-1.5 rounded text-center text-[11px] border border-transparent focus:border-brand-accent focus:outline-none',
-              claseCelda(valor, findes[dia], noches[dia])
+      {persona.dias.map((valor, dia) => {
+        const marca = marcas?.[dia]
+        return (
+          <td key={dia} className={cn('p-0.5 relative', claseColumna(findes[dia]))}>
+            <input
+              type="text"
+              value={valor}
+              onChange={(e) => onCelda(si, pi, dia, e.target.value)}
+              onKeyDown={onTecla}
+              onFocus={(e) => e.currentTarget.select()}
+              data-fila={fila}
+              data-col={dia}
+              maxLength={40}
+              title={marca?.aviso}
+              aria-label={
+                (persona.nombre || 'Persona') +
+                ', ' +
+                nombreDiaCorto(dia) +
+                (dia >= 7 ? ' (semana siguiente)' : '') +
+                (marca ? '. Pedido: ' + marca.aviso : '')
+              }
+              className={cn(
+                'w-full min-w-[78px] px-1.5 py-1.5 rounded text-center text-[11px] border border-transparent focus:border-brand-accent focus:outline-none',
+                claseCelda(valor, findes[dia], noches[dia]),
+                marca && (marca.estado === 'aprobado' ? 'ring-1 ring-inset ring-emerald-600/60' : 'ring-1 ring-inset ring-amber-500/60')
+              )}
+            />
+            {/* El pedido de cambio de ese día: verde aprobado, ámbar sin responder. */}
+            {marca && (
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute top-1 right-1 w-2 h-2 rounded-full pointer-events-none',
+                  marca.estado === 'aprobado' ? 'bg-emerald-600' : 'bg-amber-500'
+                )}
+              />
             )}
-          />
-        </td>
-      ))}
+          </td>
+        )
+      })}
     </tr>
   )
 })
