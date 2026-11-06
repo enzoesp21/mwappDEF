@@ -112,6 +112,28 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   Ojo con los redirects: la lista de guías NO puede mandar a la pantalla del puesto,
   porque esa lo devuelve a la lista y queda un bucle.
 - La guía principal (`guides.is_primary`) va primera en todos los recorridos.
+- **Charlas para todo el personal** (`guides.para_todos`; la primera es la "Charla de
+  Seguridad e Higiene (ART)", Enzo, 06/11, `add_charla_art.sql`):
+  - Son la excepción al período de prueba: también las ven y las rinden quienes están a
+    prueba. `puede_usar_guia` las deja pasar, y la guía, la lista de guías y la tarjeta de
+    Inicio las muestran.
+  - Paso 1: anotarse ("Me anoto", `AnotarseCharla`). Queda en `capacitacion_asistencias`: cada
+    uno se anota solo a sí mismo y solo a guías `para_todos`. Los encargados ven a todos y
+    pueden sacar a alguien.
+  - Paso 2: el examen de siempre, que termina con la firma.
+  - En Inicio, `TarjetaCharla` aparece hasta que la persona se anota y aprueba.
+  - Encargados: en Guías hay una tarjeta por charla, con cuántos se anotaron y cuántos
+    aprobaron. Lleva a `/admin/guides/[id]/asistencia` (`ListaAsistencia`): arriba a quién le
+    falta algo, abajo los completos.
+  - El examen de la de la ART tiene 10 preguntas de opción múltiple:
+    - las clases de fuego A, B y C, y una zapatilla prendida es clase C;
+    - el matafuego K es de la cocina, para aceites y grasas, y es gris;
+    - la sartén con aceite se apaga con el K;
+    - el fuego necesita algo que se pueda prender, algo que lo prenda y oxígeno;
+    - un charco de agua en el salón se resuelve en el momento;
+    - un alargue no puede quedar instalado, porque es una instalación temporal.
+  - Las correctas van 3/3/2/2 en A/B/C/D y nunca son la más larga.
+  - El SQL no borra preguntas ya cargadas.
 
 ## Horarios
 
@@ -275,8 +297,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 
 - El reloj está conectado por red a la PC de la caja, donde CrossChex Standard (v4.3.18)
   guarda todo en `C:\Program Files (x86)\Anviz\CrossChex Standard\DB\CrossChex.mdb` (Access).
-  CrossChex queda abierto con "Control en tiempo real" en Activar (se apaga si se reinicia
-  la PC) y una descarga programada a las 12:30 de red de seguridad.
+  CrossChex queda abierto con "Control en tiempo real" en Activar y una descarga programada
+  a las 12:30 de red de seguridad. La PC se apaga a la noche y CrossChex no recuerda el
+  Activar: `fichero/activar-crosschex.ps1` (tarea "Activar CrossChex" al entrar a Windows,
+  como administrador) lo abre, aprieta OK en el login, lo maximiza (achicado, la barra esconde
+  "Activar"), hace clic en Dispositivos y en Activar. La barra (TdxRibbon) no expone pestañas
+  ni botones a UI Automation, solo los grupos con nombre: la pestaña se clickea en la posición
+  calibrada y Activar dentro del grupo "Control en tiempo real" (`-Calibrar`).
 - `fichero/sincronizar-fichadas.ps1` corre cada minuto en esa PC (tarea de Windows como
   SYSTEM, la deja `fichero/instalar.ps1`), lee la base con Jet (PowerShell de 32 bits) y
   manda las nuevas con la RPC `registrar_fichadas`. Entra con la clave del fichero

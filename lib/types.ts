@@ -42,6 +42,8 @@ export interface Guide {
   cover_image: string | null
   created_at: string
   updated_by: string | null
+  /** Capacitación para todo el personal (la charla de la ART): también para quien está a prueba. */
+  para_todos?: boolean
 }
 
 export interface Exam {

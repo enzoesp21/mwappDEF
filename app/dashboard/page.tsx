@@ -3,6 +3,7 @@ import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
 import FaltasGraves from '@/components/FaltasGraves'
 import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp } from 'lucide-react'
+import TarjetaCharla from '@/components/capacitacion/TarjetaCharla'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
@@ -67,6 +68,8 @@ export default async function DashboardPage() {
     { count: chosen },
     { propinas },
     { data: miNivel },
+    { data: charlas },
+    { data: misAnotadas },
   ] = await Promise.all([
     (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
       // La guía principal va siempre primera, sin importar cuándo se creó.
@@ -94,6 +97,10 @@ export default async function DashboardPage() {
     profile.puesto === 'Mozos' && !EN_BETA.progresion
       ? supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
       : Promise.resolve({ data: null }),
+    // Las charlas para todo el personal (la de la ART) y a cuáles se anotó.
+    // Si todavía no se corrió el SQL, no hay ninguna.
+    supabase.from('guides').select('id, title').eq('para_todos', true),
+    supabase.from('capacitacion_asistencias').select('guide_id').eq('user_id', session.user.id),
   ])
 
   const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
@@ -143,6 +150,18 @@ export default async function DashboardPage() {
 
   const nivelActual = datosNivel((miNivel?.nivel as number) ?? 0)
 
+  // Charlas para todo el personal: se muestran hasta anotarse y aprobar el examen.
+  const anotadas = new Set((misAnotadas ?? []).map((a) => a.guide_id as string))
+  const examenesAprobados = new Set((results ?? []).map((r) => r.exam_id as string))
+  const charlasPendientes = (charlas ?? [])
+    .map((c) => ({
+      id: c.id as string,
+      titulo: c.title as string,
+      anotado: anotadas.has(c.id as string),
+      aprobado: (exams ?? []).some((e) => e.guide_id === c.id && examenesAprobados.has(e.id as string)),
+    }))
+    .filter((c) => !c.anotado || !c.aprobado)
+
   return (
     <div className="space-y-6 animate-slide-up">
       <div>
@@ -159,6 +178,10 @@ export default async function DashboardPage() {
 
       {/* Mientras dura la prueba, siempre a la vista: no alcanza con verla una vez. */}
       {enPrueba && <FaltasGraves />}
+
+      {charlasPendientes.map((c) => (
+        <TarjetaCharla key={c.id} id={c.id} titulo={c.titulo} anotado={c.anotado} aprobado={c.aprobado} />
+      ))}
 
       {eom && eomProfile && (
         <Link href="/dashboard/empleado-del-mes" className="block">

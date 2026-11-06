@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Plus } from 'lucide-react'
+import { ChevronRight, Plus, ShieldCheck } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import GuidesClientActions from './GuidesClientActions'
 import { PUESTOS_INFO } from '@/lib/puestos'
@@ -14,7 +14,47 @@ export default async function GuidesPage() {
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: false })
 
-  const { data: paths } = await supabase.from('guide_paths').select('puesto')
+  // Las charlas para todo el personal (la de la ART), con cuántos se anotaron
+  // y cuántos aprobaron. Consulta aparte: antes del SQL no existe la columna
+  // y no puede tirar abajo la lista de guías.
+  const [{ data: paths }, { data: charlas }, { data: asistencias }] = await Promise.all([
+    supabase.from('guide_paths').select('puesto'),
+    supabase.from('guides').select('id, title').eq('para_todos', true),
+    supabase.from('capacitacion_asistencias').select('guide_id'),
+  ])
+  const examenesCharlas = (charlas ?? []).length
+    ? (
+        await supabase
+          .from('exams')
+          .select('id, guide_id')
+          .in(
+            'guide_id',
+            (charlas ?? []).map((c) => c.id as string)
+          )
+      ).data ?? []
+    : []
+  const aprobadosCharlas = examenesCharlas.length
+    ? (
+        await supabase
+          .from('exam_results')
+          .select('exam_id, user_id')
+          .eq('passed', true)
+          .in(
+            'exam_id',
+            examenesCharlas.map((e) => e.id as string)
+          )
+      ).data ?? []
+    : []
+  const resumenCharlas = (charlas ?? []).map((c) => {
+    const examenes = new Set(examenesCharlas.filter((e) => e.guide_id === c.id).map((e) => e.id as string))
+    return {
+      id: c.id as string,
+      titulo: c.title as string,
+      anotados: (asistencias ?? []).filter((a) => a.guide_id === c.id).length,
+      aprobaron: new Set(aprobadosCharlas.filter((r) => examenes.has(r.exam_id as string)).map((r) => r.user_id as string)).size,
+    }
+  })
+
   const porPuesto = new Map<string, number>()
   for (const row of paths ?? []) {
     const k = row.puesto as string
@@ -57,6 +97,29 @@ export default async function GuidesPage() {
           Nueva guía
         </Link>
       </div>
+
+      {resumenCharlas.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-brand-text">Charlas para todo el personal</h2>
+          {resumenCharlas.map((c) => (
+            <Link
+              key={c.id}
+              href={'/admin/guides/' + c.id + '/asistencia'}
+              className="flex items-center gap-3 bg-brand-accent/10 border border-brand-accent/30 rounded-xl px-4 py-3 hover:border-brand-accent transition-colors"
+            >
+              <ShieldCheck className="w-5 h-5 text-brand-accent flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-brand-text">{c.titulo}</p>
+                <p className="text-xs text-brand-muted">
+                  {c.anotados} {c.anotados === 1 ? 'anotado' : 'anotados'} · {c.aprobaron}{' '}
+                  {c.aprobaron === 1 ? 'aprobó' : 'aprobaron'} el examen · Ver quién falta
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+            </Link>
+          ))}
+        </section>
+      )}
 
       <section>
         <h2 className="text-sm font-semibold text-brand-text">Qué ve cada puesto</h2>

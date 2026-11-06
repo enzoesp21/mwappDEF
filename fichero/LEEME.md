@@ -40,3 +40,23 @@ powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Desktop\fichero\insta
 - Para actualizar el programa: volver a correr `instalar.ps1` (conserva la configuración).
 - Para sacarlo: `Unregister-ScheduledTask -TaskName "Fichadas Mirador Waikiki"` en
   PowerShell como administrador, y borrar `C:\FicheroWaikiki`.
+
+## Activar solo el "Control en tiempo real" (`activar-crosschex.ps1`)
+
+La PC se apaga a la noche y CrossChex no recuerda el "Activar". Este programa, al entrar a
+Windows, abre CrossChex, aprieta OK en el inicio de sesión, lo maximiza, va a Dispositivos,
+aprieta Activar y lo minimiza. Las pestañas y "Activar" no se pueden apretar desde otro
+programa, así que hace clic donde están: eso se anota una vez con la calibración.
+
+En PowerShell **como administrador**, en la carpeta donde está el archivo:
+
+```
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\activar-crosschex.ps1 -Calibrar    # hacé clic en Dispositivos y después en Activar
+.\activar-crosschex.ps1              # prueba con CrossChex cerrado: tiene que hacer todo solo
+.\activar-crosschex.ps1 -Instalar    # queda la tarea "Activar CrossChex" al entrar a Windows
+```
+
+Lo que hace queda en `C:\FicheroWaikiki\activador.log`. Si cambia la resolución de la pantalla
+o se actualiza CrossChex, volver a calibrar. Para sacarlo:
+`Unregister-ScheduledTask -TaskName "Activar CrossChex"`.

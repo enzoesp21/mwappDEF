@@ -4,10 +4,15 @@ import type { GuideWithStatus } from '@/lib/types'
 
 interface Props {
   principal: GuideWithStatus | null
+  /** Las charlas para todo el personal (la de la ART): también para quien está a prueba. */
+  capacitaciones?: GuideWithStatus[]
 }
 
-/** Lo que ve en Guías quien está en período de prueba: solo la guía principal. */
-export default function GuiasEnPrueba({ principal }: Props) {
+/**
+ * Lo que ve en Guías quien está en período de prueba: la guía principal y las
+ * charlas para todo el personal.
+ */
+export default function GuiasEnPrueba({ principal, capacitaciones = [] }: Props) {
   return (
     <div className="space-y-4 animate-slide-up">
       <div>
@@ -22,6 +27,17 @@ export default function GuiasEnPrueba({ principal }: Props) {
       ) : (
         <div className="bg-brand-card border border-brand-border rounded-2xl p-6 text-center">
           <p className="text-brand-muted text-sm">Todavía no hay guías cargadas.</p>
+        </div>
+      )}
+
+      {capacitaciones.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-muted">
+            Charlas para todo el personal
+          </h2>
+          {capacitaciones.map((g) => (
+            <GuideCard key={g.id} guide={g} />
+          ))}
         </div>
       )}
 
