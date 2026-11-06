@@ -113,18 +113,38 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   porque esa lo devuelve a la lista y queda un bucle.
 - La guía principal (`guides.is_primary`) va primera en todos los recorridos.
 - **Charlas para todo el personal** (`guides.para_todos`; la primera es la "Charla de
-  Seguridad e Higiene (ART)", Enzo, 06/11, `add_charla_art.sql`):
-  - Son la excepción al período de prueba: también las ven y las rinden quienes están a
-    prueba. `puede_usar_guia` las deja pasar, y la guía, la lista de guías y la tarjeta de
-    Inicio las muestran.
-  - Paso 1: anotarse ("Me anoto", `AnotarseCharla`). Queda en `capacitacion_asistencias`: cada
-    uno se anota solo a sí mismo y solo a guías `para_todos`. Los encargados ven a todos y
-    pueden sacar a alguien.
-  - Paso 2: el examen de siempre, que termina con la firma.
-  - En Inicio, `TarjetaCharla` aparece hasta que la persona se anota y aprueba.
-  - Encargados: en Guías hay una tarjeta por charla, con cuántos se anotaron y cuántos
-    aprobaron. Lleva a `/admin/guides/[id]/asistencia` (`ListaAsistencia`): arriba a quién le
-    falta algo, abajo los completos.
+  Seguridad e Higiene (ART)", Enzo, 06/11, `add_charla_art.sql` y
+  `fix_charla_art_examen_en_inicio.sql`):
+  - **No son guías** (Enzo: "no una nueva guía para todos los puestos"). El examen cuelga de
+    una guía, pero no van en `guide_paths`, no cuentan en "Tu progreso" y la app no muestra
+    su contenido ("no pongas la información del curso"). `/dashboard/guides/[id]` las manda
+    a Inicio; el editor del recorrido de cada puesto no las ofrece.
+  - En Inicio, arriba de todo, ni bien entran (`TarjetaCharla`): "¿Participaste de la
+    charla?" SÍ / NO.
+    - SÍ: va derecho al examen de siempre (que termina con la firma), "para ver si prestaron
+      atención". Si desaprueba, la tarjeta muestra la nota y "Volver a rendir".
+    - NO: pide confirmar, queda registrado y no rinde (Enzo eligió que no rinda).
+    - La tarjeta se va cuando dijo NO, o SÍ y aprobó.
+  - La respuesta va en `capacitacion_asistencias.participo`. Cada uno contesta solo por sí
+    mismo y una sola vez (no hay UPDATE). Para cambiarla, un encargado la borra ("Volver a
+    preguntarle") y le vuelve a aparecer. Las filas de antes de la pregunta cuentan como SÍ.
+  - El examen se rinde en `/dashboard/guides/[id]/exam`: con una charla vuelve a Inicio y los
+    textos no nombran ninguna guía. La revisión ofrece "Volver a rendir" en vez de "Repasar
+    la guía".
+  - Lo hecho queda en Perfil, en "Capacitaciones" (`MisCapacitaciones`): qué contestó, la
+    nota, la fecha y la firma.
+  - Son la excepción al período de prueba: también las rinden quienes están a prueba
+    (`puede_usar_guia` las deja pasar).
+  - Lógica pura y pruebas en `lib/capacitaciones.ts` (el intento que cuenta: aprobado
+    primero, después la nota más alta). Lo que se lee de la base, en
+    `lib/capacitaciones-datos.ts`.
+  - Encargados: en Guías hay una tarjeta por charla (fuera de la tabla de guías), con
+    cuántos participaron, cuántos no y cuántos aprobaron. Lleva a
+    `/admin/guides/[id]/asistencia` (`ListaAsistencia`):
+    - arriba, a quién le falta algo;
+    - después, los que dijeron que no, con "Volver a preguntarle";
+    - abajo, los completos;
+    - y el link para editar las preguntas.
   - El examen de la de la ART tiene 10 preguntas de opción múltiple:
     - las clases de fuego A, B y C, y una zapatilla prendida es clase C;
     - el matafuego K es de la cocina, para aceites y grasas, y es gris;

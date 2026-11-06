@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
 import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
-import type { GuideWithStatus } from '@/lib/types'
+import { armarCapacitaciones, type FilaRespuesta, type FilaResultadoCapacitacion } from '@/lib/capacitaciones'
 import { misPropinas } from '@/lib/propinas-datos'
 import { fechaConDia, pesos } from '@/lib/propinas'
 import { datosNivel } from '@/lib/progresion'
@@ -76,7 +76,12 @@ export default async function DashboardPage() {
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
     supabase.from('exams').select('id, guide_id, title, passing_score'),
-    supabase.from('exam_results').select('*').eq('user_id', session.user.id).eq('passed', true),
+    // Todos los intentos propios (no solo los aprobados): la tarjeta de la
+    // charla muestra la nota si desaprobó. Sin la firma, que pesa.
+    supabase
+      .from('exam_results')
+      .select('id, exam_id, score, passed, completed_at, review_status')
+      .eq('user_id', session.user.id),
     // Empleado del mes vigente, para que lo vea todo el equipo al entrar.
     supabase
       .from('employee_of_month')
@@ -97,31 +102,24 @@ export default async function DashboardPage() {
     profile.puesto === 'Mozos' && !EN_BETA.progresion
       ? supabase.from('mozo_niveles').select('nivel').eq('user_id', session.user.id).maybeSingle()
       : Promise.resolve({ data: null }),
-    // Las charlas para todo el personal (la de la ART) y a cuáles se anotó.
-    // Si todavía no se corrió el SQL, no hay ninguna.
-    supabase.from('guides').select('id, title').eq('para_todos', true),
-    supabase.from('capacitacion_asistencias').select('guide_id').eq('user_id', session.user.id),
+    // Las capacitaciones para todo el personal (la charla de la ART) y lo que
+    // contestó a "¿Participaste?". Con '*' para que ande aunque falte la
+    // columna nueva; si no se corrió el SQL de la charla, no hay ninguna.
+    supabase.from('guides').select('id, title, created_at').eq('para_todos', true),
+    supabase.from('capacitacion_asistencias').select('*').eq('user_id', session.user.id),
   ])
 
-  const guidesWithStatus: GuideWithStatus[] = (guides ?? []).map((guide) => {
-    const exam = exams?.find((e) => e.guide_id === guide.id)
-    const result = results?.find((r) => r.exam_id === exam?.id)
-    const status = result
-      ? 'passed'
-      : exam
-      ? 'exam_pending'
-      : 'not_started'
-
-    return {
-      ...guide,
-      exam: exam ?? undefined,
-      result: result ?? undefined,
-      status,
-    }
-  })
-
-  const passedCount = guidesWithStatus.filter((g) => g.status === 'passed').length
-  const totalCount = guidesWithStatus.length
+  // Tu progreso: las guías de tu puesto. Las capacitaciones para todo el
+  // personal no son guías y no cuentan (tienen puestos = {todos}).
+  const examenesAprobados = new Set(
+    (results ?? []).filter((r) => r.passed === true).map((r) => r.exam_id as string)
+  )
+  const guiasDelProgreso = (guides ?? []).filter((g) => g.para_todos !== true)
+  const passedCount = guiasDelProgreso.filter((g) => {
+    const exam = exams?.find((e) => e.guide_id === g.id)
+    return exam !== undefined && examenesAprobados.has(exam.id as string)
+  }).length
+  const totalCount = guiasDelProgreso.length
 
   let eomProfile: { full_name: string; puesto: string; avatar_url: string | null } | null = null
   if (eom) {
@@ -150,17 +148,22 @@ export default async function DashboardPage() {
 
   const nivelActual = datosNivel((miNivel?.nivel as number) ?? 0)
 
-  // Charlas para todo el personal: se muestran hasta anotarse y aprobar el examen.
-  const anotadas = new Set((misAnotadas ?? []).map((a) => a.guide_id as string))
-  const examenesAprobados = new Set((results ?? []).map((r) => r.exam_id as string))
-  const charlasPendientes = (charlas ?? [])
-    .map((c) => ({
+  // Capacitaciones para todo el personal: arriba de todo, hasta que contesta
+  // que no participó o que sí y aprueba el examen. Después quedan en el perfil.
+  const capacitacionesPendientes = armarCapacitaciones({
+    guias: (charlas ?? []).map((c) => ({
       id: c.id as string,
-      titulo: c.title as string,
-      anotado: anotadas.has(c.id as string),
-      aprobado: (exams ?? []).some((e) => e.guide_id === c.id && examenesAprobados.has(e.id as string)),
-    }))
-    .filter((c) => !c.anotado || !c.aprobado)
+      title: c.title as string,
+      created_at: c.created_at as string,
+    })),
+    examenes: (exams ?? []).map((e) => ({
+      id: e.id as string,
+      guide_id: e.guide_id as string,
+      passing_score: e.passing_score as number,
+    })),
+    resultados: (results ?? []) as FilaResultadoCapacitacion[],
+    respuestas: (misAnotadas ?? []) as FilaRespuesta[],
+  }).filter((c) => !c.completa)
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -174,14 +177,15 @@ export default async function DashboardPage() {
         <p className="font-serif italic text-brand-text/80 text-lg mt-0.5">Que tengas un buen turno.</p>
       </div>
 
+      {/* Lo primero que ven al entrar (Enzo, 06/11). */}
+      {capacitacionesPendientes.map((c) => (
+        <TarjetaCharla key={c.id} c={c} />
+      ))}
+
       <InstallPrompt dismissible />
 
       {/* Mientras dura la prueba, siempre a la vista: no alcanza con verla una vez. */}
       {enPrueba && <FaltasGraves />}
-
-      {charlasPendientes.map((c) => (
-        <TarjetaCharla key={c.id} id={c.id} titulo={c.titulo} anotado={c.anotado} aprobado={c.aprobado} />
-      ))}
 
       {eom && eomProfile && (
         <Link href="/dashboard/empleado-del-mes" className="block">

@@ -27,39 +27,38 @@ export default async function GuidesPage() {
   // pase al equipo. Se arma acá mismo: mandarlo a la pantalla del puesto haría
   // un ida y vuelta, porque esa pantalla también lo devuelve para acá.
   if (profile.experience === 'nuevo') {
-    // La guía principal y las charlas para todo el personal (la de la ART).
-    // Sin el SQL de la charla, la segunda consulta falla y no hay ninguna.
-    const [{ data: guia }, { data: charlas }] = await Promise.all([
-      supabase.from('guides').select('*').eq('is_primary', true).limit(1).maybeSingle(),
-      supabase.from('guides').select('*').eq('para_todos', true).order('created_at', { ascending: false }),
-    ])
-    const guias = [...(guia ? [guia] : []), ...(charlas ?? [])]
-    const [{ data: examenes }, { data: aprobados }] = await Promise.all([
-      supabase
+    const { data: guia } = await supabase
+      .from('guides')
+      .select('*')
+      .eq('is_primary', true)
+      .limit(1)
+      .maybeSingle()
+
+    let principal: GuideWithStatus | null = null
+    if (guia) {
+      const { data: examen } = await supabase
         .from('exams')
         .select('*')
-        .in(
-          'guide_id',
-          guias.map((g) => g.id as string)
-        ),
-      supabase.from('exam_results').select('*').eq('user_id', session.user.id).eq('passed', true),
-    ])
-    const conEstado = (g: (typeof guias)[number]): GuideWithStatus => {
-      const examen = (examenes ?? []).find((e) => e.guide_id === g.id)
-      const aprobado = examen ? (aprobados ?? []).find((r) => r.exam_id === examen.id) : undefined
-      return {
-        ...g,
+        .eq('guide_id', guia.id)
+        .maybeSingle()
+      const { data: aprobado } = examen
+        ? await supabase
+            .from('exam_results')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('exam_id', examen.id)
+            .eq('passed', true)
+            .limit(1)
+            .maybeSingle()
+        : { data: null }
+      principal = {
+        ...guia,
         exam: examen ?? undefined,
         result: aprobado ?? undefined,
         status: aprobado ? 'passed' : examen ? 'exam_pending' : 'not_started',
       }
     }
-    return (
-      <GuiasEnPrueba
-        principal={guia ? conEstado(guia) : null}
-        capacitaciones={(charlas ?? []).map(conEstado)}
-      />
-    )
+    return <GuiasEnPrueba principal={principal} />
   }
 
   // Consultas sueltas, sin joins anidados: en este proyecto los joins

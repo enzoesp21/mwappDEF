@@ -46,24 +46,31 @@ export default function ExamPage() {
   const [signature, setSignature] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Las capacitaciones para todo el personal (la charla de la ART) no son una
+  // guía: se rinden desde Inicio y se vuelve ahí, sin repasar ningún contenido.
+  const [esCharla, setEsCharla] = useState(false)
+  const volver = esCharla ? '/dashboard' : '/dashboard/guides/' + guideId
 
   const loadExam = useCallback(async () => {
     const supabase = createClient()
-    const { data: exam } = await supabase
-      .from('exams')
-      .select('id, title, passing_score')
-      .eq('guide_id', guideId)
-      .single()
+    const [{ data: exam }, { data: guia }] = await Promise.all([
+      supabase.from('exams').select('id, title, passing_score').eq('guide_id', guideId).single(),
+      // Sin la columna (antes del SQL de la charla) falla y es una guía común.
+      supabase.from('guides').select('para_todos').eq('id', guideId).maybeSingle(),
+    ])
+    const charla = guia?.para_todos === true
+    setEsCharla(charla)
+    const salir = charla ? '/dashboard' : '/dashboard/guides/' + guideId
 
     if (!exam) {
-      router.push('/dashboard/guides/' + guideId)
+      router.push(salir)
       return
     }
 
     const { data: qs } = await supabase.rpc('get_exam_questions', { p_exam_id: exam.id })
 
     if (!qs || qs.length === 0) {
-      router.push('/dashboard/guides/' + guideId)
+      router.push(salir)
       return
     }
 
@@ -206,6 +213,7 @@ export default function ExamPage() {
         </div>
         <h2 className="text-2xl font-bold text-brand-success">{score}%</h2>
         <p className="text-brand-text font-semibold">¡Aprobaste el examen!</p>
+        {esCharla && <p className="text-brand-muted text-sm">Quedó guardado en tu perfil.</p>}
         <div className="max-w-xs mx-auto space-y-2 pt-2">
         {resultId && (
           <Link
@@ -239,7 +247,11 @@ export default function ExamPage() {
           <p className="text-brand-muted text-sm">
             Necesitás {passingScore}% para aprobar.
           </p>
-          <p className="text-brand-muted text-xs">Revisá la guía y volvé a intentarlo cuando estés listo.</p>
+          <p className="text-brand-muted text-xs">
+            {esCharla
+              ? 'Pensalo de nuevo con lo que vimos en la charla y volvé a intentarlo.'
+              : 'Revisá la guía y volvé a intentarlo cuando estés listo.'}
+          </p>
         </div>
 
         <div className="flex flex-col gap-3">
@@ -264,7 +276,7 @@ export default function ExamPage() {
             Reintentar examen
           </button>
           <Link
-            href={'/dashboard/guides/' + guideId}
+            href={volver}
             className={cn(
               'w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-[48px]',
               'bg-brand-card border border-brand-border text-brand-muted text-sm',
@@ -272,7 +284,7 @@ export default function ExamPage() {
             )}
           >
             <ArrowLeft className="w-4 h-4" />
-            Volver a la guía
+            {esCharla ? 'Ir al inicio' : 'Volver a la guía'}
           </Link>
         </div>
       </div>
@@ -298,7 +310,9 @@ export default function ExamPage() {
             <h3 className="font-semibold text-brand-text">Firmá tu conformidad</h3>
           </div>
           <p className="text-brand-muted text-sm">
-            Firmá con el dedo para confirmar que leíste la guía y que estas son tus respuestas.
+            {esCharla
+              ? 'Firmá con el dedo para confirmar que estas son tus respuestas.'
+              : 'Firmá con el dedo para confirmar que leíste la guía y que estas son tus respuestas.'}
           </p>
           <SignatureCanvas onSignature={setSignature} />
 
@@ -335,7 +349,7 @@ export default function ExamPage() {
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href={'/dashboard/guides/' + guideId}
+          href={volver}
           className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-card border border-brand-border hover:border-brand-accent/50 transition-colors cursor-pointer"
           aria-label="Salir del examen"
         >

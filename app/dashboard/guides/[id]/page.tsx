@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import GuideReader from '@/components/GuideReader'
 import GuideCover from '@/components/GuideCover'
-import AnotarseCharla from '@/components/capacitacion/AnotarseCharla'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -28,33 +27,27 @@ export default async function GuidePage({ params }: Props) {
 
   if (!guide) notFound()
 
-  // Las charlas para todo el personal (la de la ART) también las ve quien está a prueba.
-  const paraTodos = guide.para_todos === true
+  // Las capacitaciones para todo el personal (la charla de la ART) no son una
+  // guía para leer: se anotan y rinden desde Inicio, y después quedan en el
+  // perfil (Enzo, 06/11).
+  if (guide.para_todos === true) redirect('/dashboard')
 
-  // En período de prueba solo se lee la guía principal (y las de todo el
-  // personal), ni pegando la dirección. El examen lo frena además la base
-  // (puede_usar_examen).
-  if (!guide.is_primary && !paraTodos && yo?.experience === 'nuevo') redirect('/dashboard/guides')
+  // En período de prueba solo se lee la guía principal, ni pegando la dirección.
+  // El examen lo frena además la base (puede_usar_examen).
+  if (!guide.is_primary && yo?.experience === 'nuevo') redirect('/dashboard/guides')
 
-  const [{ data: attempts }, { data: anotado }] = await Promise.all([
-    exam
-      ? supabase
-          .from('exam_results')
-          .select('id, passed, review_status')
-          .eq('user_id', session.user.id)
-          .eq('exam_id', exam.id)
-      : Promise.resolve({ data: [] as { id: string; passed: boolean; review_status: string | null }[] }),
-    paraTodos
-      ? supabase
-          .from('capacitacion_asistencias')
-          .select('created_at')
-          .eq('guide_id', guide.id)
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ])
-  const hasPassed = (attempts ?? []).some((a) => a.passed === true)
-  const isPending = (attempts ?? []).some((a) => a.review_status === 'pending_review')
+  let hasPassed = false
+  let isPending = false
+  if (exam) {
+    const { data: attempts } = await supabase
+      .from('exam_results')
+      .select('id, passed, review_status')
+      .eq('user_id', session.user.id)
+      .eq('exam_id', exam.id)
+
+    hasPassed = (attempts ?? []).some((a) => a.passed === true)
+    isPending = (attempts ?? []).some((a) => a.review_status === 'pending_review')
+  }
 
   return (
     <div className="animate-fade-in">
@@ -75,9 +68,7 @@ export default async function GuidePage({ params }: Props) {
         </Link>
 
         <div className="absolute bottom-4 left-4 right-4">
-          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">
-            {paraTodos ? 'Charla · Todo el personal' : 'Guía'}
-          </p>
+          <p className="text-white/70 text-[10px] uppercase tracking-widest font-semibold mb-1">Guía</p>
           <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight drop-shadow-sm">
             {guide.title}
           </h1>
@@ -86,12 +77,6 @@ export default async function GuidePage({ params }: Props) {
 
       {guide.description && (
         <p className="text-brand-muted text-sm leading-relaxed mb-5">{guide.description}</p>
-      )}
-
-      {paraTodos && (
-        <div className="mb-4">
-          <AnotarseCharla guideId={guide.id} anotadoEn={(anotado?.created_at as string | undefined) ?? null} />
-        </div>
       )}
 
       {hasPassed && (
@@ -117,9 +102,6 @@ export default async function GuidePage({ params }: Props) {
 
       {exam && !hasPassed && !isPending && (
         <div className="bg-brand-card border border-brand-accent/30 rounded-2xl p-5 space-y-3">
-          {paraTodos && (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-accent">Paso 2 de 2</p>
-          )}
           <div className="flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-brand-accent" />
             <h2 className="font-semibold text-brand-text">{exam.title}</h2>

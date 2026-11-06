@@ -14,14 +14,16 @@ export default async function GuidesPage() {
     .order('is_primary', { ascending: false })
     .order('created_at', { ascending: false })
 
-  // Las charlas para todo el personal (la de la ART), con cuántos se anotaron
-  // y cuántos aprobaron. Consulta aparte: antes del SQL no existe la columna
-  // y no puede tirar abajo la lista de guías.
+  // Las capacitaciones para todo el personal (la charla de la ART): no son
+  // guías, así que van aparte, con qué contestaron y cuántos aprobaron.
+  // Consultas sueltas: antes del SQL no existe la columna y no puede tirar
+  // abajo la lista de guías ('*' por la columna participo, que es más nueva).
   const [{ data: paths }, { data: charlas }, { data: asistencias }] = await Promise.all([
     supabase.from('guide_paths').select('puesto'),
     supabase.from('guides').select('id, title').eq('para_todos', true),
-    supabase.from('capacitacion_asistencias').select('guide_id'),
+    supabase.from('capacitacion_asistencias').select('*'),
   ])
+  const idsCharlas = new Set((charlas ?? []).map((c) => c.id as string))
   const examenesCharlas = (charlas ?? []).length
     ? (
         await supabase
@@ -47,10 +49,12 @@ export default async function GuidesPage() {
     : []
   const resumenCharlas = (charlas ?? []).map((c) => {
     const examenes = new Set(examenesCharlas.filter((e) => e.guide_id === c.id).map((e) => e.id as string))
+    const respuestas = (asistencias ?? []).filter((a) => a.guide_id === c.id)
     return {
       id: c.id as string,
       titulo: c.title as string,
-      anotados: (asistencias ?? []).filter((a) => a.guide_id === c.id).length,
+      participaron: respuestas.filter((a) => a.participo !== false).length,
+      noParticiparon: respuestas.filter((a) => a.participo === false).length,
       aprobaron: new Set(aprobadosCharlas.filter((r) => examenes.has(r.exam_id as string)).map((r) => r.user_id as string)).size,
     }
   })
@@ -62,7 +66,7 @@ export default async function GuidesPage() {
   }
 
   const guidesWithCounts = await Promise.all(
-    (guides ?? []).map(async (guide) => {
+    (guides ?? []).filter((g) => !idsCharlas.has(g.id as string)).map(async (guide) => {
       const { data: exam } = await supabase
         .from('exams')
         .select('id')
@@ -100,7 +104,13 @@ export default async function GuidesPage() {
 
       {resumenCharlas.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-brand-text">Charlas para todo el personal</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-brand-text">Charlas para todo el personal</h2>
+            <p className="text-xs text-brand-muted mt-0.5 leading-relaxed">
+              No son guías: a cada uno le aparece arriba de todo en Inicio &quot;¿Participaste de la charla?&quot;. Con
+              sí rinde el examen; con no, queda registrado.
+            </p>
+          </div>
           {resumenCharlas.map((c) => (
             <Link
               key={c.id}
@@ -111,8 +121,10 @@ export default async function GuidesPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-brand-text">{c.titulo}</p>
                 <p className="text-xs text-brand-muted">
-                  {c.anotados} {c.anotados === 1 ? 'anotado' : 'anotados'} · {c.aprobaron}{' '}
-                  {c.aprobaron === 1 ? 'aprobó' : 'aprobaron'} el examen · Ver quién falta
+                  {c.participaron} {c.participaron === 1 ? 'participó' : 'participaron'} · {c.aprobaron}{' '}
+                  {c.aprobaron === 1 ? 'aprobó' : 'aprobaron'} el examen
+                  {c.noParticiparon > 0 && ` · ${c.noParticiparon} no ${c.noParticiparon === 1 ? 'participó' : 'participaron'}`}{' '}
+                  · Ver quién falta
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />

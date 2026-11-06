@@ -9,6 +9,9 @@ import type { Profile } from '@/lib/types'
 import AvatarUploader from '@/components/AvatarUploader'
 import InstallPrompt from '@/components/InstallPrompt'
 import CambiarClave from '@/components/CambiarClave'
+import MisCapacitaciones from '@/components/capacitacion/MisCapacitaciones'
+import type { Capacitacion } from '@/lib/capacitaciones'
+import { traerCapacitaciones } from '@/lib/capacitaciones-datos'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -16,6 +19,9 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [loggingOut, setLoggingOut] = useState(false)
+  // La charla de la ART y las que vengan: lo hecho queda acá (Enzo, 06/11).
+  const [capacitaciones, setCapacitaciones] = useState<Capacitacion[]>([])
+  const [errorCapacitaciones, setErrorCapacitaciones] = useState<string | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -28,12 +34,13 @@ export default function ProfilePage() {
         return
       }
       setEmail(user.email ?? '')
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+      const [{ data }, caps] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        traerCapacitaciones(supabase, user.id),
+      ])
       setProfile(data)
+      setCapacitaciones(caps.capacitaciones)
+      setErrorCapacitaciones(caps.error)
       setLoading(false)
     }
     load()
@@ -101,6 +108,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <MisCapacitaciones capacitaciones={capacitaciones} error={errorCapacitaciones} />
 
       <CambiarClave />
 

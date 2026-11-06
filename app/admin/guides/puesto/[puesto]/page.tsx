@@ -28,7 +28,7 @@ export default async function AdminPuestoPage({ params }: Props) {
   const info = buscarPuesto(decodeURIComponent(params.puesto))
   if (!info) notFound()
 
-  const [{ data: guides }, { data: paths }] = await Promise.all([
+  const [{ data: guides }, { data: paths }, { data: charlas }] = await Promise.all([
     supabase
       .from('guides')
       .select('id, title, description')
@@ -39,9 +39,13 @@ export default async function AdminPuestoPage({ params }: Props) {
       .select('guide_id, etiqueta, orden')
       .eq('puesto', info.valor)
       .order('orden', { ascending: true }),
+    // Las charlas para todo el personal no van en ningún recorrido: se rinden
+    // desde Inicio. Consulta aparte: sin el SQL de la charla, no saca nada.
+    supabase.from('guides').select('id').eq('para_todos', true),
   ])
+  const idsCharlas = new Set((charlas ?? []).map((c) => c.id as string))
 
-  const guias: GuideOption[] = (guides ?? []).map((g) => ({
+  const guias: GuideOption[] = (guides ?? []).filter((g) => !idsCharlas.has(g.id as string)).map((g) => ({
     id: g.id as string,
     title: g.title as string,
     description: (g.description as string) ?? null,

@@ -54,9 +54,24 @@ export default async function RevisionPage({ params }: Props) {
     .eq('id', result.exam_id as string)
     .maybeSingle()
 
+  // Con '*': antes del SQL de la charla no existe para_todos y pedirla anularía todo.
   const { data: guide } = exam?.guide_id
-    ? await supabase.from('guides').select('id, title').eq('id', exam.guide_id).maybeSingle()
+    ? await supabase.from('guides').select('*').eq('id', exam.guide_id).maybeSingle()
     : { data: null }
+
+  // Las capacitaciones para todo el personal (la charla de la ART) no tienen
+  // guía para repasar: si todavía no la aprobó, se le ofrece volver a rendir.
+  const esCharla = guide?.para_todos === true
+  const { count: aprobadosCharla } =
+    esCharla && isOwner && !result.passed
+      ? await supabase
+          .from('exam_results')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', session.user.id)
+          .eq('exam_id', result.exam_id as string)
+          .eq('passed', true)
+      : { count: null }
+  const puedeVolverARendir = esCharla && isOwner && !result.passed && (aprobadosCharla ?? 0) === 0
 
   const { data: raw } = await supabase.rpc('get_exam_review', { p_result_id: params.id })
   const rows = (raw ?? []) as ReviewRow[]
@@ -178,7 +193,7 @@ export default async function RevisionPage({ params }: Props) {
                 ))}
               </div>
 
-              {guide && (
+              {guide && !esCharla && (
                 <Link
                   href={'/dashboard/guides/' + guide.id}
                   className="flex items-center justify-center gap-2 w-full mt-3 py-3 px-4 rounded-xl bg-brand-accent text-white font-semibold text-sm hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[48px]"
@@ -188,9 +203,19 @@ export default async function RevisionPage({ params }: Props) {
                 </Link>
               )}
 
+              {guide && puedeVolverARendir && (
+                <Link
+                  href={'/dashboard/guides/' + guide.id + '/exam'}
+                  className="flex items-center justify-center gap-2 w-full mt-3 py-3 px-4 rounded-xl bg-brand-accent text-white font-semibold text-sm hover:bg-brand-accent-hover transition-colors cursor-pointer min-h-[48px]"
+                >
+                  Volver a rendir el examen
+                </Link>
+              )}
+
               <p className="text-xs text-brand-muted text-center mt-3 leading-relaxed">
-                No te mostramos cuál era la correcta a propósito: la idea es que vuelvas a la guía
-                y la encuentres.
+                {esCharla
+                  ? 'No te mostramos cuál era la correcta a propósito: pensala de nuevo con lo que vimos en la charla.'
+                  : 'No te mostramos cuál era la correcta a propósito: la idea es que vuelvas a la guía y la encuentres.'}
               </p>
             </div>
           )}
