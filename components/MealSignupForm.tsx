@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Utensils, Leaf, Sprout, Wheat, ShoppingBag, Check, Lock, AlertCircle, Loader2 } from 'lucide-react'
+import { Utensils, Leaf, Sprout, Wheat, ShoppingBag, CalendarX, Check, Lock, AlertCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveMealSignupsAction, type MealChange } from '@/app/actions/meals'
 import { SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
@@ -13,6 +13,8 @@ const PREFS = [
   { key: 'vegano', label: 'Vegano', icon: Sprout, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', sel: 'bg-emerald-600 border-emerald-600 text-white' },
   { key: 'celiaco', label: 'Celíaco', icon: Wheat, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', sel: 'bg-amber-600 border-amber-600 text-white' },
   { key: 'propio', label: 'Me lo traigo', icon: ShoppingBag, color: 'text-slate-500', bg: 'bg-slate-50 border-slate-200', sel: 'bg-slate-500 border-slate-500 text-white' },
+  // No viene ese día: cuenta como contestada y no le suma a la cocina.
+  { key: 'no', label: 'No vengo', icon: CalendarX, color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200', sel: 'bg-rose-700 border-rose-700 text-white' },
 ] as const
 
 type Pref = typeof PREFS[number]['key']
@@ -30,6 +32,11 @@ interface Props {
   isOpen: boolean
   /** Qué se cocina cada día, para elegir sabiendo. */
   menu: Record<string, MenuDia>
+  /**
+   * Sus días de franco según el horario publicado: se muestran como "No
+   * vengo" sin tener que tocarlos (no se guarda nada), y se pueden cambiar.
+   */
+  francos?: string[]
 }
 
 function slotKey(date: string, meal: string) {
@@ -50,7 +57,8 @@ function fmtDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-export default function MealSignupForm({ weekDays, signups, isOpen, menu }: Props) {
+export default function MealSignupForm({ weekDays, signups, isOpen, menu, francos = [] }: Props) {
+  const esFranco = useMemo(() => new Set(francos), [francos])
   const initial = useMemo(() => flatten(signups), [signups])
   const [saved, setSaved] = useState<Sel>(initial)
   const [draft, setDraft] = useState<Sel>(initial)
@@ -62,6 +70,12 @@ export default function MealSignupForm({ weekDays, signups, isOpen, menu }: Prop
     const keys = new Set([...Object.keys(saved), ...Object.keys(draft)])
     return Array.from(keys).filter((k) => (saved[k] ?? '') !== (draft[k] ?? ''))
   }, [saved, draft])
+
+  // Las que todavía no contestó (ni eligió ni son franco), con lo que tiene sin guardar.
+  const faltan = weekDays.reduce(
+    (n, d) => n + (esFranco.has(d.date) ? 0 : d.meals.filter((m) => !draft[slotKey(d.date, m)]).length),
+    0
+  )
 
   function pick(date: string, meal: string, pref: Pref) {
     if (!isOpen || saving) return
@@ -116,14 +130,20 @@ export default function MealSignupForm({ weekDays, signups, isOpen, menu }: Prop
 
       {weekDays.map((day) => (
         <div key={day.date} className="bg-brand-card border border-brand-border rounded-2xl p-4 space-y-3">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-semibold text-brand-text">{day.dayName}</span>
             <span className="text-xs text-brand-muted">{fmtDate(day.date)}</span>
+            {esFranco.has(day.date) && (
+              <span className="text-[10px] font-medium text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full">
+                Franco según el horario
+              </span>
+            )}
           </div>
 
           {day.meals.map((meal) => {
             const k = slotKey(day.date, meal)
-            const selected = draft[k] as Pref | undefined
+            // Sin elegir, un día de franco se muestra como "No vengo".
+            const selected = (draft[k] ?? (esFranco.has(day.date) ? 'no' : undefined)) as Pref | undefined
             const isDirty = (saved[k] ?? '') !== (draft[k] ?? '')
             const plato = menu[day.date]?.[meal] ?? null
             return (
@@ -208,6 +228,10 @@ export default function MealSignupForm({ weekDays, signups, isOpen, menu }: Prop
                   <p className="text-xs text-brand-success font-medium flex items-center gap-1">
                     <Check className="w-3.5 h-3.5" />
                     Guardado. Ya le llegó al encargado.
+                  </p>
+                ) : faltan > 0 ? (
+                  <p className="text-xs text-brand-text">
+                    Te {faltan === 1 ? 'falta' : 'faltan'} {faltan}: elegí o marcá &quot;No vengo&quot;.
                   </p>
                 ) : (
                   <p className="text-xs text-brand-muted">Elegí tu menú y tocá Guardar.</p>

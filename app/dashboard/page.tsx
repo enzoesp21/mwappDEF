@@ -9,6 +9,8 @@ import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals
 import { currentPeriod } from '@/lib/month-utils'
 import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
 import { armarCapacitaciones, type FilaRespuesta, type FilaResultadoCapacitacion } from '@/lib/capacitaciones'
+import { claveComida, comidasSinContestar } from '@/lib/comida'
+import { francosDeLaSemana } from '@/lib/comida-datos'
 import { misPropinas } from '@/lib/propinas-datos'
 import { fechaConDia, pesos } from '@/lib/propinas'
 import { datosNivel } from '@/lib/progresion'
@@ -65,11 +67,12 @@ export default async function DashboardPage() {
     { data: exams },
     { data: results },
     { data: eom },
-    { count: chosen },
+    { data: misComidas },
     { propinas },
     { data: miNivel },
     { data: charlas },
     { data: misAnotadas },
+    francos,
   ] = await Promise.all([
     (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
       // La guía principal va siempre primera, sin importar cuándo se creó.
@@ -88,14 +91,15 @@ export default async function DashboardPage() {
       .select('period, user_id, photo_url, message')
       .eq('period', currentPeriod())
       .maybeSingle(),
+    // Las comidas que ya contestó (con un menú o "No vengo").
     mealsOpen
       ? supabase
           .from('meal_signups')
-          .select('id', { count: 'exact', head: true })
+          .select('meal_date, meal_type')
           .eq('user_id', session.user.id)
           .gte('meal_date', weekDays[0].date)
           .lte('meal_date', weekDays[weekDays.length - 1].date)
-      : Promise.resolve({ count: 0 }),
+      : Promise.resolve({ data: [] as { meal_date: string; meal_type: string }[] }),
     misPropinas(supabase, session.user.id),
     // Progresión: solo para mozos, y no en fase beta (no se muestra el nivel).
     // Si todavía no se corrió el SQL, no aparece.
@@ -107,6 +111,8 @@ export default async function DashboardPage() {
     // columna nueva; si no se corrió el SQL de la charla, no hay ninguna.
     supabase.from('guides').select('id, title, created_at').eq('para_todos', true),
     supabase.from('capacitacion_asistencias').select('*').eq('user_id', session.user.id),
+    // Sus francos según el horario publicado de esa semana: no hace falta contestarlos.
+    mealsOpen ? francosDeLaSemana(supabase, profile.full_name ?? '', weekDays) : Promise.resolve(new Set<string>()),
   ])
 
   // Tu progreso: las guías de tu puesto. Las capacitaciones para todo el
@@ -137,8 +143,14 @@ export default async function DashboardPage() {
       : null
   }
 
-  const totalSlots = weekDays.reduce((n, d) => n + d.meals.length, 0)
-  const missingMeals = mealsOpen ? Math.max(0, totalSlots - (chosen ?? 0)) : 0
+  // Solo las que no contestó ni son franco (Enzo, 06/11: no todos vienen todos los días).
+  const missingMeals = mealsOpen
+    ? comidasSinContestar(
+        weekDays,
+        new Set((misComidas ?? []).map((c) => claveComida(c.meal_date as string, c.meal_type as string))),
+        francos
+      )
+    : 0
 
   // Propinas: quien las carga tiene el acceso a mano; mozos y runners ven el
   // reparto de todos; el resto ve la última suya.
@@ -214,7 +226,7 @@ export default async function DashboardPage() {
               Te faltan elegir {missingMeals} comida{missingMeals !== 1 ? 's' : ''}
             </p>
             <p className="text-xs text-brand-muted">
-              Se cierra {SIGNUP_CUTOFF_LABEL}. Después no se puede cambiar.
+              Los días que no venís, marcá &quot;No vengo&quot;. Se cierra {SIGNUP_CUTOFF_LABEL}.
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />

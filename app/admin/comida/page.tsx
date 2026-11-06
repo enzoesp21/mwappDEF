@@ -62,7 +62,7 @@ export default async function AdminComidaPage() {
     }
   }
 
-  const signups = rows.map((r) => ({
+  const todas = rows.map((r) => ({
     meal_date: r.meal_date as string,
     meal_type: r.meal_type as string,
     preference: r.preference as string,
@@ -70,6 +70,9 @@ export default async function AdminComidaPage() {
     puesto: profileMap[r.user_id as string]?.puesto ?? '',
   }))
 
+  // "No vengo" (Enzo, 06/11): no es un plato. Se muestra aparte, sin sumar.
+  const signups = todas.filter((s) => s.preference !== 'no')
+  const noVienen = todas.filter((s) => s.preference === 'no')
   const total = signups.length
 
   return (
@@ -83,7 +86,8 @@ export default async function AdminComidaPage() {
 
       {weekDays.map((day) => {
         const daySignups = signups.filter((s) => s.meal_date === day.date)
-        if (daySignups.length === 0) return null
+        const dayNoVienen = noVienen.filter((s) => s.meal_date === day.date)
+        if (daySignups.length === 0 && dayNoVienen.length === 0) return null
         return (
           <div key={day.date} className="bg-brand-card border border-brand-border rounded-2xl p-4 space-y-4">
             <h2 className="font-semibold text-brand-text">
@@ -95,7 +99,8 @@ export default async function AdminComidaPage() {
 
             {day.meals.map((meal) => {
               const mealSignups = daySignups.filter((s) => s.meal_type === meal)
-              if (mealSignups.length === 0) return null
+              const mealNoVienen = dayNoVienen.filter((s) => s.meal_type === meal)
+              if (mealSignups.length === 0 && mealNoVienen.length === 0) return null
               return (
                 <div key={meal}>
                   <p className="text-xs font-semibold text-brand-muted uppercase tracking-wide mb-2 capitalize">
@@ -139,6 +144,12 @@ export default async function AdminComidaPage() {
                       )
                     })}
                   </div>
+                  {mealNoVienen.length > 0 && (
+                    <p className="text-xs text-brand-muted mt-2 leading-relaxed">
+                      <span className="font-semibold text-rose-700">No vienen ({mealNoVienen.length}):</span>{' '}
+                      {mealNoVienen.map((s) => s.full_name).join(', ')}
+                    </p>
+                  )}
                 </div>
               )
             })}

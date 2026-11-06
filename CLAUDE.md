@@ -205,6 +205,22 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Lógica pura y pruebas en `lib/pedidos-horario.ts`. Lo que se lee de la base, en
     `lib/pedidos-horario-datos.ts`.
 
+## Comida del personal
+
+- Cada uno elige, para la semana que viene, el menú de cada comida: almuerzo todos los días y
+  cena viernes y sábado (`getNextWeekDates`, `lib/meals-utils.ts`). Cierra el domingo a las 21.
+- **"No vengo"** (`preference = 'no'`, `add_comida_no_vengo.sql`; Enzo, 06/11: "no todos
+  están en todos los horarios") cuenta como contestada y no le suma a la cocina. En
+  `/admin/comida` va aparte, en "No vienen".
+- Los días de franco del horario publicado de esa semana se muestran solos como "No vengo",
+  sin guardar nada, y se pueden cambiar (`francosDeLaSemana`, `lib/comida-datos.ts`).
+  - Franco es "X", "VAC", "LIC" o "M9" en todas sus filas. Una celda vacía se sigue
+    preguntando.
+  - Si el horario no está publicado o no se lo encuentra, se pregunta todo: nunca se le saca
+    un plato a nadie.
+- "Te faltan elegir N comidas" en Inicio cuenta solo las que no contestó ni son franco
+  (`comidasSinContestar`, `lib/comida.ts`, con pruebas). Guardar revalida Inicio.
+
 ## Propinas
 
 - Reemplaza la calculadora vieja (prueba77enzo.vercel.app) con la misma cuenta: salón =

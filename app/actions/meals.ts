@@ -77,5 +77,7 @@ export async function saveMealSignupsAction(changes: MealChange[]): Promise<Save
 
   revalidatePath('/dashboard/comida')
   revalidatePath('/admin/comida')
+  // Inicio cuenta las que faltan: sin esto seguía diciendo "te faltan" un rato.
+  revalidatePath('/dashboard')
   return { ok: true, saved: changes.length }
 }

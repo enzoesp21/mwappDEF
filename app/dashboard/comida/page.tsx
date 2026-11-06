@@ -5,6 +5,7 @@ import MealSignupForm from '@/components/MealSignupForm'
 import { getNextWeekDates, formatWeekLabel, isSignupOpen } from '@/lib/meals-utils'
 import { menuPorFecha, semanaDelCiclo, hoyEnArgentina, platoDe } from '@/lib/menu-semanal'
 import MenuDeHoy from '@/components/MenuDeHoy'
+import { francosDeLaSemana } from '@/lib/comida-datos'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,12 +25,17 @@ export default async function ComidaPage() {
   const menu = menuPorFecha(weekDays.map((d) => d.date))
   const hoy = hoyEnArgentina()
 
-  const { data: rows } = await supabase
-    .from('meal_signups')
-    .select('meal_date, meal_type, preference')
-    .eq('user_id', session.user.id)
-    .gte('meal_date', weekStart)
-    .lte('meal_date', weekEnd)
+  const [{ data: rows }, { data: yo }] = await Promise.all([
+    supabase
+      .from('meal_signups')
+      .select('meal_date, meal_type, preference')
+      .eq('user_id', session.user.id)
+      .gte('meal_date', weekStart)
+      .lte('meal_date', weekEnd),
+    supabase.from('profiles').select('full_name').eq('id', session.user.id).single(),
+  ])
+  // Los días de franco del horario publicado ya aparecen como "No vengo".
+  const francos = await francosDeLaSemana(supabase, (yo?.full_name as string) ?? '', weekDays)
 
   const signups: Record<string, Record<string, string>> = {}
   for (const row of rows ?? []) {
@@ -72,9 +78,15 @@ export default async function ComidaPage() {
         </h2>
         <p className="text-brand-muted text-sm mt-0.5 mb-3 leading-relaxed">
           Semana del {weekLabel} · Menú de la Semana {semanaDelCiclo(weekDays[0].date)}. Elegí tu
-          opción por día y tocá Guardar.
+          opción por día y tocá Guardar. Los días que no venís, marcá &quot;No vengo&quot;.
         </p>
-        <MealSignupForm weekDays={weekDays} signups={signups} isOpen={open} menu={menu} />
+        <MealSignupForm
+          weekDays={weekDays}
+          signups={signups}
+          isOpen={open}
+          menu={menu}
+          francos={Array.from(francos)}
+        />
       </div>
     </div>
   )

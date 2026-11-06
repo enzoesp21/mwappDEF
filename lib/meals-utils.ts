@@ -1,4 +1,5 @@
-export type MealPreference = 'tradicional' | 'vegetariano' | 'vegano' | 'celiaco' | 'propio'
+// 'no' = "No vengo": cuenta como contestada y no le suma a la cocina.
+export type MealPreference = 'tradicional' | 'vegetariano' | 'vegano' | 'celiaco' | 'propio' | 'no'
 export type MealType = 'almuerzo' | 'cena'
 
 export interface WeekDay {
@@ -60,7 +61,7 @@ export function isSignupOpen(): boolean {
 }
 
 export function isValidPreference(value: string): value is MealPreference {
-  return ['tradicional', 'vegetariano', 'vegano', 'celiaco', 'propio'].includes(value)
+  return ['tradicional', 'vegetariano', 'vegano', 'celiaco', 'propio', 'no'].includes(value)
 }
 
 export function isValidMealType(value: string): value is MealType {
