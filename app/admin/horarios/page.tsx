@@ -62,7 +62,7 @@ export default async function AdminHorariosPage() {
           <p className="text-sm font-semibold text-brand-text">Pedidos de horario</p>
           <p className="text-xs text-brand-muted">
             {errorPedidos
-              ? 'Lo que pide el personal hasta el jueves a la noche'
+              ? 'Lo que pide el personal hasta el miércoles a las 22'
               : pedidosSinResponder
                 ? pedidosSinResponder === 1
                   ? '1 sin responder'

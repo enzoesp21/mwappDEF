@@ -9,7 +9,8 @@
 -- Lo que decidió Enzo:
 --   - Aprobar NO cambia el horario solo: queda marcado en el editor, al
 --     lado de esa persona y ese día, y Facu arma la semana con eso.
---   - El plazo cierra el jueves anterior a las 23:59 (hora de Argentina).
+--   - El plazo cierra el miércoles anterior a las 22:00 (hora de Argentina; Enzo,
+--     10/11, antes era el jueves a las 23:59: fix_pedidos_horario_miercoles.sql).
 --     Después ya no se puede pedir para esa semana: lo frena esta base.
 --   - Se puede pedir para la semana que viene y para cualquiera más
 --     adelante (un turno médico, un examen, un viaje).
@@ -73,15 +74,15 @@ CREATE POLICY pedidos_horario_ver ON pedidos_horario
   USING (user_id = auth.uid() OR is_admin());
 -- Sin políticas para escribir: se pide, se cancela y se responde con las funciones de abajo.
 
--- Si todavía se puede pedir para la semana de ese lunes: hasta el jueves
--- anterior a las 23:59 de Argentina (el lunes menos 3 es el viernes anterior).
+-- Si todavía se puede pedir para la semana de ese lunes: hasta el miércoles
+-- anterior a las 22:00 de Argentina (el lunes menos 5 es ese miércoles).
 CREATE OR REPLACE FUNCTION pedidos_horario_abierta(p_semana date)
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SET search_path = public
 AS $$
-  SELECT p_semana - 3 > (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date
+  SELECT (now() AT TIME ZONE 'America/Argentina/Buenos_Aires') < (p_semana - 5) + time '22:00'
 $$;
 
 CREATE OR REPLACE FUNCTION pedir_cambio_horario(
@@ -112,8 +113,8 @@ BEGIN
     RAISE EXCEPTION 'Los días de un pedido tienen que ser de la misma semana.';
   END IF;
   IF NOT pedidos_horario_abierta(v_semana) THEN
-    RAISE EXCEPTION 'Para la semana del % ya cerró el plazo: era hasta el jueves % a las 23:59.',
-      to_char(v_semana, 'DD/MM'), to_char(v_semana - 4, 'DD/MM');
+    RAISE EXCEPTION 'Para la semana del % ya cerró el plazo: era hasta el miércoles % a las 22.',
+      to_char(v_semana, 'DD/MM'), to_char(v_semana - 5, 'DD/MM');
   END IF;
   IF v_semana > (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date + 190 THEN
     RAISE EXCEPTION 'Se puede pedir con hasta seis meses de anticipación.';

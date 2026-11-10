@@ -39,7 +39,7 @@ const campo =
   'w-full px-3 py-2 bg-brand-card border border-brand-border rounded-lg text-sm text-brand-text placeholder:text-brand-muted/70 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:border-transparent min-h-[44px]'
 
 /**
- * Los pedidos de cambio de horario de la persona: hasta el jueves a la noche
+ * Los pedidos de cambio de horario de la persona: hasta el miércoles a las 22
  * puede pedir para la semana siguiente (o cualquiera más adelante) que no
  * puede venir un día, que solo puede o no puede en una franja, u otro cambio,
  * con el motivo. Ve sus pedidos con la respuesta del encargado.
@@ -129,7 +129,7 @@ export default function PedidosHorario({ pedidos, hoy }: Props) {
             <h2 className="text-sm font-semibold text-brand-text">¿Necesitás un cambio de horario?</h2>
             <p className="text-xs text-brand-muted leading-relaxed mt-0.5">
               Para la semana del {textoSemana(primera)} tenés tiempo hasta el{' '}
-              <strong className="text-brand-text">{textoPlazo(primera)} a las 23:59</strong>.
+              <strong className="text-brand-text">{textoPlazo(primera)}</strong>.
             </p>
           </div>
         </div>

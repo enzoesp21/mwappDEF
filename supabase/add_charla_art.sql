@@ -8,10 +8,11 @@
 -- registrado y no rinden. Lo hecho queda en el perfil de cada uno. Las
 -- preguntas son sobre:
 --   - las clases de fuego A, B y C;
---   - para dónde es el matafuego K (la cocina) y de qué color es (gris);
---   - qué hace falta para que haya fuego (algo que se pueda prender, algo que
---     lo prenda y oxígeno);
---   - qué hacer con un charco de agua en el salón (resolverlo);
+--   - para dónde es el matafuego K (la cocina: aceites y grasas animales y
+--     vegetales) y de qué color es (gris);
+--   - qué hace falta para que haya fuego (combustible, calor y oxígeno);
+--   - qué hacer con un charco de agua en el salón (secarlo en el momento y
+--     avisarle al encargado);
 --   - si un alargue puede quedar instalado (no: es una instalación temporal).
 --
 -- - guides.para_todos: es para todo el personal, también para quien está en
@@ -126,11 +127,11 @@ CROSS JOIN (VALUES
   ('¿Qué es un fuego clase B?', '["El de sólidos como madera, cartón o papel", "El de líquidos inflamables y gases", "El de equipos eléctricos con corriente", "El de metales que se prenden con el calor"]', 1, 1),
   ('¿Qué es un fuego clase C?', '["El de la grasa acumulada en la campana", "El de líquidos como nafta, alcohol o solventes", "El de sólidos que dejan brasa al apagarse", "El de equipos eléctricos con corriente"]', 3, 2),
   ('Se prende fuego una zapatilla eléctrica enchufada. ¿Qué clase de fuego es?', '["Clase A", "Clase B", "Clase C", "Clase K"]', 2, 3),
-  ('¿Para dónde se usa el matafuego K?', '["Para la cocina: aceites y grasas", "Para el tablero eléctrico del salón", "Para cualquier fuego, en cualquier lugar", "Para los papeles y cartones del depósito"]', 0, 4),
+  ('¿Para dónde se usa el matafuego K?', '["Para la cocina: aceites y grasas animales y vegetales", "Para el tablero eléctrico del salón", "Para cualquier fuego, en cualquier lugar del restaurante", "Para los papeles y cartones del depósito"]', 0, 4),
   ('¿De qué color es el matafuego K?', '["Rojo", "Gris", "Verde", "Amarillo"]', 1, 5),
   ('En la cocina se prende fuego una sartén con aceite. ¿Con qué matafuego se apaga?', '["Con agua, que es lo más rápido", "Con cualquiera que esté más cerca", "Con el del tablero eléctrico", "Con el K, el gris"]', 3, 6),
-  ('¿Qué hace falta para que se genere fuego?', '["Una chispa y gas, nada más", "Algo que se pueda prender y mucho viento", "Algo que se pueda prender, algo que lo prenda y oxígeno", "Solamente calor, aunque no haya nada que se pueda quemar"]', 2, 7),
-  ('Ves un charco de agua en el salón. ¿Qué hacés?', '["Lo esquivo y sigo, no es mi sector", "Lo resuelvo yo en el momento, secándolo", "Espero a que lo limpie alguien de limpieza", "Le aviso al encargado al final del turno"]', 1, 8),
+  ('¿Qué hace falta para que se genere fuego?', '["Una chispa y gas, nada más", "Combustible y mucho viento", "Combustible, calor y oxígeno", "Solamente calor, aunque no haya nada que se pueda quemar"]', 2, 7),
+  ('Ves un charco de agua en el salón. ¿Qué hacés?', '["Lo esquivo y sigo, no es mi sector", "Lo seco en el momento y le aviso al encargado", "Espero a que lo limpie alguien de limpieza", "Lo dejo así, total con el tiempo se termina secando solo"]', 1, 8),
   ('¿Está bien tener un alargue instalado todo el tiempo?', '["No: el alargue es una instalación temporal", "Sí, si está bien enchufado y no molesta", "Sí, mientras no se use para la cafetera", "Sí, siempre que sea un alargue nuevo y de marca"]', 0, 9)
 ) AS v(question, options, correct_option, orden)
 WHERE g.title = 'Charla de Seguridad e Higiene (ART)'

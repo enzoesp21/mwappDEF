@@ -211,7 +211,7 @@ export default function PedidosAdmin({ pedidos: iniciales, hoy, enEditor = false
               </h2>
               <p className="text-[11px] text-brand-muted">
                 {semanaAbierta(s, hoy)
-                  ? `Se puede pedir hasta el ${textoPlazo(s)} a las 23:59`
+                  ? `Se puede pedir hasta el ${textoPlazo(s)}`
                   : `El plazo cerró el ${textoPlazo(s)}`}
               </p>
             </div>

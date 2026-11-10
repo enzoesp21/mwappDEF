@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { hoyEnArgentina } from '@/lib/horarios'
+import { ahoraEnArgentina } from '@/lib/horarios'
 import { validarPedido, type DatosPedido, type EstadoPedido } from '@/lib/pedidos-horario'
 
 type Resultado = { ok: true } | { ok: false; error: string }
@@ -19,7 +19,7 @@ function revalidar() {
 
 /**
  * Pide un cambio de horario para uno o más días de una semana. La base frena
- * si ya cerró el plazo (el jueves anterior a las 23:59).
+ * si ya cerró el plazo (el miércoles anterior a las 22).
  */
 export async function pedirCambioHorarioAction(d: DatosPedido): Promise<Resultado> {
   const supabase = await createClient()
@@ -28,7 +28,7 @@ export async function pedirCambioHorarioAction(d: DatosPedido): Promise<Resultad
   } = await supabase.auth.getSession()
   if (!session) return { ok: false, error: 'Iniciá sesión para pedir un cambio.' }
 
-  const error = validarPedido(d, hoyEnArgentina())
+  const error = validarPedido(d, ahoraEnArgentina())
   if (error) return { ok: false, error }
 
   const { error: errorBase } = await supabase.rpc('pedir_cambio_horario', {

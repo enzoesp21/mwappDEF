@@ -147,13 +147,17 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     - y el link para editar las preguntas.
   - El examen de la de la ART tiene 10 preguntas de opción múltiple:
     - las clases de fuego A, B y C, y una zapatilla prendida es clase C;
-    - el matafuego K es de la cocina, para aceites y grasas, y es gris;
+    - el matafuego K es de la cocina, para aceites y grasas animales y vegetales (no
+      minerales), y es gris;
     - la sartén con aceite se apaga con el K;
-    - el fuego necesita algo que se pueda prender, algo que lo prenda y oxígeno;
-    - un charco de agua en el salón se resuelve en el momento;
+    - el fuego necesita combustible, calor y oxígeno;
+    - un charco de agua en el salón se seca en el momento y se le avisa al encargado en el
+      momento, no al final del turno;
     - un alargue no puede quedar instalado, porque es una instalación temporal.
   - Las correctas van 3/3/2/2 en A/B/C/D y nunca son la más larga.
-  - El SQL no borra preguntas ya cargadas.
+  - El SQL no borra preguntas ya cargadas. Las correcciones de Enzo del 10/11 (estas tres)
+    van en `fix_charla_art_preguntas.sql`: solo cambian el texto, con la correcta en la
+    misma letra.
 
 ## Horarios
 
@@ -184,8 +188,10 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Aprobar NO cambia el horario: queda marcado en el editor, al lado de esa persona y ese
     día. Punto verde si está aprobado, ámbar si está sin responder. Facu arma la semana con
     eso.
-  - El plazo es hasta el jueves anterior a las 23:59 de Argentina y después se cierra
-    (`semanaAbierta`; en la base, `pedidos_horario_abierta`).
+  - El plazo es hasta el **miércoles anterior a las 22:00** de Argentina y después se cierra
+    (Enzo, 10/11; antes era el jueves a las 23:59). Importa la hora: las pantallas le pasan
+    `ahoraEnArgentina()` ("2026-11-04T21:59") a `semanaAbierta`; en la base,
+    `pedidos_horario_abierta` (`fix_pedidos_horario_miercoles.sql`).
   - Se puede pedir para la semana que viene y para cualquiera más adelante.
   - Tabla `pedidos_horario` (`add_pedidos_horario.sql`): un pedido con uno o más días de la
     misma semana. Cada uno ve los suyos y los admin, todos.

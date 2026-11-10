@@ -95,6 +95,11 @@ export function hoyEnArgentina(): string {
   return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().split('T')[0]
 }
 
+/** "2026-11-04T21:59": la fecha y la hora de ahora en Argentina (para plazos con hora). */
+export function ahoraEnArgentina(): string {
+  return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 16)
+}
+
 export function sumarDias(fechaISO: string, dias: number): string {
   const d = aFecha(fechaISO)
   d.setUTCDate(d.getUTCDate() + dias)

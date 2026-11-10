@@ -8,6 +8,7 @@ import {
   cantidadDias,
   diasConNoche,
   etiquetaSemana,
+  ahoraEnArgentina,
   hoyEnArgentina,
   lunesDe,
   sumarDias,
@@ -64,7 +65,7 @@ export default async function HorarioPage({ searchParams }: Props) {
       No se pudieron leer tus pedidos de horario: {pedidosRes.error.message}
     </p>
   ) : (
-    <PedidosHorario pedidos={misPedidos} hoy={hoy} />
+    <PedidosHorario pedidos={misPedidos} hoy={ahoraEnArgentina()} />
   )
 
   const publicadas = (semanas ?? []).filter((s) => validarDatos(s.data))

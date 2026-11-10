@@ -1,5 +1,5 @@
 // Pruebas de los pedidos de cambio de horario (lib/pedidos-horario.ts): el
-// plazo del jueves a la noche, los textos, lo que se revisa antes de mandar y
+// plazo del miércoles a las 22, los textos, lo que se revisa antes de mandar y
 // las marcas del editor.
 
 import { describe, test } from 'node:test'
@@ -18,23 +18,33 @@ import {
   type PedidoConNombre,
 } from '@/lib/pedidos-horario'
 
-describe('el plazo: hasta el jueves anterior a las 23:59', () => {
-  test('el jueves 5/11 todavía se puede pedir para la semana del 9/11', () => {
-    assert.equal(plazoDe('2026-11-09'), '2026-11-05')
-    assert.equal(semanaAbierta('2026-11-09', '2026-11-05'), true)
-    assert.deepEqual(semanasParaPedir('2026-11-05', 3), ['2026-11-09', '2026-11-16', '2026-11-23'])
+describe('el plazo: hasta el miércoles anterior a las 22', () => {
+  test('el miércoles 4/11 a las 21:59 todavía se puede pedir para la semana del 9/11', () => {
+    assert.equal(plazoDe('2026-11-09'), '2026-11-04')
+    assert.equal(semanaAbierta('2026-11-09', '2026-11-04T21:59'), true)
+    assert.deepEqual(semanasParaPedir('2026-11-04T21:59', 3), ['2026-11-09', '2026-11-16', '2026-11-23'])
   })
 
-  test('desde el viernes, la primera abierta es la de dos semanas después', () => {
-    assert.equal(semanaAbierta('2026-11-09', '2026-11-06'), false)
-    assert.equal(semanasParaPedir('2026-11-06', 1)[0], '2026-11-16')
-    assert.equal(semanasParaPedir('2026-11-08', 1)[0], '2026-11-16') // domingo
-    assert.equal(semanasParaPedir('2026-11-09', 1)[0], '2026-11-16') // lunes
+  test('a las 22:00 en punto ya cerró', () => {
+    assert.equal(semanaAbierta('2026-11-09', '2026-11-04T22:00'), false)
+    assert.equal(semanasParaPedir('2026-11-04T22:00', 1)[0], '2026-11-16')
+  })
+
+  test('desde el jueves, la primera abierta es la de dos semanas después', () => {
+    assert.equal(semanaAbierta('2026-11-09', '2026-11-05T08:00'), false)
+    assert.equal(semanasParaPedir('2026-11-05T08:00', 1)[0], '2026-11-16')
+    assert.equal(semanasParaPedir('2026-11-08T12:00', 1)[0], '2026-11-16') // domingo
+    assert.equal(semanasParaPedir('2026-11-09T12:00', 1)[0], '2026-11-16') // lunes
+  })
+
+  test('con solo la fecha, cuenta como el principio del día', () => {
+    assert.equal(semanaAbierta('2026-11-09', '2026-11-04'), true)
+    assert.equal(semanaAbierta('2026-11-09', '2026-11-05'), false)
   })
 
   test('la semana en curso nunca está abierta', () => {
-    assert.equal(semanaAbierta('2026-11-02', '2026-10-29'), true) // hasta el jueves anterior
-    assert.equal(semanaAbierta('2026-11-02', '2026-11-03'), false)
+    assert.equal(semanaAbierta('2026-11-02', '2026-10-28T21:00'), true) // hasta el miércoles anterior
+    assert.equal(semanaAbierta('2026-11-02', '2026-11-03T10:00'), false)
   })
 })
 
@@ -46,8 +56,8 @@ describe('los textos', () => {
   })
 
   test('el plazo de una semana', () => {
-    assert.equal(textoPlazo('2026-11-09'), 'jueves 5/11')
-    assert.equal(textoPlazo('2026-12-07'), 'jueves 3/12')
+    assert.equal(textoPlazo('2026-11-09'), 'miércoles 4/11 a las 22')
+    assert.equal(textoPlazo('2026-12-07'), 'miércoles 2/12 a las 22')
   })
 
   test('qué pide, para la persona y para el encargado', () => {
@@ -61,7 +71,7 @@ describe('los textos', () => {
 
 describe('lo que se revisa antes de mandar', () => {
   const bien = { fechas: ['2026-11-10'], tipo: 'no_puedo' as const, desde: null, hasta: null, motivo: 'Turno médico' }
-  const hoy = '2026-11-05'
+  const hoy = '2026-11-04T20:00'
 
   test('un pedido completo y en plazo pasa', () => {
     assert.equal(validarPedido(bien, hoy), null)
@@ -80,10 +90,10 @@ describe('lo que se revisa antes de mandar', () => {
     assert.equal(validarPedido({ ...bien, motivo: 'x'.repeat(501) }, hoy), 'El motivo es muy largo: hasta 500 letras.')
   })
 
-  test('pasado el jueves, cerrado', () => {
+  test('pasado el miércoles a las 22, cerrado', () => {
     assert.equal(
-      validarPedido(bien, '2026-11-06'),
-      'Para la semana del 9 al 15 de noviembre ya cerró el plazo: era hasta el jueves 5/11 a las 23:59.'
+      validarPedido(bien, '2026-11-04T22:05'),
+      'Para la semana del 9 al 15 de noviembre ya cerró el plazo: era hasta el miércoles 4/11 a las 22.'
     )
   })
 })

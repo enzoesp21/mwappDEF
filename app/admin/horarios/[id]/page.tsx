@@ -6,7 +6,7 @@ import {
   cantidadDias,
   etiquetaSemana,
   fechasDeLaSemana,
-  hoyEnArgentina,
+  ahoraEnArgentina,
   semanaVacia,
   sumarDias,
   validarDatos,
@@ -91,7 +91,7 @@ export default async function EditarHorarioPage({ params }: Props) {
         datosIniciales={datos}
         versionInicial={semana.updated_at as string}
         clima={clima}
-        hoy={hoyEnArgentina()}
+        hoy={ahoraEnArgentina()}
         pedidos={pedidos}
         marcas={marcas}
         sinFila={sinFila}

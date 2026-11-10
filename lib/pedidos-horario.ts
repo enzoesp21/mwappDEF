@@ -6,10 +6,13 @@
  * motivo. Los encargados lo aprueban o no. Lo que decidió Enzo:
  *   - aprobar no cambia el horario: queda marcado en el editor, al lado de esa
  *     persona y ese día, y Facu arma la semana con eso;
- *   - el plazo es hasta el jueves anterior a las 23:59 y después se cierra;
+ *   - el plazo es hasta el miércoles anterior a las 22 (Enzo, 10/11; antes era
+ *     el jueves a las 23:59) y después se cierra;
  *   - se puede pedir para la semana que viene y cualquiera más adelante.
  * La base frena lo mismo (pedir_cambio_horario, add_pedidos_horario.sql).
- * Todo es puro: no lee la base, y la fecha de hoy se la pasan.
+ * Todo es puro: no lee la base, y la fecha de hoy se la pasan. Para el plazo
+ * importa la hora: se pasa "ahora" ("2026-11-04T21:59", ahoraEnArgentina); con
+ * solo la fecha cuenta como el principio de ese día.
  */
 
 import {
@@ -58,20 +61,27 @@ export interface PedidoHorario {
 
 export const esFranja = (tipo: TipoPedido) => tipo === 'solo_franja' || tipo === 'no_franja'
 
-/** El jueves hasta el que se puede pedir para la semana de ese lunes (a las 23:59). */
+/** A qué hora del miércoles se cierra (hora de Argentina). */
+export const HORA_CIERRE = '22:00'
+
+/** El miércoles hasta el que se puede pedir para la semana de ese lunes (a las 22). */
 export function plazoDe(semana: string): string {
-  return sumarDias(semana, -4)
+  return sumarDias(semana, -5)
 }
 
-/** Si hoy todavía se puede pedir para la semana de ese lunes: hasta el jueves anterior inclusive. */
-export function semanaAbierta(semana: string, hoy: string): boolean {
-  return sumarDias(semana, -3) > hoy
+/**
+ * Si todavía se puede pedir para la semana de ese lunes: hasta el miércoles
+ * anterior a las 22 (a las 22:00 en punto ya cerró). `ahora` es
+ * "AAAA-MM-DDTHH:MM" en hora de Argentina, o solo la fecha.
+ */
+export function semanaAbierta(semana: string, ahora: string): boolean {
+  return ahora < plazoDe(semana) + 'T' + HORA_CIERRE
 }
 
 /** Las próximas semanas en las que se puede pedir (sus lunes), desde la primera abierta. */
-export function semanasParaPedir(hoy: string, cuantas = 8): string[] {
-  let lunes = sumarDias(lunesDe(hoy), 7)
-  if (!semanaAbierta(lunes, hoy)) lunes = sumarDias(lunes, 7)
+export function semanasParaPedir(ahora: string, cuantas = 8): string[] {
+  let lunes = sumarDias(lunesDe(ahora.slice(0, 10)), 7)
+  if (!semanaAbierta(lunes, ahora)) lunes = sumarDias(lunes, 7)
   return Array.from({ length: cuantas }, (_, i) => sumarDias(lunes, 7 * i))
 }
 
@@ -90,9 +100,9 @@ export function textoDias(fechas: string[]): string {
   return dias.slice(0, -1).join(', ') + ' y ' + dias[dias.length - 1]
 }
 
-/** "jueves 5/11": hasta cuándo se puede pedir para esa semana. */
+/** "miércoles 4/11 a las 22": hasta cuándo se puede pedir para esa semana. */
 export function textoPlazo(semana: string): string {
-  return 'jueves ' + diaCorto(plazoDe(semana)).split(' ')[1]
+  return 'miércoles ' + diaCorto(plazoDe(semana)).split(' ')[1] + ' a las 22'
 }
 
 /** "9 al 15 de noviembre". */
@@ -126,15 +136,15 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/
 
 /** Revisa un pedido antes de mandarlo. Devuelve el error o null. */
-export function validarPedido(d: DatosPedido, hoy: string): string | null {
+export function validarPedido(d: DatosPedido, ahora: string): string | null {
   if (d.fechas.length === 0) return 'Elegí al menos un día.'
   if (d.fechas.length > 7 || !d.fechas.every((f) => FECHA.test(f) && !Number.isNaN(Date.parse(f)))) {
     return 'Revisá los días.'
   }
   const semana = lunesDe(d.fechas[0])
   if (d.fechas.some((f) => lunesDe(f) !== semana)) return 'Los días tienen que ser de la misma semana.'
-  if (!semanaAbierta(semana, hoy)) {
-    return `Para la semana del ${textoSemana(semana)} ya cerró el plazo: era hasta el ${textoPlazo(semana)} a las 23:59.`
+  if (!semanaAbierta(semana, ahora)) {
+    return `Para la semana del ${textoSemana(semana)} ya cerró el plazo: era hasta el ${textoPlazo(semana)}.`
   }
   if (!TIPOS_PEDIDO.some((t) => t.valor === d.tipo)) return 'Elegí qué necesitás.'
   if (esFranja(d.tipo)) {
