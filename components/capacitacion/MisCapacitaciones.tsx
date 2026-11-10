@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { CheckCircle2, ChevronRight, Circle, Clock3, MinusCircle, ShieldCheck } from 'lucide-react'
-import { fechaHoraAR, type Capacitacion } from '@/lib/capacitaciones'
+import { fechaHoraAR, vaEnPerfil, type Capacitacion } from '@/lib/capacitaciones'
 
 const LINK = 'inline-flex items-center gap-1 text-xs font-medium text-brand-accent hover:text-brand-accent-hover'
 
@@ -16,6 +16,8 @@ export default function MisCapacitaciones({
   capacitaciones: Capacitacion[]
   error: string | null
 }) {
+  // Las que ya pasaron (la de la ART) quedan solo si la aprobó.
+  capacitaciones = capacitaciones.filter(vaEnPerfil)
   if (!error && capacitaciones.length === 0) return null
 
   return (
@@ -38,6 +40,7 @@ export default function MisCapacitaciones({
           </div>
 
           <ul className="space-y-2 text-sm">
+            {(!c.cerrada || c.participo === true) && (
             <li className="flex items-start gap-2">
               {c.participo === null ? (
                 <Circle className="w-4 h-4 text-brand-muted flex-shrink-0 mt-0.5" />
@@ -54,6 +57,7 @@ export default function MisCapacitaciones({
                     : 'Contestaste que no participaste' + (c.respondioEn ? ' (' + fechaHoraAR(c.respondioEn) + ')' : '')}
               </span>
             </li>
+            )}
 
             {c.examenId && c.participo !== false && (
               <li className="flex items-start gap-2">

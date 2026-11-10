@@ -3,7 +3,7 @@
 
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { GRUPOS, calcularReparto, textoReporte, validarCarga, type PersonaPropina } from '@/lib/propinas'
+import { vincularSueltas, GRUPOS, calcularReparto, textoReporte, validarCarga, type PersonaPropina } from '@/lib/propinas'
 
 const persona = (nombre: string, grupo: PersonaPropina['grupo'], horas: number): PersonaPropina => ({
   nombre,
@@ -51,5 +51,51 @@ describe('el grupo al 25 %', () => {
 
   test('se puede guardar', () => {
     assert.equal(validarCarga('2026-11-02', 100_000, 10_000, [persona('Alguien Nuevo', 'cuarto', 8)]), null)
+  })
+})
+
+describe('propinas sueltas de quien se registró después', () => {
+  const usuarios = [
+    { id: 'u-brisa', full_name: 'Brisa Di Scala' },
+    { id: 'u-lucia', full_name: 'Lucia Leiva ' },
+    { id: 'u-belen', full_name: 'Belen Gallegos' },
+  ]
+
+  test('se vinculan los nombres completos, como al guardar', () => {
+    const r = vincularSueltas(
+      [
+        { id: 't1', day_id: 'd31', nombre: 'Brisa Di Scala' },
+        { id: 't2', day_id: 'd01', nombre: 'Brisa Di Scala' },
+        { id: 't3', day_id: 'd31', nombre: 'Lucia Leiva' },
+      ],
+      [],
+      usuarios
+    )
+    assert.deepEqual(r.get('u-brisa'), ['t1', 't2'])
+    assert.deepEqual(r.get('u-lucia'), ['t3'])
+  })
+
+  test('un nombre solo o que no es de nadie no se vincula', () => {
+    const r = vincularSueltas(
+      [
+        { id: 't1', day_id: 'd31', nombre: 'Belen' },
+        { id: 't2', day_id: 'd31', nombre: 'Gabriel Cansino' },
+      ],
+      [],
+      usuarios
+    )
+    assert.equal(r.size, 0)
+  })
+
+  test('nunca le deja a alguien dos filas el mismo día', () => {
+    const r = vincularSueltas(
+      [
+        { id: 't1', day_id: 'd31', nombre: 'Brisa Di Scala' },
+        { id: 't2', day_id: 'd01', nombre: 'Brisa Di Scala' },
+      ],
+      [{ day_id: 'd31', user_id: 'u-brisa' }],
+      usuarios
+    )
+    assert.deepEqual(r.get('u-brisa'), ['t2'])
   })
 })

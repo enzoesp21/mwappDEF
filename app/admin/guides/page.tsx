@@ -20,7 +20,7 @@ export default async function GuidesPage() {
   // abajo la lista de guías ('*' por la columna participo, que es más nueva).
   const [{ data: paths }, { data: charlas }, { data: asistencias }] = await Promise.all([
     supabase.from('guide_paths').select('puesto'),
-    supabase.from('guides').select('id, title').eq('para_todos', true),
+    supabase.from('guides').select('*').eq('para_todos', true),
     supabase.from('capacitacion_asistencias').select('*'),
   ])
   const idsCharlas = new Set((charlas ?? []).map((c) => c.id as string))
@@ -53,6 +53,7 @@ export default async function GuidesPage() {
     return {
       id: c.id as string,
       titulo: c.title as string,
+      cerrada: c.capacitacion_cerrada === true,
       participaron: respuestas.filter((a) => a.participo !== false).length,
       noParticiparon: respuestas.filter((a) => a.participo === false).length,
       aprobaron: new Set(aprobadosCharlas.filter((r) => examenes.has(r.exam_id as string)).map((r) => r.user_id as string)).size,
@@ -119,12 +120,19 @@ export default async function GuidesPage() {
             >
               <ShieldCheck className="w-5 h-5 text-brand-accent flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-brand-text">{c.titulo}</p>
+                <p className="text-sm font-semibold text-brand-text">
+                  {c.titulo}
+                  {c.cerrada && (
+                    <span className="ml-2 align-middle px-1.5 py-0.5 rounded-full bg-brand-muted/15 text-brand-muted text-[10px] font-bold uppercase tracking-[0.1em]">
+                      Cerrada
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-brand-muted">
                   {c.participaron} {c.participaron === 1 ? 'participó' : 'participaron'} · {c.aprobaron}{' '}
                   {c.aprobaron === 1 ? 'aprobó' : 'aprobaron'} el examen
                   {c.noParticiparon > 0 && ` · ${c.noParticiparon} no ${c.noParticiparon === 1 ? 'participó' : 'participaron'}`}{' '}
-                  · Ver quién falta
+                  · {c.cerrada ? 'Ver quién aprobó' : 'Ver quién falta'}
                 </p>
               </div>
               <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />

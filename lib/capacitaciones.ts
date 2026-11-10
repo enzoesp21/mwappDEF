@@ -11,6 +11,10 @@
  * cuelgan de una guía), pero no van en `guide_paths` ni cuentan en "Tu
  * progreso". La respuesta va en `capacitacion_asistencias.participo`.
  *
+ * Cuando la charla ya pasó, se cierra (`guides.capacitacion_cerrada`; Enzo,
+ * 10/11, la de la ART): sale de Inicio y queda solo en el perfil de los que
+ * la aprobaron.
+ *
  * Lógica pura: no lee la base ni la hora.
  */
 
@@ -49,12 +53,16 @@ export interface Capacitacion {
    * aprobó el examen (o no tiene examen).
    */
   completa: boolean
+  /** Ya pasó: no se pide más, y queda solo en el perfil de los que aprobaron. */
+  cerrada: boolean
 }
 
 export interface FilaGuiaCapacitacion {
   id: string
   title: string
   created_at?: string | null
+  /** Antes del SQL que la agrega, no viene: abierta. */
+  capacitacion_cerrada?: boolean | null
 }
 
 export interface FilaExamenCapacitacion {
@@ -149,8 +157,19 @@ export function armarCapacitaciones(datos: {
       ultimo,
       esperandoCorreccion: !aprobado && intentos.some((i) => i.pendiente),
       completa: participo === false || (participo === true && (!examen || aprobado !== null)),
+      cerrada: g.capacitacion_cerrada === true,
     }
   })
+}
+
+/** Si va arriba de todo en Inicio: abierta y le falta algo. */
+export function vaEnInicio(c: Capacitacion): boolean {
+  return !c.cerrada && !c.completa
+}
+
+/** Si va en su perfil: abierta, o cerrada y la aprobó. */
+export function vaEnPerfil(c: Capacitacion): boolean {
+  return !c.cerrada || c.aprobado !== null
 }
 
 /** "06/11 a las 18:20", en hora de Argentina (UTC−3 todo el año). */

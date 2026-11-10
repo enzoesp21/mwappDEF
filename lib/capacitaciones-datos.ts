@@ -22,7 +22,8 @@ export async function traerCapacitaciones(
   userId: string
 ): Promise<{ capacitaciones: Capacitacion[]; error: string | null }> {
   const [guiasRes, examenesRes, respuestasRes] = await Promise.all([
-    supabase.from('guides').select('id, title, created_at').eq('para_todos', true),
+    // '*' por capacitacion_cerrada, que es más nueva: sin ella, todas abiertas.
+    supabase.from('guides').select('*').eq('para_todos', true),
     supabase.from('exams').select('id, guide_id, passing_score'),
     // '*' por la columna participo, que es más nueva.
     supabase.from('capacitacion_asistencias').select('*').eq('user_id', userId),
@@ -57,6 +58,7 @@ export async function traerCapacitaciones(
         id: g.id as string,
         title: g.title as string,
         created_at: g.created_at as string,
+        capacitacion_cerrada: g.capacitacion_cerrada === true,
       })),
       examenes: examenes.map((e) => ({
         id: e.id as string,

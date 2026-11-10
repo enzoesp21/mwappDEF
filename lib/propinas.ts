@@ -173,6 +173,31 @@ export function vincularUsuario(
   return candidatos.length === 1 ? candidatos[0].id : null
 }
 
+/**
+ * Las filas sin usuario de días ya cargados que ahora se pueden vincular:
+ * pasa cuando alguien se registra en la app después de que se cargaron sus
+ * propinas (Enzo, 10/11: muchos mozos se sumaron y no veían las suyas). Usa la
+ * misma regla estricta que al guardar (`vincularUsuario`) y nunca le deja a
+ * alguien dos filas el mismo día. Devuelve, por usuario, los ids a vincular.
+ */
+export function vincularSueltas(
+  sueltas: { id: string; day_id: string; nombre: string }[],
+  vinculadas: { day_id: string; user_id: string }[],
+  usuarios: { id: string; full_name: string }[]
+): Map<string, string[]> {
+  const tomadas = new Set(vinculadas.map((v) => v.day_id + '|' + v.user_id))
+  const porUsuario = new Map<string, string[]>()
+  for (const f of sueltas) {
+    const uid = vincularUsuario(f.nombre, usuarios)
+    if (!uid) continue
+    const clave = f.day_id + '|' + uid
+    if (tomadas.has(clave)) continue
+    tomadas.add(clave)
+    porUsuario.set(uid, [...(porUsuario.get(uid) ?? []), f.id])
+  }
+  return porUsuario
+}
+
 /** Revisa lo que llega del navegador antes de guardarlo. Devuelve el error o null. */
 export function validarCarga(
   fecha: string,

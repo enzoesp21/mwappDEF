@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { calcularReparto, validarCarga, vincularUsuario, type PersonaPropina } from '@/lib/propinas'
+import { calcularReparto, validarCarga, vincularSueltas, vincularUsuario, type PersonaPropina } from '@/lib/propinas'
 import { esGrupoGuardado, type GrupoGuardado } from '@/lib/propinas-grupos'
 import { leerDatosReloj, type DatosRelojPropinas } from '@/lib/propinas-reloj'
 
@@ -118,8 +118,44 @@ export async function guardarPropinasAction(
     }
   }
 
+  // De paso, las propinas de días anteriores de quien se registró después.
+  await vincularPropinasSueltas(supabase, (usuarios ?? []) as { id: string; full_name: string }[])
+
   revalidarTodo(carga.fecha)
   return { ok: true, value: nuevaVersion as string }
+}
+
+/**
+ * Vincula las filas sin usuario de días ya cargados a quien se registró
+ * después (`vincularSueltas`). Corre cada vez que se guarda un día, así nadie
+ * tiene que acordarse. El día ya quedó guardado: si esto falla, no se lo
+ * marca como error y se vuelve a intentar en el próximo guardado.
+ */
+async function vincularPropinasSueltas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  usuarios: { id: string; full_name: string }[]
+): Promise<void> {
+  const { data: sueltas, error } = await supabase
+    .from('tip_entries')
+    .select('id, day_id, nombre')
+    .is('user_id', null)
+    .limit(1000)
+  if (error || !sueltas || sueltas.length === 0) return
+  const dias = Array.from(new Set(sueltas.map((f) => f.day_id as string)))
+  const { data: vinculadas, error: errorVinculadas } = await supabase
+    .from('tip_entries')
+    .select('day_id, user_id')
+    .in('day_id', dias)
+    .not('user_id', 'is', null)
+  if (errorVinculadas) return
+  const porUsuario = vincularSueltas(
+    sueltas as { id: string; day_id: string; nombre: string }[],
+    (vinculadas ?? []) as { day_id: string; user_id: string }[],
+    usuarios
+  )
+  for (const [userId, ids] of Array.from(porUsuario)) {
+    await supabase.from('tip_entries').update({ user_id: userId }).in('id', ids).is('user_id', null)
+  }
 }
 
 export async function borrarDiaPropinasAction(fecha: string): Promise<Resultado> {

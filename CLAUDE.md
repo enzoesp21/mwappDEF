@@ -133,6 +133,11 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     la guía".
   - Lo hecho queda en Perfil, en "Capacitaciones" (`MisCapacitaciones`): qué contestó, la
     nota, la fecha y la firma.
+  - **Cerrada** (`guides.capacitacion_cerrada`, `fix_charla_art_cerrar.sql`; Enzo, 10/11: "ya
+    pasó"): sale de Inicio para todos, no se puede rendir más (el examen manda a Inicio y la
+    revisión no ofrece volver a rendir) y en el perfil queda solo para los que aprobaron
+    (`vaEnInicio`, `vaEnPerfil`). Los encargados la ven en Guías con la marca "Cerrada". La
+    de la ART está cerrada.
   - Son la excepción al período de prueba: también las rinden quienes están a prueba
     (`puede_usar_guia` las deja pasar).
   - Lógica pura y pruebas en `lib/capacitaciones.ts` (el intento que cuenta: aprobado
@@ -317,6 +322,12 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   Runners") ven el reparto de todos, de solo lectura (decisión de Enzo). El resto ve SOLO
   sus filas (`tip_entries.user_id`). El vínculo nombre → usuario es estricto
   (`vincularUsuario`): ante la duda no se vincula.
+- **Quien se registra después de que se cargaron sus propinas** (Enzo, 10/11: muchos mozos se
+  sumaron y no veían las suyas): cada vez que se guarda un día, `guardarPropinasAction`
+  vincula también las filas sin usuario de días anteriores (`vincularSueltas`, misma regla
+  estricta, nunca dos filas de la misma persona el mismo día). Los nombres sueltos ("Belen",
+  "Lucia") no entran solos. Lo cargado hasta el 10/11, nombres sueltos incluidos, lo vinculó
+  `fix_vincular_mozos_nuevos.sql`, que también les puso el `profile_id` en la planilla.
 - Se guarda con la RPC `guardar_propinas` (todo el día en una operación, con versión).
 - Pantallas compartidas en `components/propinas/`, montadas en `/admin/propinas` y
   `/dashboard/propinas` (los admin no pueden entrar a `/dashboard`).

@@ -62,6 +62,7 @@ export default async function RevisionPage({ params }: Props) {
   // Las capacitaciones para todo el personal (la charla de la ART) no tienen
   // guía para repasar: si todavía no la aprobó, se le ofrece volver a rendir.
   const esCharla = guide?.para_todos === true
+  const charlaCerrada = esCharla && guide?.capacitacion_cerrada === true
   const { count: aprobadosCharla } =
     esCharla && isOwner && !result.passed
       ? await supabase
@@ -71,7 +72,8 @@ export default async function RevisionPage({ params }: Props) {
           .eq('exam_id', result.exam_id as string)
           .eq('passed', true)
       : { count: null }
-  const puedeVolverARendir = esCharla && isOwner && !result.passed && (aprobadosCharla ?? 0) === 0
+  const puedeVolverARendir =
+    esCharla && !charlaCerrada && isOwner && !result.passed && (aprobadosCharla ?? 0) === 0
 
   const { data: raw } = await supabase.rpc('get_exam_review', { p_result_id: params.id })
   const rows = (raw ?? []) as ReviewRow[]

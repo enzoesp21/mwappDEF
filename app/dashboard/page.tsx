@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
 import { currentPeriod } from '@/lib/month-utils'
 import EmployeeOfMonthCard from '@/components/EmployeeOfMonthCard'
-import { armarCapacitaciones, type FilaRespuesta, type FilaResultadoCapacitacion } from '@/lib/capacitaciones'
+import { armarCapacitaciones, vaEnInicio, type FilaRespuesta, type FilaResultadoCapacitacion } from '@/lib/capacitaciones'
 import { claveComida, comidasSinContestar } from '@/lib/comida'
 import { francosDeLaSemana } from '@/lib/comida-datos'
 import { misPropinas } from '@/lib/propinas-datos'
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
     // Las capacitaciones para todo el personal (la charla de la ART) y lo que
     // contestó a "¿Participaste?". Con '*' para que ande aunque falte la
     // columna nueva; si no se corrió el SQL de la charla, no hay ninguna.
-    supabase.from('guides').select('id, title, created_at').eq('para_todos', true),
+    supabase.from('guides').select('*').eq('para_todos', true),
     supabase.from('capacitacion_asistencias').select('*').eq('user_id', session.user.id),
     // Sus francos según el horario publicado de esa semana: no hace falta contestarlos.
     mealsOpen ? francosDeLaSemana(supabase, profile.full_name ?? '', weekDays) : Promise.resolve(new Set<string>()),
@@ -167,6 +167,7 @@ export default async function DashboardPage() {
       id: c.id as string,
       title: c.title as string,
       created_at: c.created_at as string,
+      capacitacion_cerrada: c.capacitacion_cerrada === true,
     })),
     examenes: (exams ?? []).map((e) => ({
       id: e.id as string,
@@ -175,7 +176,7 @@ export default async function DashboardPage() {
     })),
     resultados: (results ?? []) as FilaResultadoCapacitacion[],
     respuestas: (misAnotadas ?? []) as FilaRespuesta[],
-  }).filter((c) => !c.completa)
+  }).filter(vaEnInicio)
 
   return (
     <div className="space-y-6 animate-slide-up">

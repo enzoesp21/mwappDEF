@@ -55,12 +55,18 @@ export default function ExamPage() {
     const supabase = createClient()
     const [{ data: exam }, { data: guia }] = await Promise.all([
       supabase.from('exams').select('id, title, passing_score').eq('guide_id', guideId).single(),
-      // Sin la columna (antes del SQL de la charla) falla y es una guía común.
-      supabase.from('guides').select('para_todos').eq('id', guideId).maybeSingle(),
+      // '*': antes del SQL de la charla no existen sus columnas y es una guía común.
+      supabase.from('guides').select('*').eq('id', guideId).maybeSingle(),
     ])
     const charla = guia?.para_todos === true
     setEsCharla(charla)
     const salir = charla ? '/dashboard' : '/dashboard/guides/' + guideId
+
+    // Una charla que ya pasó no se rinde más (Enzo, 10/11).
+    if (charla && guia?.capacitacion_cerrada === true) {
+      router.push('/dashboard')
+      return
+    }
 
     if (!exam) {
       router.push(salir)

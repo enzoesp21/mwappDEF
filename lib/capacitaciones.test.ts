@@ -8,6 +8,8 @@ import {
   armarCapacitaciones,
   fechaHoraAR,
   mejorIntento,
+  vaEnInicio,
+  vaEnPerfil,
   type FilaRespuesta,
   type FilaResultadoCapacitacion,
 } from '@/lib/capacitaciones'
@@ -172,5 +174,35 @@ describe('la fecha, en hora de Argentina', () => {
 
   test('una fecha rota no rompe la pantalla', () => {
     assert.equal(fechaHoraAR('cualquier cosa'), '')
+  })
+})
+
+describe('cuando la charla ya pasó (cerrada)', () => {
+  const cerrada = (resultados: FilaResultadoCapacitacion[], respuesta: FilaRespuesta | null = null) => {
+    const [c] = armarCapacitaciones({
+      guias: [{ ...CHARLA, capacitacion_cerrada: true }],
+      examenes: [EXAMEN],
+      resultados,
+      respuestas: respuesta ? [respuesta] : [],
+    })
+    return c
+  }
+
+  test('no va más en Inicio, aunque le falte', () => {
+    const c = cerrada([])
+    assert.equal(c.cerrada, true)
+    assert.equal(vaEnInicio(c), false)
+  })
+
+  test('en el perfil queda solo si la aprobó', () => {
+    assert.equal(vaEnPerfil(cerrada([resultado('r1', 100, true, '2026-11-06T21:25:00Z')], SI)), true)
+    assert.equal(vaEnPerfil(cerrada([resultado('r1', 80, false, '2026-11-06T21:25:00Z')], SI)), false)
+    assert.equal(vaEnPerfil(cerrada([], NO)), false)
+    assert.equal(vaEnPerfil(cerrada([])), false)
+  })
+
+  test('una abierta sigue como siempre', () => {
+    assert.equal(vaEnInicio(una([])), true)
+    assert.equal(vaEnPerfil(una([])), true)
   })
 })
