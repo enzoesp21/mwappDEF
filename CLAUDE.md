@@ -27,8 +27,11 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
 - Cada sección tiene `loading.tsx` con esqueleto (`components/navegacion/Esqueleto.tsx`):
   al tocar, aparece al instante su forma. Si se agrega una sección pesada, darle el suyo.
 - `template.tsx` en dashboard y admin anima la entrada: entre pestañas del menú entra del
-  costado según la dirección (`lib/navegacion.ts`), a lo de adentro sube apenas. Termina en
-  `transform: none` (no romper elementos `fixed`).
+  costado según la dirección (`lib/navegacion.ts`), a lo de adentro sube apenas. La animación va
+  con `animation-fill-mode: backwards`, nunca `both`: con `both`, en Safari la pantalla seguía
+  "movida" y las ventanas `fixed` aparecían al fondo de la página (la de corregir una fichada,
+  11/11). Además, las ventanas que tapan la pantalla se dibujan en el body con `EnPantalla`
+  (`components/navegacion/EnPantalla.tsx`): usarlo en toda ventana nueva.
 - `BottomNav` y `AdminNav` marcan la sección al tocar, sin esperar a que cargue.
 - **Secciones en fase beta** (`lib/beta.ts`, Enzo, 03/11: "se van a empezar a registrar el
   personal"): Resultados y Progresión.

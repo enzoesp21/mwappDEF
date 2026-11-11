@@ -23,6 +23,7 @@ import {
   type CambioCelda,
   type FichadaDelDia,
 } from '@/app/actions/planilla'
+import EnPantalla from '@/components/navegacion/EnPantalla'
 
 interface Props {
   fila: FilaPlanilla
@@ -122,6 +123,7 @@ export default function PanelCelda({ fila, dia, mes, cerrado, onCerrar }: Props)
   const tocadaAMano = celda && (celda.bloqueada || celda.origen === 'manual' || celda.origen === 'codigo')
 
   return (
+    <EnPantalla>
     <div
       className="fixed inset-0 z-[70] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
@@ -387,5 +389,6 @@ export default function PanelCelda({ fila, dia, mes, cerrado, onCerrar }: Props)
         </div>
       </div>
     </div>
+    </EnPantalla>
   )
 }

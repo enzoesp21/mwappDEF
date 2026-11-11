@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { X, Filter, PenLine, Clock } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import EnPantalla from '@/components/navegacion/EnPantalla'
 
 interface ResultRow {
   id: string
@@ -288,6 +289,7 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
       </div>
 
       {/* Signature modal */}
+      <EnPantalla>
       {signatureModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
@@ -346,6 +348,7 @@ export default function ResultsClient({ results, guideOptions }: ResultsClientPr
           </div>
         </div>
       )}
+      </EnPantalla>
     </>
   )
 }

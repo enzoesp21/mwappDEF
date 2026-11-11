@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { GRUPOS, type Grupo } from '@/lib/propinas'
 import { seccionDe, type FilaGrupo, type GrupoGuardado, type Seccion } from '@/lib/propinas-grupos'
 import { guardarGrupoPropinaAction } from '@/app/actions/propinas'
+import EnPantalla from '@/components/navegacion/EnPantalla'
 
 const porcentaje = (g: Grupo) => GRUPOS.find((x) => x.valor === g)?.corta ?? ''
 const personas = (n: number) => (n === 0 ? 'Nadie' : n === 1 ? '1 persona' : `${n} personas`)
@@ -182,6 +183,7 @@ function ElegirPorcentaje({
   }, [])
 
   return (
+    <EnPantalla>
     <div
       className="fixed inset-0 z-[70] bg-black/40 flex items-end sm:items-center justify-center p-4"
       role="dialog"
@@ -267,5 +269,6 @@ function ElegirPorcentaje({
         )}
       </div>
     </div>
+    </EnPantalla>
   )
 }

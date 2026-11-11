@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { AlertCircle, Check, Copy, KeyRound, Loader2, Shuffle, X } from 'lucide-react'
 import { resetUserPasswordAction } from '@/app/actions/users'
+import EnPantalla from '@/components/navegacion/EnPantalla'
 
 interface Props {
   userId: string
@@ -58,6 +59,7 @@ export default function CambiarClaveUsuario({ userId, nombre, onCerrar }: Props)
   }
 
   return (
+    <EnPantalla>
     <div
       className="fixed inset-0 z-[70] bg-black/40 flex items-end sm:items-center justify-center p-4"
       role="dialog"
@@ -171,5 +173,6 @@ export default function CambiarClaveUsuario({ userId, nombre, onCerrar }: Props)
         )}
       </div>
     </div>
+    </EnPantalla>
   )
 }

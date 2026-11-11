@@ -10,6 +10,7 @@ import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExp
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 import { buscarPuesto } from '@/lib/puestos'
 import CambiarClaveUsuario from '@/components/admin/CambiarClaveUsuario'
+import EnPantalla from '@/components/navegacion/EnPantalla'
 
 type UserWithResults = Profile & {
   resultsLoaded?: boolean
@@ -705,6 +706,7 @@ export default function UsersPage() {
         </div>
       )}
 
+      <EnPantalla>
       {deleteTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
@@ -766,6 +768,7 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+      </EnPantalla>
 
       {claveDe && (
         <CambiarClaveUsuario

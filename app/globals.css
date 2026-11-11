@@ -217,7 +217,10 @@ h2 {
 .transicion {
   animation-duration: 280ms;
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  animation-fill-mode: both;
+  /* backwards, no both: al terminar no queda nada aplicado. Con both, Safari
+     seguía tratando la pantalla como "movida" y las ventanas fixed (corregir
+     una fichada) aparecían al fondo de la página (Enzo, 11/11). */
+  animation-fill-mode: backwards;
 }
 .entrada-sube {
   animation-name: entra-sube;
