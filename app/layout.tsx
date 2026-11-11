@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Bodoni_Moda, Poppins } from 'next/font/google'
 import './globals.css'
 import BarraProgreso from '@/components/navegacion/BarraProgreso'
+import RegistrarSW from '@/components/navegacion/RegistrarSW'
 
 // Las letras de miradorwaikiki.com, servidas por la propia app: no se bajan de
 // Google al abrirla y no hay salto de letra mientras cargan.
@@ -60,6 +61,7 @@ export default function RootLayout({
     <html lang="es" className={`${poppins.variable} ${bodoni.variable}`}>
       <body className="bg-brand-dark text-brand-text antialiased">
         <BarraProgreso />
+        <RegistrarSW />
         {children}
       </body>
     </html>

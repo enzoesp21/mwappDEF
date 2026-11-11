@@ -50,6 +50,17 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
 - `experimental.staleTimes` (30 s): volver a una sección reciente es instantáneo.
 - Las páginas piden sus datos con `Promise.all`, no de a uno: Inicio hacía ~10 en fila.
 - Letras con `next/font` (Poppins y Bodoni Moda), sin `@import` de Google.
+- **Región:** la base está en São Paulo y las funciones de Vercel corrían en Washington (`iad1`):
+  cada consulta cruzaba el continente (se vio en `net._http_response`: `x-vercel-id`
+  `gru1::iad1::…`). `vercel.json` las pone en São Paulo (`"regions": ["gru1"]`). No sacarlo.
+- **Service worker** (`public/sw.js`, lo instala `RegistrarSW` en el layout raíz, solo en
+  producción; Enzo, 11/11: "tarda en cargar desde la pantalla de inicio"):
+  - Guarda en el teléfono solo lo fijo: `/_next/static/` (lleva la versión en el nombre), letras,
+    íconos, logo y fotos.
+  - Las páginas y los datos nunca se guardan: siempre frescos. Sin conexión muestra
+    `/sin-conexion.html`.
+  - `sw.js` se sirve con `no-cache` (`next.config.mjs`). Para tirar todo lo guardado, subir
+    `VERSION` en `sw.js`.
 
 ## Cómo se entregan los cambios de base de datos
 

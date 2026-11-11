@@ -10,6 +10,19 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [],
   },
+  // El service worker (public/sw.js) nunca se guarda viejo: así los teléfonos
+  // toman enseguida una versión nueva.
+  async headers() {
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+    ]
+  },
   experimental: {
     // Ir y volver entre secciones sin esperar: una página visitada hace menos
     // de 30 segundos se muestra al instante desde la memoria del navegador.
