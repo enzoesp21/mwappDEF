@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { misNombresDeHorario } from '@/lib/horarios-datos'
 import { CalendarDays, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import {
-  buscarEnHorario,
+  buscarPersona,
   cantidadDias,
   diasConNoche,
   etiquetaSemana,
@@ -37,7 +38,7 @@ export default async function HorarioPage({ searchParams }: Props) {
   const lunesActual = lunesDe(hoy)
 
   // Solo lo publicado: la política de la base tampoco deja ver borradores.
-  const [{ data: semanas }, { data: yo }, { data: usuarios }, pedidosRes] = await Promise.all([
+  const [{ data: semanas }, { data: yo }, { data: usuarios }, pedidosRes, propios] = await Promise.all([
     supabase
       .from('schedule_weeks')
       .select('id, week_start, data')
@@ -53,6 +54,8 @@ export default async function HorarioPage({ searchParams }: Props) {
       .eq('user_id', session.user.id)
       .gte('semana', sumarDias(lunesActual, -7))
       .order('semana', { ascending: true }),
+    // Sus nombres en Horarios según la planilla (si está vinculado).
+    misNombresDeHorario(supabase),
   ])
 
   // Si todavía no se corrió el SQL de los pedidos, la tarjeta no aparece.
@@ -110,7 +113,8 @@ export default async function HorarioPage({ searchParams }: Props) {
 
   const miNombre = (yo?.full_name as string) ?? ''
   const otros = (usuarios ?? []).map((u) => (u.full_name as string) ?? '')
-  const misFilas = buscarEnHorario(datos, miNombre, otros)
+  // Primero el vínculo de la planilla; si no hay, por nombre.
+  const misFilas = buscarPersona(datos, miNombre, otros, propios)
 
   return (
     <div className="space-y-4 animate-slide-up">

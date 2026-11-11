@@ -319,6 +319,30 @@ export function buscarEnHorario(
   return mejores.map(({ sector, persona }) => ({ sector, persona }))
 }
 
+/**
+ * Busca a una persona en el horario. Si está vinculada en la planilla
+ * (Fichadas → Empleados: su usuario y sus "nombres en Horarios"), manda eso:
+ * se buscan esos nombres exactos y nada más, aunque esa semana no figure
+ * (Enzo, 11/11: Luciano Pelizardi de Barra es "Lucho Pelizardi" y veía el
+ * horario del Luciano Pelizardi de Cocina; "Ailen Shroeder", "Federico
+ * Caruso" y otros no se encontraban por cómo están escritos). Sin vínculo,
+ * se busca por nombre como siempre (`buscarEnHorario`).
+ */
+export function buscarPersona(
+  datos: DatosHorario,
+  nombreCompleto: string,
+  otrosUsuarios: string[] = [],
+  nombresDeHorario: string[] = []
+): { sector: string; persona: PersonaHorario }[] {
+  const propios = new Set(nombresDeHorario.map(normalizarNombre).filter(Boolean))
+  if (propios.size === 0) return buscarEnHorario(datos, nombreCompleto, otrosUsuarios)
+  return datos.sectores.flatMap((s) =>
+    s.personas
+      .filter((p) => propios.has(normalizarNombre(p.nombre)))
+      .map((persona) => ({ sector: s.nombre, persona }))
+  )
+}
+
 export function semanaVacia(): DatosHorario {
   return { sectores: [] }
 }

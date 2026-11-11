@@ -16,7 +16,7 @@
  */
 
 import {
-  buscarEnHorario,
+  buscarPersona,
   cantidadDias,
   etiquetaSemana,
   lunesDe,
@@ -207,20 +207,22 @@ export interface MarcaPedido {
  * Las marcas del editor de una semana: para cada fila (por su nombre, sin
  * tildes ni mayúsculas) y cada día, el pedido aprobado o sin responder. Los
  * no aprobados no se marcan. Cada usuario se busca en el horario como en su
- * pantalla (buscarEnHorario); `sinFila` son los pedidos de gente que no se
+ * pantalla (buscarPersona: primero el vínculo de la planilla); `sinFila` son los pedidos de gente que no se
  * encuentra en esta semana.
  */
 export function marcasDelEditor(
   datos: DatosHorario,
   lunes: string,
   pedidos: PedidoConNombre[],
-  usuarios: string[]
+  usuarios: string[],
+  /** Los "nombres en Horarios" de la planilla de cada usuario vinculado (por id). */
+  nombresPorUsuario: Record<string, string[]> = {}
 ): { marcas: Record<string, Record<number, MarcaPedido>>; sinFila: string[] } {
   const marcas: Record<string, Record<number, MarcaPedido>> = {}
   const sinFila: string[] = []
   const totalDias = cantidadDias(datos)
   for (const p of pedidos) {
-    const filas = buscarEnHorario(datos, p.nombre, usuarios)
+    const filas = buscarPersona(datos, p.nombre, usuarios, nombresPorUsuario[p.userId] ?? [])
     if (filas.length === 0) sinFila.push(p.id)
     if (p.estado === 'rechazado') continue
     const claves = Array.from(new Set(filas.map((f) => normalizarNombre(f.persona.nombre))))

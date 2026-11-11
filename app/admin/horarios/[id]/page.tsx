@@ -15,6 +15,7 @@ import EditorHorario from '@/components/admin/EditorHorario'
 import { pronosticoMarDelPlata } from '@/lib/clima'
 import { marcasDelEditor } from '@/lib/pedidos-horario'
 import { faltaSqlPedidos, traerPedidosConNombre } from '@/lib/pedidos-horario-datos'
+import { nombresDeHorarioPorUsuario } from '@/lib/horarios-datos'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,9 +57,12 @@ export default async function EditarHorarioPage({ params }: Props) {
   // Los pedidos de cambio del personal para estos días (con los días extra,
   // también los del lunes siguiente).
   const dias = new Set(fechasDeLaSemana(lunes, cantidadDias(datos)))
-  const pedidosRes = await traerPedidosConNombre(supabase, { semanas: [lunes, sumarDias(lunes, 7)] })
+  const [pedidosRes, nombresPorUsuario] = await Promise.all([
+    traerPedidosConNombre(supabase, { semanas: [lunes, sumarDias(lunes, 7)] }),
+    nombresDeHorarioPorUsuario(supabase),
+  ])
   const pedidos = pedidosRes.pedidos.filter((p) => p.fechas.some((f) => dias.has(f)))
-  const { marcas, sinFila } = marcasDelEditor(datos, lunes, pedidos, pedidosRes.usuarios)
+  const { marcas, sinFila } = marcasDelEditor(datos, lunes, pedidos, pedidosRes.usuarios, nombresPorUsuario)
   const errorPedidos = pedidosRes.error
     ? faltaSqlPedidos(pedidosRes.error)
       ? 'Falta correr el SQL de pedidos de horario (supabase/add_pedidos_horario.sql) en Supabase.'

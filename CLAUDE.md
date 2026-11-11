@@ -187,6 +187,19 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   gratis y sin clave, 16 días adelante y 7 atrás, caché de 30 min). Si no contesta, el editor
   sigue andando y lo avisa en una línea: nunca puede frenar el armado del horario.
 - Lógica de totales y búsqueda en `lib/horarios.ts`; el PDF en `lib/horario-pdf.ts`.
+- **Cómo se encuentra a cada uno en el horario** (`buscarPersona`; Enzo, 11/11: "vinculá a todo
+  el personal, más que nada para los horarios"):
+  - Primero el vínculo de la planilla (Fichadas → Empleados: usuario y "nombres en Horarios"). Si
+    está vinculado, salen esos nombres exactos y nada más, aunque esa semana no figure.
+  - Si no está vinculado, se busca por nombre (`buscarEnHorario`), como antes.
+  - El personal no lee la planilla: pide sus nombres con la RPC `mis_nombres_horario`
+    (`add_horario_vinculo_planilla.sql`, `lib/horarios-datos.ts`). Lo usan su pantalla de
+    Horario, los francos de la comida y las marcas de pedidos del editor.
+  - Lo mostró Luciano Pelizardi (Barra): figura como "Lucho Pelizardi" y por nombre veía el
+    horario del de Cocina. También "Ailen Shroeder", "Federico Caruso", "Giuseppe Rivas",
+    "Jorgelina Pelizardi", "Lazarte Lautaro Daniel" y "Ornella Fernandez", escritos distinto
+    que su usuario.
+  - Si a alguien no le aparece su horario, se arregla vinculándolo en Empleados.
 - **Pedidos de horario** (pedido de Facundo, 05/11): cada uno pide un cambio para una semana.
   Puede ser que no puede venir algún día, que solo puede o no puede en una franja, u otro
   cambio, siempre con el motivo. Los encargados lo aprueban o no. Lo que decidió Enzo:

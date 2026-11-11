@@ -2,7 +2,8 @@
 // según el horario publicado de esa semana. La lógica está en lib/comida.ts.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { buscarEnHorario, validarDatos, type DatosHorario } from '@/lib/horarios'
+import { buscarPersona, validarDatos, type DatosHorario } from '@/lib/horarios'
+import { misNombresDeHorario } from '@/lib/horarios-datos'
 import { francosSegunHorario } from '@/lib/comida'
 import type { WeekDay } from '@/lib/meals-utils'
 
@@ -18,7 +19,7 @@ export async function francosDeLaSemana(
   semana: WeekDay[]
 ): Promise<Set<string>> {
   if (semana.length === 0 || !nombreCompleto.trim()) return new Set()
-  const [{ data: horario }, { data: usuarios }] = await Promise.all([
+  const [{ data: horario }, { data: usuarios }, propios] = await Promise.all([
     supabase
       .from('schedule_weeks')
       .select('data')
@@ -26,10 +27,11 @@ export async function francosDeLaSemana(
       .eq('status', 'published')
       .maybeSingle(),
     supabase.from('profiles').select('full_name'),
+    misNombresDeHorario(supabase),
   ])
   if (!horario || !validarDatos(horario.data)) return new Set()
   const datos = horario.data as DatosHorario
   const otros = (usuarios ?? []).map((u) => (u.full_name as string) ?? '')
-  const filas = buscarEnHorario(datos, nombreCompleto, otros).map((f) => f.persona)
+  const filas = buscarPersona(datos, nombreCompleto, otros, propios).map((f) => f.persona)
   return francosSegunHorario(datos, filas, semana)
 }
