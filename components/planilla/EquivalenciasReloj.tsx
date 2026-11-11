@@ -225,7 +225,7 @@ function TarjetaSinAsociar({
       {nuevo ? (
         <div className="rounded-xl border border-brand-border p-3 space-y-2">
           <p className="text-xs text-brand-muted">Va al final de la planilla con este nombre (lo podés corregir después en Empleados).</p>
-          <div className="grid sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}

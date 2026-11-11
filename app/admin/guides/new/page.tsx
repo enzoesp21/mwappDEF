@@ -325,7 +325,7 @@ export default function NewGuidePage() {
 
         {showExamSection && (
           <div className="border-t border-brand-border p-5 space-y-5 animate-slide-up">
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-brand-muted mb-1.5">
                   Título del examen

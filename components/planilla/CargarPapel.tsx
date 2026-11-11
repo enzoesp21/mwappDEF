@@ -96,7 +96,7 @@ export default function CargarPapel({ empleados, hoy, recientes }: Props) {
       </div>
 
       <section className="bg-brand-card border border-brand-border rounded-2xl p-4 space-y-3">
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label className="block">
             <span className="text-xs text-brand-muted">Empleado</span>
             <select

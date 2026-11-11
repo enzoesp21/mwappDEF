@@ -694,13 +694,15 @@ export default function EditorHorario({
             </div>
 
             <div className="overflow-x-auto">
+              {/* Ancho fijo para el nombre (Enzo, 11/11: en el celular se comía la pantalla y se
+                  veía un solo día): 140 px en el teléfono, 190 en la compu; los días se reparten el resto. */}
               <table
-                className="w-full text-xs border-collapse"
-                style={{ minWidth: 760 + diasExtra * 90 }}
+                className="w-full table-fixed text-xs border-collapse"
+                style={{ minWidth: 140 + indicesDias.length * 82 }}
               >
                 <thead>
                   <tr className="border-b border-brand-border">
-                    <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-2 w-[190px]">
+                    <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-2 w-[140px] sm:w-[190px]">
                       Persona
                     </th>
                     {indicesDias.map((i) => (
@@ -835,15 +837,16 @@ const FilaPersona = memo(function FilaPersona({
 
   return (
     <tr className="border-b border-brand-border/60 group">
-      <td className="sticky left-0 z-10 bg-brand-card px-1 py-0.5">
-        <div className="flex items-center gap-0.5">
+      <td className="sticky left-0 z-10 bg-brand-card pl-1 pr-0 sm:px-1 py-0.5">
+        <div className="flex items-center gap-0">
           <input
             type="text"
             value={persona.nombre}
             onChange={(e) => onNombre(si, pi, e.target.value)}
             placeholder="Nombre"
             aria-label="Nombre de la persona"
-            className="flex-1 min-w-0 px-1.5 py-1 rounded text-xs font-medium text-brand-text bg-transparent focus:outline-none focus:bg-brand-dark/40"
+            title={persona.nombre}
+            className="flex-1 min-w-0 px-1 py-1 rounded text-[11px] sm:text-xs font-medium text-brand-text bg-transparent focus:outline-none focus:bg-brand-dark/40"
           />
           <button
             ref={boton}
@@ -852,7 +855,7 @@ const FilaPersona = memo(function FilaPersona({
             aria-label="Opciones de la fila"
             aria-expanded={menu}
             className={cn(
-              'p-1.5 rounded text-brand-muted hover:bg-brand-dark/40 cursor-pointer flex-shrink-0',
+              'p-1 sm:p-1.5 rounded text-brand-muted hover:bg-brand-dark/40 cursor-pointer flex-shrink-0',
               menu && 'bg-brand-accent/15 text-brand-accent'
             )}
           >

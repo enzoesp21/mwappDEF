@@ -167,7 +167,7 @@ export default function VistaFichadas({
           <p className="text-sm text-brand-muted">No hay nadie adentro según el reloj.</p>
         </div>
       ) : (
-        <div id="adentro" className="grid gap-3 sm:grid-cols-2 scroll-mt-20">
+        <div id="adentro" className="grid grid-cols-1 gap-3 sm:grid-cols-2 scroll-mt-20">
           {grupos.map((g) => (
             <section key={g.nombre} className="bg-brand-card border border-brand-border rounded-2xl p-4">
               <h2 className="flex items-center justify-between gap-2">

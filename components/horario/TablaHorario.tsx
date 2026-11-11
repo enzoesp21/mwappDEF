@@ -90,13 +90,15 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
               {sector.nombre}
             </h2>
             <div className="overflow-x-auto">
+              {/* El nombre con ancho fijo y en dos renglones si es largo (Enzo, 11/11: en el celular
+                  ocupaba media pantalla y los turnos quedaban chiquitos). */}
               <table
-                className="w-full text-[11px] border-collapse"
-                style={{ minWidth: 620 + (totalDias - 7) * 75 }}
+                className="w-full table-fixed text-[11px] border-collapse"
+                style={{ minWidth: 100 + totalDias * 72 }}
               >
                 <thead>
                   <tr className="border-b border-brand-border">
-                    <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-1.5 min-w-[112px]">
+                    <th className="sticky left-0 z-10 bg-brand-card text-left font-semibold text-brand-muted px-2 py-1.5 w-[100px]">
                       &nbsp;
                     </th>
                     {findes.map((_, i) => (
@@ -123,7 +125,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                       <tr key={pi} className={cn('border-b border-brand-border/60', esVos && 'bg-brand-accent/10')}>
                         <td
                           className={cn(
-                            'sticky left-0 z-10 px-2 py-1 font-medium text-brand-text whitespace-nowrap',
+                            'sticky left-0 z-10 px-2 py-1 font-medium text-brand-text leading-tight break-words',
                             esVos ? 'bg-[#e8efe9]' : 'bg-brand-card'
                           )}
                         >
@@ -134,7 +136,7 @@ export default function TablaHorario({ datos, lunes, hoy, resaltar }: Props) {
                           <td key={i} className={cn('p-0.5', claseColumna(findes[i]))}>
                             <div
                               className={cn(
-                                'rounded px-1 py-1 text-center whitespace-nowrap',
+                                'rounded px-1 py-1.5 text-center text-xs whitespace-nowrap',
                                 claseCelda(valor, findes[i], noches[i]),
                                 hoy === i && 'ring-1 ring-brand-accent/60'
                               )}

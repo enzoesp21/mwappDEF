@@ -258,7 +258,7 @@ export default function PanelCelda({ fila, dia, mes, cerrado, onCerrar }: Props)
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{textoFalta(sugerencia)}</span>
               </p>
-              <div className="grid gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {(['habitual', 'segunHorario'] as const).map((cual) => {
                   const texto = cual === 'habitual' ? textoHabitual(sugerencia) : textoSegunHorario(sugerencia)
                   if (!texto) return null

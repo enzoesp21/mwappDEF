@@ -62,7 +62,7 @@ export default function ExportarPlanilla({ mes }: Props) {
         <div className="border-t border-brand-border/70 px-4 py-4 space-y-5">
           <div className="space-y-2">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-muted">Planilla en Excel</h3>
-            <div className="grid sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {botonExcel('mes', 'Mes entero', 'mes')}
               {botonExcel('q1', '1ra quincena (1 al 15)', 'q1')}
               {botonExcel('q2', `2da quincena (16 al ${ultimo})`, 'q2')}
@@ -111,7 +111,7 @@ export default function ExportarPlanilla({ mes }: Props) {
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-muted">
               Propina del resto del personal
             </h3>
-            <div className="grid sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {([1, 2] as const).map((q) => (
                 <Link
                   key={q}

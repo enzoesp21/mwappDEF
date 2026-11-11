@@ -110,9 +110,9 @@ export default async function AdminDashboard() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Users by puesto */}
-        <div className="bg-brand-card border border-brand-border rounded-xl p-5">
+        <div className="bg-brand-card border border-brand-border rounded-xl p-5 min-w-0">
           <h2 className="text-base font-semibold text-brand-text mb-4">Usuarios por puesto</h2>
           {puestoCounts.length === 0 ? (
             <p className="text-sm text-brand-muted">Sin datos aún.</p>
@@ -120,7 +120,7 @@ export default async function AdminDashboard() {
             <div className="space-y-2">
               {puestoCounts.map(({ puesto, count }) => (
                 <div key={puesto} className="flex items-center gap-3">
-                  <span className="text-sm text-brand-text flex-1">{puesto}</span>
+                  <span className="text-sm text-brand-text flex-1 min-w-0 truncate">{puesto}</span>
                   <div className="flex-1 bg-brand-dark rounded-full h-1.5 overflow-hidden">
                     <div
                       className="h-full bg-brand-accent rounded-full transition-all duration-500"
@@ -137,7 +137,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Approval % per guide */}
-        <div className="bg-brand-card border border-brand-border rounded-xl p-5">
+        <div className="bg-brand-card border border-brand-border rounded-xl p-5 min-w-0">
           <h2 className="text-base font-semibold text-brand-text mb-4">Aprobación por guía</h2>
           {guideStats.length === 0 ? (
             <p className="text-sm text-brand-muted">Sin guías creadas.</p>
@@ -146,7 +146,7 @@ export default async function AdminDashboard() {
               {guideStats.map((g) => (
                 <div key={g.title}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-brand-text truncate flex-1 pr-3">{g.title}</span>
+                    <span className="text-sm text-brand-text truncate flex-1 min-w-0 pr-3">{g.title}</span>
                     <span className="text-xs text-brand-muted flex-shrink-0">
                       {g.approved}/{g.total}
                     </span>

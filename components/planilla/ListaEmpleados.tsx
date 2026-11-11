@@ -248,7 +248,7 @@ function FormularioNuevo({
   return (
     <div className="bg-brand-card border border-brand-border rounded-2xl p-4 space-y-3">
       <p className="text-sm text-brand-text font-semibold">Empleado nuevo · va al final de la planilla</p>
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
@@ -344,7 +344,7 @@ function Editor({
   const listaHorario = `horario-${empleado.id}`
   return (
     <div className="border-t border-brand-border/70 px-4 py-4 space-y-3 text-sm">
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <label className="block">
           <span className="text-xs text-brand-muted">Nombre en la planilla</span>
           <input
