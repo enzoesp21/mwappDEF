@@ -75,14 +75,20 @@ function sentidoDeTecla(tipo: number): Sentido | null {
 }
 
 // Cuánto "cuesta" cada explicación posible. Gana la que menos suma.
-const COSTO_TECLA = 1 // la tecla dice otra cosa (pasa en 1 de cada 6 fichadas)
+// La tecla dice otra cosa (pasa en 1 de cada 6 fichadas). Un poco más que 1:
+// apretar mal tres veces seguidas es más raro que olvidarse de fichar una vez
+// (Brisa Di Scala, 10/11: sin entrada el 9/11, la daba adentro después de irse).
+const COSTO_TECLA = 1.05
 const COSTO_OLVIDO = 3 // dos entradas o dos salidas seguidas: se olvidó de fichar una (más raro que errarle a la tecla)
 const COSTO_TURNO_LARGO = 1.5 // un turno de 12 a 14 horas existe, pero es raro
 const COSTO_TURNO_DOBLE = 2 // de 14 a 16 horas pasa muy poco (dobles): ahí desempata la tecla
-const COSTO_IMPOSIBLE = 10 // un turno de más de 16 horas no existe: se olvidó de fichar
+// De 16 a 18 horas: un doble con cena hasta la 1 (Bruno Molina, 9 y 10/11: 09:14 a
+// 01:20). Antes era imposible y daba vuelta todas sus fichadas: figuraba adentro.
+const COSTO_TURNO_EXTRA = 2.5
+const COSTO_IMPOSIBLE = 10 // un turno de más de 18 horas no existe: se olvidó de fichar
 const COSTO_EMPIEZA_SALIENDO = 1 // sin nada antes para comparar, lo primero suele ser una entrada
 /** Ningún turno dura más que esto. */
-const TURNO_MAXIMO = 16 * HORA
+const TURNO_MAXIMO = 18 * HORA
 
 /**
  * Deduce si cada fichada es entrada o salida.
@@ -95,7 +101,7 @@ const TURNO_MAXIMO = 16 * HORA
  * necesita suponer (algoritmo de Viterbi, con los costos de arriba).
  *
  * `inicios`: desde cuándo se pidieron las fichadas sin cortes (el principio de
- * cada tramo pedido). Si la primera fichada de alguien está a más de 16 horas
+ * cada tramo pedido). Si la primera fichada de alguien está a más de 18 horas
  * de ese principio, su entrada tendría que estar entre lo pedido. Si no está,
  * empezar con una salida es suponer que se olvidó de fichar la entrada, y
  * cuesta eso.
@@ -139,6 +145,7 @@ function deducirSentidos(lista: Fichada[], cortes: number[]): FichadaLeida[] {
     if (de === a) return COSTO_OLVIDO
     if (de === 'entrada') {
       if (horas > TURNO_MAXIMO / HORA) return COSTO_IMPOSIBLE
+      if (horas > 16) return COSTO_TURNO_EXTRA
       if (horas > 14) return COSTO_TURNO_DOBLE
       if (horas > 12) return COSTO_TURNO_LARGO
     }

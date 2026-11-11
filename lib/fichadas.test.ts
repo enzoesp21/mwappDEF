@@ -144,3 +144,35 @@ describe('lo primero de lo pedido', () => {
     assert.deepEqual(sentidos(f, inicios), ['entrada', 'salida', 'salida', 'entrada'])
   })
 })
+
+describe('Bruno Molina y Brisa Di Scala, 11/11 a la 01:15 (en Ahora figuraban adentro)', () => {
+  // Lo que pide Ahora: las últimas 48 h.
+  const AHORA = Date.parse('2026-11-11T04:15:00Z') // 01:15 en Argentina
+  const DESDE = [new Date(AHORA - 48 * 3600 * 1000).toISOString()]
+
+  // El martes hubo cena: entra a las 9 y pico y se va a la 1. El 9/11 fueron 16 h 06.
+  const bruno = [
+    fichada('240', '2026-11-09 09:14', ENTRADA),
+    fichada('240', '2026-11-10 01:20', SALIDA),
+    fichada('240', '2026-11-10 09:30', ENTRADA),
+    fichada('240', '2026-11-11 01:12', SALIDA),
+  ]
+  // El 9/11 no fichó la entrada (solo la salida de las 23:34).
+  const brisa = [
+    fichada('335', '2026-11-09 23:34', SALIDA),
+    fichada('335', '2026-11-10 09:05', ENTRADA),
+    fichada('335', '2026-11-10 16:59', SALIDA),
+  ]
+
+  test('un turno de 16 h 06 es largo pero existe: las teclas de Bruno valen', () => {
+    assert.deepEqual(sentidos(bruno, DESDE), ['entrada', 'salida', 'entrada', 'salida'])
+  })
+
+  test('olvidarse una entrada es más probable que errarle tres veces a la tecla', () => {
+    assert.deepEqual(sentidos(brisa, DESDE), ['salida', 'entrada', 'salida'])
+  })
+
+  test('a la 01:15 no queda nadie adentro', () => {
+    assert.deepEqual(presentes(leerFichadas([...bruno, ...brisa], DESDE), new Map(), AHORA), [])
+  })
+})

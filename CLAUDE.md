@@ -412,12 +412,18 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - **No se le puede creer a la tecla** (Entrada/Salida): mucha gente aprieta "Entrada" al irse
   o "Salida" al llegar (1 de cada 6 en sept./oct.; Enzo lo vio en la pantalla). `leerFichadas`
   en `lib/fichadas.ts` deduce el sentido por el orden de las fichadas de cada uno (Viterbi
-  con costos: errarle a la tecla 1, olvidarse de fichar 3, turno de 12-14 h 1.5, de 14-16 h 2,
-  de más de 16 h imposible, empezar saliendo 1). Probado con casos reales: los que entran y
-  salen con "Entrada", turnos dobles (8:44 a 23:07), cierres pasada la medianoche, limpieza
-  que entra a las 4. Si se tocan los costos, volver a probar esos casos (`lib/fichadas.test.ts`,
-  con `npm test`).
-- Empezar saliendo cuesta 1 solo si la primera fichada de alguien está a menos de 16 h del
+  con costos: errarle a la tecla 1,05, olvidarse de fichar 3, turno de 12-14 h 1.5, de 14-16 h 2,
+  de 16-18 h 2.5, de más de 18 h imposible, empezar saliendo 1). Probado con casos reales: los
+  que entran y salen con "Entrada", turnos dobles (8:44 a 23:07), cierres pasada la medianoche,
+  limpieza que entra a las 4. Si se tocan los costos, volver a probar esos casos
+  (`lib/fichadas.test.ts`, con `npm test`).
+  - Martes 10/11 hubo cena (no es lo habitual) y en Ahora quedaron adentro Bruno Molina y Brisa
+    Di Scala, que ya se habían ido. Bruno hizo dobles de 09:14 a 01:20 (16 h 06): con el tope
+    en 16 h era "imposible" y la cuenta le daba vuelta todas las fichadas. Brisa no tenía la
+    entrada del 9/11: un olvido (3) empataba con tres teclas mal (3) y ganaba lo segundo. Por
+    eso el tope pasó a 18 h y la tecla a 1,05. Con todo noviembre (894 fichadas) cambiaron 16,
+    de cuatro personas, y todas pasaron a coincidir con la tecla apretada.
+- Empezar saliendo cuesta 1 solo si la primera fichada de alguien está a menos de 18 h del
   principio de lo pedido. Ese principio son los `inicios` que la página le pasa a
   `leerFichadas`; ahí la entrada pudo quedar antes. Si está más lejos, cuesta como un olvido
   (3), porque la entrada tendría que estar entre lo pedido.
