@@ -134,6 +134,25 @@ export default function PedidosHorario({ pedidos, hoy }: Props) {
           </div>
         </div>
 
+        {/* El mensaje de los encargados antes de pedir (Enzo, 11/11). */}
+        <div className="rounded-xl bg-brand-dark/25 border border-brand-border/70 px-3.5 py-3 space-y-2 text-xs text-brand-text leading-relaxed">
+          <p>
+            Les pedimos que las solicitudes de cambios de horario se realicen con responsabilidad y a conciencia,
+            priorizando aquellas situaciones que realmente lo justifiquen.
+          </p>
+          <p>
+            Cada integrante del equipo cumple un rol importante dentro de la organización diaria del restaurante, y
+            cualquier modificación de horario puede afectar la cobertura y el funcionamiento de los distintos sectores.
+          </p>
+          <p>
+            Valoramos mucho la disponibilidad, la predisposición y el compromiso de cada uno. Las solicitudes serán
+            evaluadas según las necesidades del servicio y no implican una aprobación automática.
+          </p>
+          <p className="font-serif italic text-sm text-brand-accent">
+            Les pedimos criterio y compromiso a la hora de realizarlas.
+          </p>
+        </div>
+
         {listo && (
           <p role="status" className="flex items-start gap-1.5 text-xs text-brand-success font-medium">
             <Check className="w-3.5 h-3.5 mt-px flex-shrink-0" />

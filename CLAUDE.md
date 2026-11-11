@@ -234,6 +234,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     cambiar la respuesta o dejarlo sin responder.
   - Personal: tarjeta arriba de todo en `/dashboard/horario` (`components/horario/PedidosHorario.tsx`),
     con el plazo, el formulario y "Tus pedidos". Si no se corrió el SQL, no aparece.
+    Antes del botón "Pedir un cambio" va el mensaje de los encargados (Enzo, 11/11): pedir con
+    responsabilidad, que afecta la cobertura y que no se aprueba solo. El texto es el de Enzo,
+    tal cual.
   - Encargados: `/admin/horarios/pedidos` por semana, con Aprobar / No aprobar y un
     comentario (`components/admin/PedidosAdmin.tsx`). Tarjeta en Horarios y número en el menú
     con los que faltan responder de esta semana en adelante.
