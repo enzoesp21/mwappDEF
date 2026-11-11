@@ -26,7 +26,7 @@ import LogoInicio from '@/components/navegacion/LogoInicio'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
+  { label: 'Ahora', href: '/admin', icon: LayoutDashboard, exact: true },
   { label: 'Usuarios', href: '/admin/users', icon: Users, exact: false },
   { label: 'Guías', href: '/admin/guides', icon: BookOpen, exact: false },
   { label: 'Resultados', href: '/admin/results', icon: BarChart2, exact: false },

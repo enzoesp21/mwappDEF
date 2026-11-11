@@ -433,6 +433,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Caso: Fernández Ornella el 03/11. Entró 11:18, no fichó la salida, Enzo le puso 3,5 h y
     seguía adentro.
   - Si vuelve a fichar después de la corrección, cuenta lo nuevo.
+- **El panel de los encargados abre en "Ahora en Waikiki"** (`/admin`, "Ahora" en el menú; Enzo,
+  11/11: "el dashboard no me interesa", eligió ver quién está adentro):
+  - Arriba, cuántos hay en el local por sector; después quién no fichó la salida y la lista por
+    sector, con desde qué hora. Se refresca cada 30 s.
+  - Usa lo mismo que Fichadas: `traerAdentroAhora` (`lib/fichadas-datos.ts`) y `AdentroAhora`
+    (`components/fichadas/AdentroAhora.tsx`), que también arma esa parte de Fichadas.
+  - Los números de capacitación que había antes están en Resultados.
 - Dobles: otra fichada de la misma persona a menos de 30 min es la misma. Se piden 48 h para
   ver cómo venía cada uno. Presente = su última fichada deducida es entrada; con más de 13 h
   va al recuadro de "no fichó la salida"; con más de 24 h no se muestra. La jornada arranca a

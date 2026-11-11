@@ -1,234 +1,88 @@
-import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { AlertTriangle, ChevronRight, WifiOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { Users, BookOpen, CheckCircle, TrendingUp } from 'lucide-react'
-import { formatDateTime } from '@/lib/utils'
-import { PUESTOS } from '@/lib/types'
-import { fetchProfiles, fetchExams, uniqueIds } from '@/lib/lookups'
+import { avisoConexion } from '@/lib/fichadas'
+import { traerAdentroAhora } from '@/lib/fichadas-datos'
+import AdentroAhora from '@/components/fichadas/AdentroAhora'
+import RefrescoAutomatico from '@/components/fichadas/RefrescoAutomatico'
+import { cn } from '@/lib/utils'
 
-export default async function AdminDashboard() {
+export const dynamic = 'force-dynamic'
+
+/**
+ * Lo primero que ven los encargados al abrir el panel (Enzo, 11/11: "el
+ * dashboard no me interesa"; eligió "quién está adentro ahora"). Antes había
+ * números de capacitación; esos siguen en Resultados.
+ */
+export default async function InicioAdmin() {
   const supabase = await createClient()
-
-  const [
-    { count: totalUsers },
-    { data: profiles },
-    { data: guides },
-    { data: recentResults },
-    { count: totalExams },
-    { count: totalApproved },
-  ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('puesto'),
-    supabase.from('guides').select('id, title'),
-    supabase
-      .from('exam_results')
-      .select('id, score, passed, completed_at, user_id, exam_id')
-      .order('completed_at', { ascending: false })
-      .limit(5),
-    supabase.from('exam_results').select('*', { count: 'exact', head: true }),
-    supabase
-      .from('exam_results')
-      .select('*', { count: 'exact', head: true })
-      .eq('passed', true),
-  ])
-
-  const recentRows = recentResults ?? []
-  const [recentProfiles, recentExams] = await Promise.all([
-    fetchProfiles(supabase, uniqueIds(recentRows.map((r) => r.user_id as string))),
-    fetchExams(supabase, uniqueIds(recentRows.map((r) => r.exam_id as string))),
-  ])
-
-  const recent = recentRows.map((r) => ({
-    id: r.id as string,
-    score: r.score as number,
-    passed: r.passed as boolean,
-    completed_at: r.completed_at as string,
-    full_name: recentProfiles[r.user_id as string]?.full_name ?? 'Usuario',
-    guide_title: recentExams[r.exam_id as string]?.guide_title ?? 'Examen',
-  }))
-
-  const puestoCounts = PUESTOS.map((puesto) => ({
-    puesto,
-    count: (profiles ?? []).filter((p) => p.puesto === puesto).length,
-  })).filter((p) => p.count > 0)
-
-  const guideStats = await Promise.all(
-    (guides ?? []).map(async (guide) => {
-      const { data: exam } = await supabase
-        .from('exams')
-        .select('id')
-        .eq('guide_id', guide.id)
-        .single()
-
-      if (!exam) return { title: guide.title, approved: 0, total: 0, pct: 0 }
-
-      const [{ count: total }, { count: approved }] = await Promise.all([
-        supabase
-          .from('exam_results')
-          .select('*', { count: 'exact', head: true })
-          .eq('exam_id', exam.id),
-        supabase
-          .from('exam_results')
-          .select('*', { count: 'exact', head: true })
-          .eq('exam_id', exam.id)
-          .eq('passed', true),
-      ])
-
-      const t = total ?? 0
-      const a = approved ?? 0
-      return { title: guide.title, approved: a, total: t, pct: t > 0 ? Math.round((a / t) * 100) : 0 }
-    })
-  )
+  const ahora = Date.now()
+  const { datos, error } = await traerAdentroAhora(supabase, ahora)
+  const aviso = avisoConexion(datos?.estado ?? null, ahora)
+  const fecha = new Date(ahora).toLocaleDateString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-3xl space-y-5 animate-fade-in">
+      <RefrescoAutomatico segundos={30} />
       <div>
-        <h1 className="text-2xl font-display font-bold text-brand-text">Dashboard</h1>
-        <p className="text-sm text-brand-muted mt-1">Resumen de la plataforma de capacitación</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-muted">{fecha}</p>
+        <h1 className="text-2xl font-semibold text-brand-accent leading-tight mt-1">Ahora en Waikiki</h1>
+        <p className="text-sm text-brand-muted mt-0.5">Quién está fichado en este momento. Se actualiza sola cada 30 s.</p>
       </div>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Users className="w-5 h-5" />}
-          label="Total usuarios"
-          value={String(totalUsers ?? 0)}
-        />
-        <StatCard
-          icon={<BookOpen className="w-5 h-5" />}
-          label="Guías activas"
-          value={String(guides?.length ?? 0)}
-        />
-        <StatCard
-          icon={<CheckCircle className="w-5 h-5" />}
-          label="Aprobaciones"
-          value={String(totalApproved ?? 0)}
-        />
-        <StatCard
-          icon={<TrendingUp className="w-5 h-5" />}
-          label="Exámenes totales"
-          value={String(totalExams ?? 0)}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Users by puesto */}
-        <div className="bg-brand-card border border-brand-border rounded-xl p-5 min-w-0">
-          <h2 className="text-base font-semibold text-brand-text mb-4">Usuarios por puesto</h2>
-          {puestoCounts.length === 0 ? (
-            <p className="text-sm text-brand-muted">Sin datos aún.</p>
-          ) : (
-            <div className="space-y-2">
-              {puestoCounts.map(({ puesto, count }) => (
-                <div key={puesto} className="flex items-center gap-3">
-                  <span className="text-sm text-brand-text flex-1 min-w-0 truncate">{puesto}</span>
-                  <div className="flex-1 bg-brand-dark rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="h-full bg-brand-accent rounded-full transition-all duration-500"
-                      style={{ width: `${Math.round((count / (totalUsers ?? 1)) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-semibold text-brand-accent w-6 text-right">
-                    {count}
-                  </span>
-                </div>
-              ))}
-            </div>
+      {datos && aviso.nivel !== 'ok' && (
+        <div
+          className={cn(
+            'rounded-2xl border p-4 flex gap-3',
+            aviso.nivel === 'problema'
+              ? 'bg-brand-error/10 border-brand-error/30 text-brand-error'
+              : 'bg-amber-50 border-amber-300 text-amber-900'
           )}
-        </div>
-
-        {/* Approval % per guide */}
-        <div className="bg-brand-card border border-brand-border rounded-xl p-5 min-w-0">
-          <h2 className="text-base font-semibold text-brand-text mb-4">Aprobación por guía</h2>
-          {guideStats.length === 0 ? (
-            <p className="text-sm text-brand-muted">Sin guías creadas.</p>
+        >
+          {aviso.nivel === 'problema' ? (
+            <WifiOff className="w-5 h-5 flex-shrink-0 mt-0.5" />
           ) : (
-            <div className="space-y-3">
-              {guideStats.map((g) => (
-                <div key={g.title}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-brand-text truncate flex-1 min-w-0 pr-3">{g.title}</span>
-                    <span className="text-xs text-brand-muted flex-shrink-0">
-                      {g.approved}/{g.total}
-                    </span>
-                    <span className="text-sm font-bold text-brand-accent ml-2 w-10 text-right flex-shrink-0">
-                      {g.pct}%
-                    </span>
-                  </div>
-                  <div className="bg-brand-dark rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="h-full bg-brand-accent rounded-full transition-all duration-500"
-                      style={{ width: `${g.pct}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           )}
-        </div>
-      </div>
-
-      {/* Recent results */}
-      <div className="bg-brand-card border border-brand-border rounded-xl p-5">
-        <h2 className="text-base font-semibold text-brand-text mb-4">Últimos resultados</h2>
-        {recent.length === 0 ? (
-          <p className="text-sm text-brand-muted">Sin resultados aún.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-brand-border">
-                  <th className="text-left text-xs font-medium text-brand-muted pb-3 pr-4">Usuario</th>
-                  <th className="text-left text-xs font-medium text-brand-muted pb-3 pr-4">Guía</th>
-                  <th className="text-left text-xs font-medium text-brand-muted pb-3 pr-4">Puntaje</th>
-                  <th className="text-left text-xs font-medium text-brand-muted pb-3">Fecha</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-border">
-                {recent.map((result) => {
-                  return (
-                    <tr key={result.id} className="hover:bg-brand-card-hover transition-colors duration-200">
-                      <td className="py-3 pr-4 text-brand-text">{result.full_name}</td>
-                      <td className="py-3 pr-4 text-brand-muted">{result.guide_title}</td>
-                      <td className="py-3 pr-4">
-                        <span
-                          className={
-                            result.passed
-                              ? 'text-brand-success font-semibold'
-                              : 'text-brand-error font-semibold'
-                          }
-                        >
-                          {result.score}%
-                        </span>
-                      </td>
-                      <td className="py-3 text-brand-muted text-xs">
-                        {formatDateTime(result.completed_at)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="text-sm">
+            <p className="font-semibold">{aviso.titulo}</p>
+            {aviso.detalle && <p className="mt-0.5 leading-relaxed">{aviso.detalle}</p>}
           </div>
-        )}
-      </div>
-    </div>
-  )
-}
+        </div>
+      )}
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="bg-brand-card border border-brand-border rounded-xl p-4 flex flex-col gap-2">
-      <div className="text-brand-accent">{icon}</div>
-      <div className="text-2xl font-bold text-brand-accent">{value}</div>
-      <div className="text-xs text-brand-muted">{label}</div>
+      {error || !datos ? (
+        <div className="bg-brand-error/10 border border-brand-error/30 rounded-2xl p-4 text-sm text-brand-error">
+          <p className="font-semibold">No se pudo leer quién está adentro.</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      ) : (
+        <AdentroAhora
+          conTotal
+          fichadas={datos.fichadas}
+          inicios={datos.inicios}
+          cierres={datos.cierres}
+          personas={datos.personas}
+          semanas={datos.semanas}
+          ahora={ahora}
+        />
+      )}
+
+      <Link
+        href="/admin/fichadas"
+        className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-brand-text">Fichadas</p>
+          <p className="text-xs text-brand-muted">Quién vino y se fue hoy, y el mes día por día</p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+      </Link>
     </div>
   )
 }

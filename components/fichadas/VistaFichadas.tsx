@@ -17,7 +17,6 @@ import {
   type PersonaFichero,
 } from '@/lib/fichadas'
 import {
-  agruparPorSector,
   armarTurnos,
   duracion,
   entradaSegunHorario,
@@ -31,6 +30,7 @@ import {
 import RefrescoAutomatico from '@/components/fichadas/RefrescoAutomatico'
 import NumerosDelDia, { type FilaDelDia } from '@/components/fichadas/NumerosDelDia'
 import NombreConHorario from '@/components/fichadas/NombreConHorario'
+import AdentroAhora from '@/components/fichadas/AdentroAhora'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -80,8 +80,6 @@ export default function VistaFichadas({
 
   const lista = presentes(leidas, personas, ahora, cierres)
   const adentro = lista.filter((p) => p.situacion === 'adentro')
-  const sinSalida = lista.filter((p) => p.situacion === 'sin-salida')
-  const grupos = agruparPorSector(adentro, (p) => horario.sectorDe(p.userid, hoy), horario.orden)
 
   const turnos = armarTurnos(leidas, ahora, TURNO_LARGO)
   const { fueron, vinieron } = quienesHoy(
@@ -144,50 +142,14 @@ export default function VistaFichadas({
 
       <NumerosDelDia adentro={adentro.length} fueron={fueron} vinieron={vinieron} />
 
-      {sinSalida.length > 0 && (
-        <section className="bg-amber-50 border border-amber-300 rounded-2xl p-4">
-          <h2 className="text-sm font-semibold text-amber-900 flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4" />
-            Entraron hace más de 13 horas y no ficharon la salida
-          </h2>
-          <ul className="mt-2 space-y-1">
-            {sinSalida.map((p) => (
-              <li key={p.userid} className="text-sm text-amber-900 flex justify-between gap-3">
-                <span className="truncate">{p.nombre}</span>
-                <span className="text-xs tabular-nums whitespace-nowrap">entró {horaArgentina(p.entrada)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {grupos.length === 0 ? (
-        <div id="adentro" className="border border-dashed border-brand-border rounded-2xl p-8 text-center scroll-mt-20">
-          <Fingerprint className="w-8 h-8 text-brand-muted mx-auto mb-2" />
-          <p className="text-sm text-brand-muted">No hay nadie adentro según el reloj.</p>
-        </div>
-      ) : (
-        <div id="adentro" className="grid grid-cols-1 gap-3 sm:grid-cols-2 scroll-mt-20">
-          {grupos.map((g) => (
-            <section key={g.nombre} className="bg-brand-card border border-brand-border rounded-2xl p-4">
-              <h2 className="flex items-center justify-between gap-2">
-                <Etiqueta>{g.nombre}</Etiqueta>
-                <span className="text-sm font-bold text-brand-accent tabular-nums">{g.items.length}</span>
-              </h2>
-              <ul className="mt-2 divide-y divide-brand-border/50">
-                {g.items.map((p) => (
-                  <li key={p.userid} className="flex items-start gap-2 py-1.5">
-                    <NombreConHorario nombre={p.nombre} entrada={entradaSegunHorario(horario.celdaDe(p.userid, hoy))} />
-                    <span className="text-xs text-brand-muted tabular-nums whitespace-nowrap pt-0.5">
-                      desde {horaArgentina(p.entrada)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
+      <AdentroAhora
+        fichadas={fichadas}
+        inicios={inicios}
+        cierres={cierres}
+        personas={listaPersonas}
+        semanas={semanas}
+        ahora={ahora}
+      />
 
       <section className="space-y-3 pt-2">
         <div className="flex items-center justify-between gap-2">

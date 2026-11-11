@@ -1,12 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import {
-  desdeParaPedir,
-  type CierreAMano,
-  type EstadoFichero,
-  type Fichada,
-  type PersonaFichero,
-} from '@/lib/fichadas'
+import { desdeParaPedir, type EstadoFichero, type Fichada, type PersonaFichero } from '@/lib/fichadas'
+import { armarCierres, traerFichadas } from '@/lib/fichadas-datos'
 import { lunesDe, sumarDias } from '@/lib/horarios'
 import type { SemanaConDatos } from '@/lib/fichadas-reporte'
 import VistaFichadas, { Encabezado } from '@/components/fichadas/VistaFichadas'
@@ -14,28 +9,6 @@ import VistaFichadas, { Encabezado } from '@/components/fichadas/VistaFichadas'
 export const dynamic = 'force-dynamic'
 
 const HORA = 3600 * 1000
-const COLUMNAS = 'logid, userid, fecha_hora, tipo, dispositivo'
-const POR_PAGINA = 1000 // Supabase no devuelve más de 1000 filas por consulta
-
-type Cliente = Awaited<ReturnType<typeof createClient>>
-
-/** Todas las fichadas entre dos horas, de a 1000. */
-async function traerFichadas(supabase: Cliente, desde: string, hasta: string) {
-  const todas: Fichada[] = []
-  for (let fila = 0; ; fila += POR_PAGINA) {
-    const { data, error } = await supabase
-      .from('fichadas')
-      .select(COLUMNAS)
-      .gte('fecha_hora', desde)
-      .lte('fecha_hora', hasta)
-      .order('fecha_hora', { ascending: true })
-      .order('logid', { ascending: true })
-      .range(fila, fila + POR_PAGINA - 1)
-    if (error) return { data: null, error }
-    todas.push(...((data ?? []) as Fichada[]))
-    if (!data || data.length < POR_PAGINA) return { data: todas, error: null }
-  }
-}
 
 /** "2026-10" del mes pedido, o el actual si no vino o vino mal. */
 function mesPedido(valor: string | undefined, actual: string): string {
@@ -125,20 +98,7 @@ export default async function FichadasPage({ searchParams }: { searchParams: { m
   const inicios = esteMes || desdeAhora <= hastaMes ? [desdeMes] : [desdeMes, desdeAhora]
 
   // Cada día resuelto a mano, para cada número del reloj de esa persona.
-  const relojesDe = new Map<string, string[]>()
-  for (const a of aliasRes.data ?? []) {
-    if (!a.empleado_id) continue
-    relojesDe.set(a.empleado_id as string, [...(relojesDe.get(a.empleado_id as string) ?? []), a.userid as string])
-  }
-  const cierres: CierreAMano[] = (celdasRes.data ?? [])
-    .filter((c) => (c.horas !== null && Number(c.horas) > 0) || c.codigo)
-    .flatMap((c) =>
-      (relojesDe.get(c.empleado_id as string) ?? []).map((userid) => ({
-        userid,
-        fecha: `${(c.periodo as string).slice(0, 8)}${String(c.dia).padStart(2, '0')}`,
-        cuando: c.updated_at as string,
-      }))
-    )
+  const cierres = armarCierres(celdasRes.data ?? [], aliasRes.data ?? [])
 
   return (
     <VistaFichadas
