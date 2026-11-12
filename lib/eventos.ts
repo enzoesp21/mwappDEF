@@ -35,8 +35,12 @@ export const COMIDAS: { valor: Comida; texto: string }[] = [
   { valor: 'cena', texto: 'Cena' },
 ]
 
-/** Los salones de Waikiki que nombran las guías. Se puede escribir otro. */
-export const SALONES = ['Salón principal', 'Ala Wai']
+/**
+ * Los salones para elegir con un toque: los que nombran las guías y los de la
+ * planilla de eventos de Enzo (Hula Kai; "AW" es Ala Wai). Se puede escribir
+ * otro. Mirador 9 no va: es otro lugar.
+ */
+export const SALONES = ['Salón principal', 'Ala Wai', 'Hula Kai']
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',

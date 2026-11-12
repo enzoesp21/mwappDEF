@@ -263,8 +263,12 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Un evento privado **ocupa el salón**: el día se pinta de rosa y dice "Salón ocupado".
   - Al cargar algo en un salón ocupado ese día, la ventana avisa (`ocupanElSalon`), pero deja
     guardar.
-  - Los salones que nombran las guías son "Salón principal" y "Ala Wai" (`SALONES`). Se puede
-    escribir otro, y queda para elegir.
+  - Los salones para elegir con un toque son "Salón principal", "Ala Wai" y "Hula Kai"
+    (`SALONES`). Se puede escribir otro, y queda para elegir. En la planilla de Enzo, "AW" es
+    Ala Wai. Lo de "M9" (Mirador 9) no se carga: es otro lugar.
+  - Los eventos privados de la planilla de Enzo (sept. a dic.) los cargó
+    `add_eventos_privados_noviembre.sql`, sin la barra de tragos ("no tiene relevancia"). Gador
+    (12/11 y 10/12) y Ética Paella (27/11) quedaron con "a confirmar" en los detalles.
 - **Quién lo ve**:
   - los admin siempre;
   - el resto, solo si Enzo le toca "Eventos" en Usuarios (`profiles.ve_eventos`). Nadie se lo da

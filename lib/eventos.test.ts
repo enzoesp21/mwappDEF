@@ -118,7 +118,7 @@ describe('el salón ocupado', () => {
   test('para elegir: los conocidos y los que ya se usaron, sin repetir', () => {
     assert.deepEqual(
       salonesParaElegir([...lista, ev({ id: 'x', salon: 'Terraza' }), ev({ id: 'y', tipo: 'mesa', salon: '' })]),
-      ['Salón principal', 'Ala Wai', 'Terraza']
+      ['Salón principal', 'Ala Wai', 'Hula Kai', 'Terraza']
     )
     assert.deepEqual(ocupanElSalon(lista, '2026-11-21', ''), [])
   })
