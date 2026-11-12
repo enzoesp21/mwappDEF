@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote, KeyRound } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote, KeyRound, CalendarHeart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setUserPuestoAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setVeEventosAction, setUserPuestoAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 import { buscarPuesto } from '@/lib/puestos'
 import CambiarClaveUsuario from '@/components/admin/CambiarClaveUsuario'
@@ -133,6 +133,21 @@ export default function UsersPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === user.id ? { ...u, carga_propinas: destino } : u))
       )
+    } else {
+      setStatusError(res.error)
+    }
+  }
+
+  const [cambiandoEventos, setCambiandoEventos] = useState<string | null>(null)
+
+  async function cambiarEventos(user: UserWithResults) {
+    const destino = !user.ve_eventos
+    setCambiandoEventos(user.id)
+    setStatusError(null)
+    const res = await setVeEventosAction(user.id, destino)
+    setCambiandoEventos(null)
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, ve_eventos: destino } : u)))
     } else {
       setStatusError(res.error)
     }
@@ -541,6 +556,34 @@ export default function UsersPage() {
                         <>
                           <Banknote className="w-3.5 h-3.5" />
                           {user.carga_propinas ? 'Carga propinas' : 'Propinas'}
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {/* Los admin ven el calendario siempre: el permiso es para encargados de barra, recepción, etc. */}
+                  {user.role !== 'admin' && (
+                    <button
+                      onClick={() => cambiarEventos(user)}
+                      disabled={cambiandoEventos === user.id}
+                      aria-pressed={Boolean(user.ve_eventos)}
+                      title={
+                        user.ve_eventos
+                          ? 'Ve y carga el calendario de eventos y mesas personalizadas. Tocá para sacarle el permiso.'
+                          : 'Darle permiso para ver y cargar el calendario de eventos y mesas personalizadas.'
+                      }
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer min-h-[36px] whitespace-nowrap disabled:opacity-50',
+                        user.ve_eventos
+                          ? 'bg-brand-accent text-white hover:bg-brand-accent-hover'
+                          : 'bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10'
+                      )}
+                    >
+                      {cambiandoEventos === user.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+                      ) : (
+                        <>
+                          <CalendarHeart className="w-3.5 h-3.5" />
+                          {user.ve_eventos ? 'Ve eventos' : 'Eventos'}
                         </>
                       )}
                     </button>

@@ -176,6 +176,36 @@ export async function setCargaPropinasAction(
 }
 
 /**
+ * Da o saca el permiso de ver y cargar el calendario de eventos y mesas
+ * personalizadas (Enzo elige a quién: encargados de barra, recepción, etc.).
+ * Los admin lo ven siempre.
+ */
+export async function setVeEventosAction(userId: string, valor: boolean): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ ve_eventos: valor })
+    .eq('id', userId)
+    .select('id')
+  if (error) {
+    return {
+      ok: false,
+      error: /ve_eventos/.test(error.message)
+        ? 'Falta correr el SQL del calendario de eventos (supabase/add_eventos.sql) en Supabase.'
+        : 'No se pudo guardar: ' + error.message,
+    }
+  }
+  if (!data || data.length === 0) return { ok: false, error: 'No se guardó: no se encontró el usuario.' }
+
+  revalidatePath('/admin/users')
+  revalidatePath('/admin/eventos')
+  revalidatePath('/dashboard', 'layout')
+  return { ok: true }
+}
+
+/**
  * Corrige el puesto de alguien (hay quien se registra en el que no es).
  * Cambia las guías que ve: su recorrido sale de guide_paths según el puesto.
  */

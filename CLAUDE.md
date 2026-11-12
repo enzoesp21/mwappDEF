@@ -246,6 +246,36 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Lógica pura y pruebas en `lib/pedidos-horario.ts`. Lo que se lee de la base, en
     `lib/pedidos-horario-datos.ts`.
 
+## Eventos y mesas personalizadas
+
+- Calendario interno (Enzo, 11/11) de las **mesas personalizadas** (mesas de 20 con menú armado,
+  etc.) y de los **eventos privados** (bodas, cumpleaños, empresas), para saber cuándo tenemos el
+  salón y cuándo no.
+- Cada uno lleva fecha, tipo, comida (desayuno, almuerzo, merienda o cena), horario (desde y
+  hasta opcional), nombre, pax, salón y "menú y detalles".
+  - La mesa necesita hora y pax; el evento privado puede ir sin ellos.
+- Un evento privado **ocupa el salón**: el día se pinta de rosa y dice "Salón ocupado".
+  - Al cargar algo en un salón ocupado ese día, la ventana avisa (`ocupanElSalon`), pero deja
+    guardar.
+  - Los salones que nombran las guías son "Salón principal" y "Ala Wai" (`SALONES`). Se puede
+    escribir otro, y queda para elegir.
+- **Quién lo ve**:
+  - los admin siempre;
+  - el resto, solo si Enzo le toca "Eventos" en Usuarios (`profiles.ve_eventos`). Nadie se lo da
+    solo (`protect_profile_fields`).
+  - Quien lo ve también carga, cambia y borra.
+  - La base anota quién lo cargó y quién lo cambió (trigger `eventos_quien`).
+  - El freno de verdad es RLS con `puede_ver_eventos()`.
+  - SQL: `add_eventos.sql`. Reescribe `protect_profile_fields` entero y se cancela si alguien le
+    agregó otra regla: si se suma una regla nueva, cambiar el conteo del freno.
+- Pantallas: `/admin/eventos` ("Eventos" en el menú) y `/dashboard/eventos` (el resto vuelve a
+  Inicio). Las arma `PaginaEventos`:
+  - el mes con puntos por día, el día elegido y "Próximos";
+  - la ventana `FormEvento`, con `EnPantalla`.
+  - En Inicio, quien tiene el permiso ve una tarjeta con lo de hoy o de los próximos 7 días.
+- Lógica pura y pruebas en `lib/eventos.ts`; lo de la base en `lib/eventos-datos.ts`; acciones en
+  `app/actions/eventos.ts`.
+
 ## Comida del personal
 
 - Cada uno elige, para la semana que viene, el menú de cada comida: almuerzo todos los días y

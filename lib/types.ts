@@ -29,6 +29,8 @@ export interface Profile {
   experience: 'nuevo' | 'experimentado' | null
   /** Puede cargar propinas (cajeros). Undefined hasta que se corra add_propinas.sql. */
   carga_propinas?: boolean
+  /** Ve y carga el calendario de eventos. Undefined hasta que se corra add_eventos.sql. */
+  ve_eventos?: boolean
   created_at: string
 }
 

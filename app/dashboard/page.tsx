@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
 import FaltasGraves from '@/components/FaltasGraves'
-import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp } from 'lucide-react'
+import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp, CalendarHeart } from 'lucide-react'
 import TarjetaCharla from '@/components/capacitacion/TarjetaCharla'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
@@ -15,6 +15,9 @@ import { misPropinas } from '@/lib/propinas-datos'
 import { fechaConDia, pesos } from '@/lib/propinas'
 import { datosNivel } from '@/lib/progresion'
 import { EN_BETA } from '@/lib/beta'
+import { hoyEnArgentina, sumarDias } from '@/lib/horarios'
+import { traerEventos } from '@/lib/eventos-datos'
+import { textoComida, textoHorario } from '@/lib/eventos'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -47,6 +50,9 @@ export default async function DashboardPage() {
 
   if (!profile) redirect('/login')
 
+  const veEventos = profile.ve_eventos === true && profile.status === 'approved'
+  const hoy = hoyEnArgentina()
+
   // En período de prueba solo cuenta la guía principal: es la única habilitada.
   const enPrueba = profile.experience === 'nuevo'
   const consultaGuias = supabase
@@ -73,6 +79,7 @@ export default async function DashboardPage() {
     { data: charlas },
     { data: misAnotadas },
     francos,
+    eventosSemana,
   ] = await Promise.all([
     (enPrueba ? consultaGuias.eq('is_primary', true) : consultaGuias)
       // La guía principal va siempre primera, sin importar cuándo se creó.
@@ -113,6 +120,8 @@ export default async function DashboardPage() {
     supabase.from('capacitacion_asistencias').select('*').eq('user_id', session.user.id),
     // Sus francos según el horario publicado de esa semana: no hace falta contestarlos.
     mealsOpen ? francosDeLaSemana(supabase, profile.full_name ?? '', weekDays) : Promise.resolve(new Set<string>()),
+    // Eventos y mesas de los próximos 7 días, para quien tiene el permiso (lo da Enzo en Usuarios).
+    veEventos ? traerEventos(supabase, hoy, sumarDias(hoy, 6)) : Promise.resolve(null),
   ])
 
   // Tu progreso: las guías de tu puesto. Las capacitaciones para todo el
@@ -268,6 +277,44 @@ export default async function DashboardPage() {
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
         </Link>
       )}
+
+      {veEventos && eventosSemana && !eventosSemana.error && (() => {
+        const lista = eventosSemana.eventos
+        const deHoy = lista.filter((e) => e.fecha === hoy)
+        const siguiente = deHoy[0] ?? lista[0]
+        return (
+          <Link
+            href="/dashboard/eventos"
+            className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+          >
+            <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+              <CalendarHeart className="w-5 h-5 text-brand-accent" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-brand-text">
+                {deHoy.length > 0
+                  ? `Hoy: ${deHoy.length} ${deHoy.length === 1 ? 'mesa o evento' : 'mesas o eventos'}`
+                  : lista.length > 0
+                    ? `Esta semana: ${lista.length} ${lista.length === 1 ? 'mesa o evento' : 'mesas o eventos'}`
+                    : 'Eventos y mesas'}
+              </p>
+              <p className="text-xs text-brand-muted truncate">
+                {siguiente
+                  ? [
+                      siguiente.fecha === hoy ? '' : fechaConDia(siguiente.fecha),
+                      siguiente.nombre,
+                      textoHorario(siguiente) || textoComida(siguiente.comida).toLowerCase(),
+                      siguiente.salon,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  : 'Nada cargado para los próximos 7 días'}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+          </Link>
+        )
+      })()}
 
       {profile.puesto === 'Mozos' && (
         <Link
