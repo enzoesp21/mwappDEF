@@ -6,6 +6,7 @@ import {
   fechaLarga,
   grillaDelMes,
   leerEvento,
+  marcaDelDia,
   limitesDelMes,
   nombreDelMes,
   ocupanElSalon,
@@ -141,5 +142,29 @@ describe('orden y textos', () => {
     assert.equal(e.hora, '21:00')
     assert.equal(e.pax, null)
     assert.equal(e.notas, null)
+  })
+})
+
+describe('la marquita del día en el editor de horarios', () => {
+  test('sin nada no hay marca', () => {
+    assert.equal(marcaDelDia([]), null)
+  })
+
+  test('un evento privado ocupa el salón; en orden de comida y hora, y suma las personas', () => {
+    const m = marcaDelDia([
+      ev({ id: 'm', tipo: 'mesa', comida: 'almuerzo', hora: '13:00', nombre: 'Sebastián', pax: 20, salon: '' }),
+      ev({ id: 'b', nombre: 'Boda', pax: 120 }),
+      ev({ id: 'c', tipo: 'mesa', comida: 'cena', hora: null, nombre: 'Carlos', pax: 30, salon: '' }),
+    ])
+    assert.deepEqual(m && { texto: m.texto, ocupa: m.ocupa }, { texto: 'Evento', ocupa: true })
+    assert.equal(
+      m?.detalle,
+      '1 evento + 2 mesas: Sebastián (almuerzo, 13:00, 20 pax) · Boda (cena, 21:00, 120 pax, Ala Wai) · Carlos (cena, 30 pax) — 170 pax en total'
+    )
+  })
+
+  test('una mesa sola', () => {
+    assert.equal(marcaDelDia([ev({ id: 'm', tipo: 'mesa' })])?.texto, '1 mesa')
+    assert.equal(marcaDelDia([ev({ id: 'm', tipo: 'mesa' })])?.ocupa, false)
   })
 })

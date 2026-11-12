@@ -16,6 +16,7 @@ import { pronosticoMarDelPlata } from '@/lib/clima'
 import { marcasDelEditor } from '@/lib/pedidos-horario'
 import { faltaSqlPedidos, traerPedidosConNombre } from '@/lib/pedidos-horario-datos'
 import { nombresDeHorarioPorUsuario } from '@/lib/horarios-datos'
+import { traerEventos } from '@/lib/eventos-datos'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,9 +58,11 @@ export default async function EditarHorarioPage({ params }: Props) {
   // Los pedidos de cambio del personal para estos días (con los días extra,
   // también los del lunes siguiente).
   const dias = new Set(fechasDeLaSemana(lunes, cantidadDias(datos)))
-  const [pedidosRes, nombresPorUsuario] = await Promise.all([
+  const [pedidosRes, nombresPorUsuario, eventosRes] = await Promise.all([
     traerPedidosConNombre(supabase, { semanas: [lunes, sumarDias(lunes, 7)] }),
     nombresDeHorarioPorUsuario(supabase),
+    // Las mesas personalizadas y eventos privados de estos días (Enzo, 12/11).
+    traerEventos(supabase, lunes, sumarDias(lunes, cantidadDias(datos) - 1)),
   ])
   const pedidos = pedidosRes.pedidos.filter((p) => p.fechas.some((f) => dias.has(f)))
   const { marcas, sinFila } = marcasDelEditor(datos, lunes, pedidos, pedidosRes.usuarios, nombresPorUsuario)
@@ -100,6 +103,8 @@ export default async function EditarHorarioPage({ params }: Props) {
         marcas={marcas}
         sinFila={sinFila}
         errorPedidos={errorPedidos}
+        eventos={eventosRes.eventos}
+        errorEventos={eventosRes.error}
       />
     </div>
   )

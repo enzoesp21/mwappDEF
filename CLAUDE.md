@@ -279,6 +279,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - el mes con puntos por día, el día elegido y "Próximos";
   - la ventana `FormEvento`, con `EnPantalla`.
   - En Inicio, quien tiene el permiso ve una tarjeta con lo de hoy o de los próximos 7 días.
+  - **En el editor de horarios** (Enzo, 12/11: "que a Facu cuando hace el horario ya le aparezca
+    que ese día hay algo"):
+    - abajo del clima va "Eventos y mesas de la semana" (`EventosSemana`), día por día;
+    - en el encabezado de cada día de la tabla, una marca (`marcaDelDia`): "Evento" en rosa si
+      hay un evento privado, si no "1 mesa" o "2 mesas" en verde. El detalle está en el recuadro de
+      arriba (en la computadora, también al pasar el mouse).
+    - Solo se muestra; no cambia el horario.
 - Lógica pura y pruebas en `lib/eventos.ts`; lo de la base en `lib/eventos-datos.ts`; acciones en
   `app/actions/eventos.ts`.
 

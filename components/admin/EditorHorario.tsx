@@ -30,6 +30,7 @@ import {
   normalizarNombre,
   numeroDeDia,
   quitarDiaExtra,
+  sumarDias,
   ultimoDiaExtraTieneDatos,
   NOCHES_POR_DEFECTO,
   diasConNoche,
@@ -43,6 +44,8 @@ import {
 import { claseCelda, claseColumna, claseEncabezadoDia, REFERENCIAS } from '@/components/horario/estilos'
 import { guardarSemanaAction, publicarSemanaAction } from '@/app/actions/horarios'
 import ClimaSemana from '@/components/admin/ClimaSemana'
+import EventosSemana from '@/components/admin/EventosSemana'
+import { eventosPorDia, marcaDelDia, type Evento } from '@/lib/eventos'
 import ResumenSemana from '@/components/admin/ResumenSemana'
 import PedidosAdmin from '@/components/admin/PedidosAdmin'
 import type { ClimaDia } from '@/lib/clima'
@@ -68,6 +71,9 @@ interface Props {
   sinFila: string[]
   /** Si no se pudieron leer los pedidos (por ejemplo, falta el SQL). */
   errorPedidos: string | null
+  /** Las mesas personalizadas y los eventos privados de estos días (se cargan en Eventos). */
+  eventos: Evento[]
+  errorEventos: string | null
 }
 
 type EstadoGuardado =
@@ -94,6 +100,8 @@ export default function EditorHorario({
   marcas,
   sinFila,
   errorPedidos,
+  eventos,
+  errorEventos,
 }: Props) {
   const router = useRouter()
   const pedidosSinResponder = pedidos.filter((p) => p.estado === 'pendiente').length
@@ -374,6 +382,11 @@ export default function EditorHorario({
     [claveNoches, diasExtra]
   )
   const indicesDias = useMemo(() => Array.from({ length: totalDias }, (_, i) => i), [totalDias])
+  // La marquita de cada día de la tabla: si ese día hay mesas personalizadas o un evento privado.
+  const marcasEventos = useMemo(() => {
+    const porDia = eventosPorDia(eventos)
+    return indicesDias.map((i) => marcaDelDia(porDia.get(sumarDias(lunes, i)) ?? []))
+  }, [eventos, indicesDias, lunes])
   const generales = useMemo(() => totalesGenerales(datos, noches), [datos, noches])
 
   function agregarSector() {
@@ -544,6 +557,8 @@ export default function EditorHorario({
 
       <ClimaSemana lunes={lunes} totalDias={totalDias} clima={clima} />
 
+      <EventosSemana lunes={lunes} totalDias={totalDias} eventos={eventos} error={errorEventos} />
+
       <div className="bg-brand-card border border-brand-border rounded-xl p-3">
         <p className="text-xs font-semibold text-brand-text mb-2">
           ¿Hay algún feriado esta semana? Tocá el día y se pinta como sábado y domingo.
@@ -710,6 +725,17 @@ export default function EditorHorario({
                         {nombreDiaCorto(i)} {numeroDeDia(lunes, i)}
                         {(datos.feriados ?? []).includes(i) && (
                           <span className="block text-[9px] font-bold uppercase tracking-wider">Feriado</span>
+                        )}
+                        {marcasEventos[i] && (
+                          <span
+                            title={marcasEventos[i]!.detalle}
+                            className={cn(
+                              'mt-0.5 mx-auto block w-fit max-w-full truncate px-1.5 py-px rounded-full text-[9px] font-bold normal-case tracking-normal',
+                              marcasEventos[i]!.ocupa ? 'bg-rose-700 text-white' : 'bg-brand-accent text-white'
+                            )}
+                          >
+                            {marcasEventos[i]!.texto}
+                          </span>
                         )}
                       </th>
                     ))}

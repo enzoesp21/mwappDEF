@@ -213,6 +213,34 @@ export function salonesOcupados(eventos: Evento[], fecha: string): string[] {
   return vistos
 }
 
+/**
+ * La marquita de un día en el editor de horarios (pedido de Enzo, 12/11: que
+ * Facu vea al armar la semana que ese día hay algo). Un evento privado manda:
+ * ocupa el salón. null si ese día no hay nada.
+ */
+export function marcaDelDia(eventosDelDia: Evento[]): { texto: string; ocupa: boolean; detalle: string } | null {
+  if (eventosDelDia.length === 0) return null
+  const lista = ordenarEventos(eventosDelDia)
+  const privados = lista.filter((e) => e.tipo === 'evento').length
+  const mesas = lista.length - privados
+  const partes = [
+    privados ? `${privados} evento${privados === 1 ? '' : 's'}` : '',
+    mesas ? `${mesas} mesa${mesas === 1 ? '' : 's'}` : '',
+  ].filter(Boolean)
+  const pax = lista.reduce((t, e) => t + (e.pax ?? 0), 0)
+  return {
+    // Corto, para que entre en la columna del día: el evento privado manda.
+    texto: privados ? (privados === 1 ? 'Evento' : `${privados} eventos`) : partes[0],
+    ocupa: privados > 0,
+    detalle:
+      partes.join(' + ') +
+      ': ' +
+      lista
+        .map((e) => `${e.nombre} (${[textoComida(e.comida).toLowerCase(), textoHorario(e), e.pax !== null ? `${e.pax} pax` : '', e.salon].filter(Boolean).join(', ')})`)
+        .join(' · ') + (pax ? ` — ${pax} pax en total` : ''),
+  }
+}
+
 /** Los salones para elegir: los conocidos y los que ya se usaron. */
 export function salonesParaElegir(eventos: Evento[]): string[] {
   const lista = [...SALONES]
