@@ -16,6 +16,7 @@ export interface Evento {
   horaFin: string | null
   nombre: string
   pax: number | null
+  /** '' si todavía no se sabe (una mesa puede ir sin salón: "Salón a definir"). */
   salon: string
   notas: string | null
 }
@@ -88,7 +89,8 @@ export function validarEvento(
   if (!COMIDAS.some((c) => c.valor === d.comida)) return { ok: false, error: 'Elegí la comida: desayuno, almuerzo, merienda o cena.' }
   if (!nombre) return { ok: false, error: 'Poné un nombre (a nombre de quién está o qué evento es).' }
   if (nombre.length > 120) return { ok: false, error: 'El nombre es muy largo (hasta 120 letras).' }
-  if (!salon) return { ok: false, error: 'Elegí el salón.' }
+  // El evento privado ocupa un salón: tiene que decir cuál. La mesa puede quedar a definir.
+  if (!salon && d.tipo === 'evento') return { ok: false, error: 'Elegí el salón: el evento privado lo ocupa.' }
   if (salon.length > 60) return { ok: false, error: 'El nombre del salón es muy largo.' }
   if (hora && !HORA.test(hora)) return { ok: false, error: 'La hora no es válida.' }
   if (horaFin && !HORA.test(horaFin)) return { ok: false, error: 'La hora de fin no es válida.' }
@@ -97,7 +99,6 @@ export function validarEvento(
   if (d.pax !== null && (!Number.isInteger(d.pax) || d.pax < 1 || d.pax > 2000)) {
     return { ok: false, error: 'La cantidad de personas tiene que ser un número entre 1 y 2000.' }
   }
-  if (d.tipo === 'mesa' && !hora) return { ok: false, error: 'Poné a qué hora es la mesa.' }
   if (d.tipo === 'mesa' && d.pax === null) return { ok: false, error: 'Poné cuántas personas son.' }
   if (notas.length > 2000) return { ok: false, error: 'Los detalles son muy largos (hasta 2000 letras).' }
 
@@ -183,6 +184,11 @@ export function textoHorario(e: Pick<Evento, 'hora' | 'horaFin'>): string {
   return e.horaFin ? `${e.hora} a ${e.horaFin}` : e.hora
 }
 
+/** El salón, o "Salón a definir" si todavía no se sabe. */
+export function textoSalon(salon: string): string {
+  return salon.trim() || 'Salón a definir'
+}
+
 export function mismoSalon(a: string, b: string): boolean {
   return normalizarNombre(a) === normalizarNombre(b)
 }
@@ -210,6 +216,6 @@ export function salonesOcupados(eventos: Evento[], fecha: string): string[] {
 /** Los salones para elegir: los conocidos y los que ya se usaron. */
 export function salonesParaElegir(eventos: Evento[]): string[] {
   const lista = [...SALONES]
-  for (const e of eventos) if (!lista.some((s) => mismoSalon(s, e.salon))) lista.push(e.salon)
+  for (const e of eventos) if (e.salon.trim() && !lista.some((s) => mismoSalon(s, e.salon))) lista.push(e.salon)
   return lista
 }

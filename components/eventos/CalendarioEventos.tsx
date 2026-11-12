@@ -15,6 +15,7 @@ import {
   sumarMeses,
   textoComida,
   textoHorario,
+  textoSalon,
   textoTipo,
   type Evento,
 } from '@/lib/eventos'
@@ -67,7 +68,7 @@ function Detalle({ e }: { e: Evento }) {
       )}
       <span className="inline-flex items-center gap-1 min-w-0">
         <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-        <span className="truncate">{e.salon}</span>
+        <span className={cn('truncate', !e.salon && 'italic pr-1')}>{textoSalon(e.salon)}</span>
       </span>
     </p>
   )
@@ -309,7 +310,7 @@ export default function CalendarioEventos({ base, mes, hoy, dia, eventos, proxim
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-brand-text truncate">{e.nombre}</span>
                     <span className="block text-xs text-brand-muted truncate">
-                      {[textoComida(e.comida), textoHorario(e), e.pax !== null ? `${e.pax} pax` : '', e.salon]
+                      {[textoComida(e.comida), textoHorario(e), e.pax !== null ? `${e.pax} pax` : '', textoSalon(e.salon)]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>

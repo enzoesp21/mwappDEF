@@ -253,7 +253,13 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   salón y cuándo no.
 - Cada uno lleva fecha, tipo, comida (desayuno, almuerzo, merienda o cena), horario (desde y
   hasta opcional), nombre, pax, salón y "menú y detalles".
-  - La mesa necesita hora y pax; el evento privado puede ir sin ellos.
+  - La mesa necesita la cantidad de personas; la hora y el salón pueden quedar a definir
+    ("Salón a definir"). Así lo pasa Enzo a veces ("19 de Noviembre, Cena - 30 PAX - Carlos").
+    El evento privado necesita el salón, porque lo ocupa; la hora y la cantidad de personas son
+    opcionales.
+  - Lo cambió `fix_eventos_mesas_personalizadas.sql` (12/11). Ese SQL también cargó las primeras
+    cuatro mesas de Enzo: Carlos (19/11), Sebastián (22/11), una de 22 a 30 personas sin nombre
+    (29/11, cargada con 30) y Laboratorios Bernabó (18/12).
 - Un evento privado **ocupa el salón**: el día se pinta de rosa y dice "Salón ocupado".
   - Al cargar algo en un salón ocupado ese día, la ventana avisa (`ocupanElSalon`), pero deja
     guardar.

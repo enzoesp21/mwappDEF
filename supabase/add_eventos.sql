@@ -123,18 +123,21 @@ CREATE TABLE IF NOT EXISTS eventos (
   hora_fin        time,
   nombre          text NOT NULL,
   pax             integer,
-  salon           text NOT NULL,
+  -- Una mesa puede ir sin salón ("a definir"); un evento privado, no: lo ocupa.
+  salon           text,
   notas           text,
   creado_por      uuid REFERENCES profiles(id) ON DELETE SET NULL,
   creado_en       timestamptz NOT NULL DEFAULT now(),
   actualizado_por uuid REFERENCES profiles(id) ON DELETE SET NULL,
   actualizado_en  timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT eventos_nombre CHECK (char_length(btrim(nombre)) BETWEEN 1 AND 120),
-  CONSTRAINT eventos_salon CHECK (char_length(btrim(salon)) BETWEEN 1 AND 60),
+  CONSTRAINT eventos_salon CHECK (salon IS NULL OR char_length(btrim(salon)) BETWEEN 1 AND 60),
   CONSTRAINT eventos_pax CHECK (pax IS NULL OR pax BETWEEN 1 AND 2000),
   CONSTRAINT eventos_notas CHECK (notas IS NULL OR char_length(notas) <= 2000),
-  -- Una mesa personalizada siempre lleva horario y cantidad de personas.
-  CONSTRAINT eventos_mesa_completa CHECK (tipo <> 'mesa' OR (hora IS NOT NULL AND pax IS NOT NULL)),
+  -- Una mesa personalizada siempre lleva la cantidad de personas; la hora y el
+  -- salón pueden quedar a definir (fix_eventos_mesas_personalizadas.sql, 12/11).
+  CONSTRAINT eventos_mesa_pax CHECK (tipo <> 'mesa' OR pax IS NOT NULL),
+  CONSTRAINT eventos_evento_salon CHECK (tipo <> 'evento' OR salon IS NOT NULL),
   CONSTRAINT eventos_hora_fin CHECK (hora_fin IS NULL OR hora IS NOT NULL)
 );
 CREATE INDEX IF NOT EXISTS eventos_fecha_idx ON eventos (fecha);

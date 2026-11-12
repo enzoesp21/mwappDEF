@@ -47,7 +47,7 @@ export async function guardarEventoAction(d: DatosEvento): Promise<Resultado> {
     hora_fin: e.horaFin,
     nombre: e.nombre,
     pax: e.pax,
-    salon: e.salon,
+    salon: e.salon || null,
     notas: e.notas,
   }
 

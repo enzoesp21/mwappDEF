@@ -46,18 +46,23 @@ describe('lo que se revisa antes de guardar', () => {
     assert.equal(r.datos.notas, 'Menú de 3 pasos, sin TACC para 2')
   })
 
-  test('una mesa sin hora o sin personas no pasa', () => {
-    assert.deepEqual(validarEvento({ ...mesa, hora: null }), { ok: false, error: 'Poné a qué hora es la mesa.' })
+  test('una mesa sin personas no pasa; sin hora ni salón, sí (Carlos, 19/11: "Cena - 30 PAX")', () => {
     assert.deepEqual(validarEvento({ ...mesa, pax: null }), { ok: false, error: 'Poné cuántas personas son.' })
+    const r = validarEvento({ ...mesa, comida: 'cena', hora: null, salon: '' })
+    assert.equal(r.ok, true)
+    if (r.ok) assert.equal(r.datos.salon, '')
+  })
+
+  test('un evento privado sin salón no pasa: lo ocupa', () => {
+    assert.deepEqual(validarEvento({ ...mesa, tipo: 'evento', salon: ' ' }), { ok: false, error: 'Elegí el salón: el evento privado lo ocupa.' })
   })
 
   test('un evento privado puede ir sin hora ni personas', () => {
     assert.equal(validarEvento({ ...mesa, tipo: 'evento', hora: null, pax: null }).ok, true)
   })
 
-  test('sin nombre, sin salón o con personas raras no pasa', () => {
+  test('sin nombre o con personas raras no pasa', () => {
     assert.equal(validarEvento({ ...mesa, nombre: '   ' }).ok, false)
-    assert.equal(validarEvento({ ...mesa, salon: '' }).ok, false)
     assert.equal(validarEvento({ ...mesa, pax: 0 }).ok, false)
     assert.equal(validarEvento({ ...mesa, pax: 2.5 }).ok, false)
     assert.equal(validarEvento({ ...mesa, pax: NaN }).ok, false)
@@ -110,7 +115,11 @@ describe('el salón ocupado', () => {
   })
 
   test('para elegir: los conocidos y los que ya se usaron, sin repetir', () => {
-    assert.deepEqual(salonesParaElegir([...lista, ev({ id: 'x', salon: 'Terraza' })]), ['Salón principal', 'Ala Wai', 'Terraza'])
+    assert.deepEqual(
+      salonesParaElegir([...lista, ev({ id: 'x', salon: 'Terraza' }), ev({ id: 'y', tipo: 'mesa', salon: '' })]),
+      ['Salón principal', 'Ala Wai', 'Terraza']
+    )
+    assert.deepEqual(ocupanElSalon(lista, '2026-11-21', ''), [])
   })
 })
 

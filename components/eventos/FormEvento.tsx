@@ -192,7 +192,7 @@ export default function FormEvento({ evento, fechaInicial, todos, onCerrar, onGu
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block min-w-0">
-                <span className={etiqueta}>Desde{tipo === 'evento' ? ' (opcional)' : ''}</span>
+                <span className={etiqueta}>Desde (opcional)</span>
                 <input type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={cn(campo, 'mt-1')} />
               </label>
               <label className="block min-w-0">
@@ -228,7 +228,7 @@ export default function FormEvento({ evento, fechaInicial, todos, onCerrar, onGu
             </label>
 
             <div>
-              <span className={etiqueta}>Salón</span>
+              <span className={etiqueta}>Salón{tipo === 'mesa' ? ' (si ya se sabe)' : ''}</span>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {salones.map((s) => (
                   <button
@@ -252,7 +252,7 @@ export default function FormEvento({ evento, fechaInicial, todos, onCerrar, onGu
                 value={salon}
                 onChange={(e) => setSalon(e.target.value)}
                 maxLength={60}
-                placeholder="U otro: escribilo acá"
+                placeholder={tipo === 'mesa' ? 'U otro. Vacío: a definir' : 'U otro: escribilo acá'}
                 aria-label="Salón"
                 className={cn(campo, 'mt-2')}
               />
