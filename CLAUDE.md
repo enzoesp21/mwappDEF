@@ -64,6 +64,17 @@ commit. Voseo ("tocá", "elegí"). El dueño del proyecto es Enzo, encargado de 
     `/sin-conexion.html`.
   - `sw.js` se sirve con `no-cache` (`next.config.mjs`). Para tirar todo lo guardado, subir
     `VERSION` en `sw.js`.
+- **Pantalla de arranque** (Enzo, 16/11: al tocar el ícono "se queda la pantalla negra"):
+  - **iPhone:** imágenes de arranque en `public/arranque/` (fondo crema y el logo, una por
+    tamaño de pantalla, del SE al 17 Pro Max). Las declara `PANTALLAS_IPHONE` en
+    `app/layout.tsx`. Si sale un iPhone de otro tamaño, sumar su imagen; si no, ese modelo
+    vuelve a la pantalla negra. El iPhone las toma al agregar la app a la pantalla de inicio:
+    los que ya la tenían la tienen que borrar y volver a agregar.
+  - **Al abrir:** el manifest arranca en `/abrir.html`. Es una página fija, igual a la imagen
+    (el logo en el mismo lugar), con "Cargando…". El service worker la guarda y la sirve del
+    teléfono al instante. Enseguida va a `/`, que manda a los encargados a Ahora y al resto a
+    Inicio.
+  - **Android:** arma su pantalla solo, con el ícono y el `background_color` crema del manifest.
 
 ## Cómo se entregan los cambios de base de datos
 
@@ -689,6 +700,16 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
   parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
   se corrige a mano.
+
+## Bot de Nochebuena (sección Bot del admin)
+
+- El bot de WhatsApp de la cena del 24 (ManyChat + la función `nochebuena-cerebro` de este mismo
+  Supabase) guarda cada charla en `nb_conversaciones`. `/admin/bot` la lee y cuenta, hoy, el total y
+  día por día: cuántos escribieron, cuántas veces se pidió el PDF de nuevo, cuántos quisieron reservar
+  (escribieron "reserv…" o el bot les tomó la reserva) y cuántos están coordinando el pago
+  (`accion = 'reserva'`: la reserva la sigue Paz). Se ignoran los contactos `prueba-claude-%`.
+- La tabla solo la escribe la función del bot. `supabase/add_informe_bot.sql` deja que los admins la
+  lean (`is_admin()`); sin ese SQL la sección aparece vacía con un aviso.
 
 ## Seguridad
 

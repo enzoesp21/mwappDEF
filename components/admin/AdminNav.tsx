@@ -21,6 +21,7 @@ import {
   Banknote,
   TrendingUp,
   Fingerprint,
+  Bot,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import LogoInicio from '@/components/navegacion/LogoInicio'
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { label: 'Sugerencias', href: '/admin/sugerencias', icon: MessageSquarePlus, exact: false },
   { label: 'Empleado del mes', href: '/admin/empleado-del-mes', icon: Trophy, exact: false },
   { label: 'Fichadas', href: '/admin/fichadas', icon: Fingerprint, exact: false },
+  { label: 'Bot', href: '/admin/bot', icon: Bot, exact: false },
   { label: 'Horarios', href: '/admin/horarios', icon: CalendarDays, exact: false },
   { label: 'Eventos', href: '/admin/eventos', icon: CalendarHeart, exact: false },
   { label: 'Propinas', href: '/admin/propinas', icon: Banknote, exact: false },

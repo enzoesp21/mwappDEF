@@ -3,7 +3,7 @@
   "name": "Mirador Waikiki App",
   "short_name": "Waikiki",
   "description": "Plataforma de capacitación para el personal de Mirador Waikiki",
-  "start_url": "/dashboard",
+  "start_url": "/abrir.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

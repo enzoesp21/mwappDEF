@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#dbd2b5">
+<title>Mirador Waikiki</title>
+<!--
+  Pantalla de carga al tocar el ícono de la app (Enzo, 16/11: "se queda la
+  pantalla negra"). Es lo primero que abre la app instalada (start_url del
+  manifest): el service worker la guarda en el teléfono, así aparece al
+  instante, igual que la imagen de arranque de iPhone (public/arranque/), y
+  enseguida va a la portada, que manda a cada uno a lo suyo.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #dbd2b5; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
+         font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  /* El logo, en el mismo lugar que en la imagen de arranque del iPhone (un poco
+     arriba del medio): así no salta al pasar de una a la otra. El texto va abajo
+     sin moverlo. */
+  div { position: relative; transform: translateY(-2.5vh); }
+  img { display: block; width: 58vw; max-width: 340px; height: auto; }
+  p { position: absolute; top: 100%; left: 0; right: 0; text-align: center;
+      margin: 28px 0 0; color: #516d5c; font-size: 11px; font-weight: 600;
+      letter-spacing: .22em; text-transform: uppercase; }
+  span { display: inline-block; animation: punto 1.2s infinite both; }
+  span:nth-child(2) { animation-delay: .2s } span:nth-child(3) { animation-delay: .4s }
+  @keyframes punto { 0%, 80%, 100% { opacity: .2 } 40% { opacity: 1 } }
+</style>
+</head>
+<body>
+<div>
+  <img src="/arranque/logo.png" alt="Mirador Waikiki">
+  <p>Cargando<span>.</span><span>.</span><span>.</span></p>
+</div>
+<script>
+  // Primero se dibuja la pantalla y después se va a la portada (que manda a
+  // los encargados a "Ahora" y al resto a Inicio). Mientras carga, esta queda a la vista.
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { location.replace('/') })
+  })
+</script>
+</body>
+</html>

@@ -13,12 +13,14 @@
 const VERSION = 'v1'
 const CACHE = 'waikiki-' + VERSION
 const SIN_CONEXION = '/sin-conexion.html'
+// La pantalla de carga al tocar el ícono (Enzo, 16/11): sale del teléfono, al instante.
+const ABRIR = '/abrir.html'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll([SIN_CONEXION, '/logo.png', '/icon-192.png']))
+      .then((cache) => cache.addAll([SIN_CONEXION, ABRIR, '/arranque/logo.png', '/logo.png', '/icon-192.png']))
       .then(() => self.skipWaiting())
   )
 })
@@ -57,6 +59,26 @@ self.addEventListener('fetch', (event) => {
               return resp
             })
         )
+      )
+    )
+    return
+  }
+
+  // La pantalla de carga: del teléfono al instante, y se actualiza por atrás para la próxima.
+  if (url.pathname === ABRIR) {
+    event.respondWith(
+      caches.open(CACHE).then((cache) =>
+        cache.match(ABRIR).then((guardada) => {
+          const nueva = fetch(req).then((resp) => {
+            if (resp.ok) cache.put(ABRIR, resp.clone())
+            return resp
+          })
+          if (guardada) {
+            event.waitUntil(nueva.catch(() => {}))
+            return guardada
+          }
+          return nueva
+        })
       )
     )
     return
