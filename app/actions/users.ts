@@ -206,6 +206,34 @@ export async function setVeEventosAction(userId: string, valor: boolean): Promis
 }
 
 /**
+ * Quién recibe el aviso de cada pedido de cambio de horario (a la campanita y,
+ * si lo activa, al teléfono). Solo para admin: el aviso trae el motivo.
+ */
+export async function setAvisosPedidosAction(userId: string, valor: boolean): Promise<ApprovalResult> {
+  const { supabase, session } = await requireAdmin()
+  if (!session) return { ok: false, error: 'No tenés permiso para hacer esto.' }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ avisos_pedidos: valor })
+    .eq('id', userId)
+    .eq('role', 'admin')
+    .select('id')
+  if (error) {
+    return {
+      ok: false,
+      error: /avisos_pedidos/.test(error.message)
+        ? 'Falta correr el SQL de los avisos (supabase/add_avisos_pedidos.sql) en Supabase.'
+        : 'No se pudo guardar: ' + error.message,
+    }
+  }
+  if (!data || data.length === 0) return { ok: false, error: 'No se guardó: los avisos son solo para encargados.' }
+
+  revalidatePath('/admin', 'layout')
+  return { ok: true }
+}
+
+/**
  * Corrige el puesto de alguien (hay quien se registra en el que no es).
  * Cambia las guías que ve: su recorrido sale de guide_paths según el puesto.
  */

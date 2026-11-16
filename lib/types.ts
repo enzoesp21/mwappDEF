@@ -31,6 +31,8 @@ export interface Profile {
   carga_propinas?: boolean
   /** Ve y carga el calendario de eventos. Undefined hasta que se corra add_eventos.sql. */
   ve_eventos?: boolean
+  /** Recibe el aviso de cada pedido de horario (solo admin). Undefined hasta add_avisos_pedidos.sql. */
+  avisos_pedidos?: boolean
   created_at: string
 }
 

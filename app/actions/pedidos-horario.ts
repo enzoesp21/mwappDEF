@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { avisarPedidoAlTelefono } from '@/lib/avisos-pedidos'
 import { ahoraEnArgentina } from '@/lib/horarios'
 import { validarPedido, type DatosPedido, type EstadoPedido } from '@/lib/pedidos-horario'
 
@@ -31,7 +32,7 @@ export async function pedirCambioHorarioAction(d: DatosPedido): Promise<Resultad
   const error = validarPedido(d, ahoraEnArgentina())
   if (error) return { ok: false, error }
 
-  const { error: errorBase } = await supabase.rpc('pedir_cambio_horario', {
+  const { data: pedidoId, error: errorBase } = await supabase.rpc('pedir_cambio_horario', {
     p_fechas: d.fechas,
     p_tipo: d.tipo,
     p_desde: d.desde,
@@ -39,6 +40,8 @@ export async function pedirCambioHorarioAction(d: DatosPedido): Promise<Resultad
     p_motivo: d.motivo.trim(),
   })
   if (errorBase) return { ok: false, error: falta(errorBase.message) ? FALTA_SQL : errorBase.message }
+  // Al teléfono de los encargados con avisos (Facu). La campanita la llena la base.
+  if (typeof pedidoId === 'string') await avisarPedidoAlTelefono(supabase, pedidoId)
   revalidar()
   return { ok: true }
 }

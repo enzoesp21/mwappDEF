@@ -5,6 +5,8 @@ import { avisoConexion } from '@/lib/fichadas'
 import { traerAdentroAhora } from '@/lib/fichadas-datos'
 import AdentroAhora from '@/components/fichadas/AdentroAhora'
 import RefrescoAutomatico from '@/components/fichadas/RefrescoAutomatico'
+import ActivarAvisos from '@/components/avisos/ActivarAvisos'
+import { recibeAvisosPedidos } from '@/lib/avisos-pedidos'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -17,7 +19,13 @@ export const dynamic = 'force-dynamic'
 export default async function InicioAdmin() {
   const supabase = await createClient()
   const ahora = Date.now()
-  const { datos, error } = await traerAdentroAhora(supabase, ahora)
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  const [{ datos, error }, recibeAvisos] = await Promise.all([
+    traerAdentroAhora(supabase, ahora),
+    session ? recibeAvisosPedidos(supabase, session.user.id) : Promise.resolve(false),
+  ])
   const aviso = avisoConexion(datos?.estado ?? null, ahora)
   const fecha = new Date(ahora).toLocaleDateString('es-AR', {
     timeZone: 'America/Argentina/Buenos_Aires',
@@ -34,6 +42,9 @@ export default async function InicioAdmin() {
         <h1 className="text-2xl font-semibold text-brand-accent leading-tight mt-1">Ahora en Waikiki</h1>
         <p className="text-sm text-brand-muted mt-0.5">Quién está fichado en este momento. Se actualiza sola cada 30 s.</p>
       </div>
+
+      {/* Quien recibe los avisos de pedidos (Facu): activarlos acá, a la vista al abrir la app. */}
+      {recibeAvisos && <ActivarAvisos compacto clavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />}
 
       {datos && aviso.nivel !== 'ok' && (
         <div

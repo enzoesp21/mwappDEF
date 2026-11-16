@@ -237,6 +237,30 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     Antes del botón "Pedir un cambio" va el mensaje de los encargados (Enzo, 11/11): pedir con
     responsabilidad, que afecta la cobertura y que no se aprueba solo. El texto es el de Enzo,
     tal cual.
+  - **Avisos de cada pedido nuevo** (Enzo, 16/11: "que a Facu le llegue 'te pidieron un cambio de
+    horario'"; `add_avisos_pedidos.sql`):
+    - Los reciben los admin con `profiles.avisos_pedidos` (botón "Avisos" en Usuarios, solo en
+      admin; nadie se lo pone solo). Arrancó con los dos usuarios de Facundo Nuñez.
+    - A la campanita: un trigger en `pedidos_horario` (`avisar_pedido_horario`), con el texto de
+      `texto_aviso_pedido`: "Lucas López pidió un cambio de horario: sáb 21/11, no puede venir.
+      Motivo: ...". No se tocó `pedir_cambio_horario`.
+    - Al teléfono (Web Push, `web-push`): quien recibe avisos toca "Activar avisos"
+      (`ActivarAvisos`, en Ahora y en Pedidos). El teléfono queda en `push_suscripciones`, por
+      `guardar_suscripcion_push`.
+      - Al pedir, `pedirCambioHorarioAction` llama a `avisarPedidoAlTelefono`
+        (`lib/avisos-pedidos.ts`). Esa función pide los teléfonos con `avisos_push_de_pedido`,
+        que solo le contesta a quien acaba de hacer ese pedido.
+      - Nunca hace fallar el pedido. Los teléfonos dados de baja (404/410) se borran con
+        `push_vencida`.
+    - En iPhone solo anda con la app abierta desde el ícono de la pantalla de inicio (iOS 16.4+);
+      la tarjeta lo explica. El service worker muestra el aviso y al tocarlo abre Pedidos.
+    - Claves en Vercel: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`.
+      - Se generan una vez con `npx web-push generate-vapid-keys`. La privada nunca va al repo ni
+        al chat.
+      - Sin ellas, los avisos quedan solo en la campanita.
+      - Si se cambian, hay que volver a activar los avisos en cada teléfono.
+    - `add_eventos.sql` ya no se puede volver a correr tal cual: su freno espera 6 reglas en
+      `protect_profile_fields` y ahora son 7 (se cancela, no pisa nada).
   - Encargados: `/admin/horarios/pedidos` por semana, con Aprobar / No aprobar y un
     comentario (`components/admin/PedidosAdmin.tsx`). Tarjeta en Horarios y número en el menú
     con los que faltan responder de esta semana en adelante.
@@ -266,8 +290,9 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Los salones para elegir con un toque son "Salón principal", "Ala Wai" y "Hula Kai"
     (`SALONES`). Se puede escribir otro, y queda para elegir. En la planilla de Enzo, "AW" es
     Ala Wai. Lo de "M9" (Mirador 9) no se carga: es otro lugar.
-  - Los eventos privados de la planilla de Enzo (sept. a dic.) los cargó
-    `add_eventos_privados_noviembre.sql`, sin la barra de tragos ("no tiene relevancia"). Gador
+  - Los eventos privados de la planilla de Enzo los cargó `add_eventos_privados_noviembre.sql`,
+    sin la barra de tragos ("no tiene relevancia"). Los de septiembre y octubre ya habían pasado:
+    Enzo pidió borrarlos (`fix_eventos_borrar_pasados.sql`) y ya no están en ese archivo. Gador
     (12/11 y 10/12) y Ética Paella (27/11) quedaron con "a confirmar" en los detalles.
 - **Quién lo ve**:
   - los admin siempre;
@@ -644,7 +669,8 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - El Excel del cierre se baja con un link firmado de 1 minuto (`excelDelCierreAction`).
 - Nuevos de octubre, al final de la hoja (orden 69 a 75, sin cargo, ver
   `add_planilla_nuevos_octubre.sql`): Federico Fernandez (610), Laureano (611),
-  Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614), Giuliana Bartellone
+  Lurdes Moreno (399, en el reloj "LURDES COCINA"), Alma (614; es Alma Montes, Enzo 15/11,
+  `fix_planilla_alma_montes.sql`), Giuliana Bartellone
   (615, Enzo confirmó que es la del usuario de la app) y Abril Castro (646) y Moises (647).
 - Papel de octubre, según Enzo (02/11):
   - Honorio Sachett es el hermano de Angel Sachett, no la misma persona. No tiene huella:
@@ -654,6 +680,12 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
   - Lo que Enzo cargó del papel en octubre está como celdas a mano (origen manual), no
     como fichadas de papel.
   - No quiere que la app lea fotos de las planillas de papel con IA.
+- Papel del 1 al 15 de noviembre (Enzo, 15/11, dos hojas firmadas que se pasaron a limpio y él
+  confirmó): `fix_noviembre_papel_1_al_15.sql`. Carga 84 fichadas de papel y agrega al final,
+  sin cargo, a los nueve sin huella: Honorio Sachett, Diego García, Agustina Rolón, Mateo Gaviña,
+  Lucio Pérez, Juan Prado, Mara Chapa, Adrián Moreno y Maite Alonso. Pamela Almada (4/11) no va:
+  Enzo ya lo había cargado a mano. Después hay que tocar "Recalcular todo el mes". Funes el 14/11
+  tenía 4 h a mano y el papel dice 16:00 a 23:30: la celda a mano manda.
 - El 612 del reloj ("MORENA") es Morena Ruiz (lo dijo Enzo). Sus dos fichadas del 11/10
   parecen de enrolamiento y dejan ese día como horario cortado de 6 h en vez de 8,5:
   se corrige a mano.

@@ -6,6 +6,8 @@ import { ahoraEnArgentina, hoyEnArgentina, lunesDe, sumarDias } from '@/lib/hora
 import { semanasParaPedir, textoPlazo, textoSemana } from '@/lib/pedidos-horario'
 import { faltaSqlPedidos, traerPedidosConNombre } from '@/lib/pedidos-horario-datos'
 import PedidosAdmin from '@/components/admin/PedidosAdmin'
+import ActivarAvisos from '@/components/avisos/ActivarAvisos'
+import { recibeAvisosPedidos } from '@/lib/avisos-pedidos'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +23,10 @@ export default async function PedidosHorarioPage() {
   if (!session) redirect('/login')
 
   const hoy = hoyEnArgentina()
-  const { pedidos, error } = await traerPedidosConNombre(supabase, { desde: sumarDias(lunesDe(hoy), -7) })
+  const [{ pedidos, error }, recibeAvisos] = await Promise.all([
+    traerPedidosConNombre(supabase, { desde: sumarDias(lunesDe(hoy), -7) }),
+    recibeAvisosPedidos(supabase, session.user.id),
+  ])
   const ahora = ahoraEnArgentina()
   const proxima = semanasParaPedir(ahora)[0]
 
@@ -41,6 +46,9 @@ export default async function PedidosHorarioPage() {
           esa persona y ese día. Para la semana del {textoSemana(proxima)} se puede pedir hasta el {textoPlazo(proxima)}.
         </p>
       </div>
+
+      {/* A quien recibe los avisos (Facu): activarlos en este teléfono. */}
+      {recibeAvisos && <ActivarAvisos clavePublica={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />}
 
       {error ? (
         <div className="bg-brand-error/10 border border-brand-error/30 rounded-2xl p-4 text-sm text-brand-error">

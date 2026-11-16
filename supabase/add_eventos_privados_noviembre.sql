@@ -2,7 +2,9 @@
 -- Eventos: los eventos privados de la planilla de Enzo (12/11)
 --
 -- Enzo pasó su planilla de eventos (septiembre a diciembre de 2026). Se
--- cargan como eventos privados (ocupan el salón), cargados por Enzo:
+-- cargan como eventos privados (ocupan el salón), cargados por Enzo, de
+-- noviembre en adelante (los de septiembre y octubre ya pasaron: Enzo pidió
+-- borrarlos, fix_eventos_borrar_pasados.sql):
 --   - "AW" es el salón Ala Wai; también hay en Hula Kai y uno en "Waikiki"
 --     (Gador, 12/11, 400 personas).
 --   - Los de "M9" NO van: Mirador 9 es otro lugar (Enzo).
@@ -35,14 +37,6 @@ END $$;
 INSERT INTO eventos (fecha, tipo, comida, hora, hora_fin, nombre, pax, salon, notas, creado_por, actualizado_por)
 SELECT m.fecha, 'evento', m.comida, m.hora, m.hora_fin, m.nombre, m.pax, m.salon, m.notas, enzo.id, enzo.id
 FROM (VALUES
-  (date '2026-09-18', 'merienda', time '17:00', time '20:00', 'Reunión de trabajo South Post', 40,  'Hula Kai',
-     'Menú: coffee. Postre: monoporciones.'),
-  (date '2026-09-26', 'cena',     time '18:00', time '00:00', 'Cumpleaños Miguel Lavena',      100, 'Ala Wai',
-     'Menú: finger 6 h. Postre: finger postre shots.'),
-  (date '2026-10-03', 'cena',     time '21:30', time '05:30', 'XV Emma Giri',                  180, 'Ala Wai',
-     'Menú: 3 pasos. Postre: mesa dulce, shots.'),
-  (date '2026-10-06', 'cena',     NULL,         NULL,         'Cena Lam Weston',               120, 'Ala Wai',
-     'Duración: 3 h. Menú: finger 3 h. Postre: finger postre shots.'),
   (date '2026-11-12', 'cena',     NULL,         NULL,         'Gador',                         400, 'Waikiki',
      'Comida y horario a confirmar (la planilla no los dice). Menú: 3 pasos. Postre: mesa dulce, shots.'),
   (date '2026-11-14', 'almuerzo', time '13:00', time '19:00', 'Bodas de Oro Araceli y Carlos', 56,  'Hula Kai',
@@ -81,7 +75,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM eventos e WHERE e.fecha = m.fecha AND lower(e.nombre) = lower(m.nombre)
 );
 
--- Verificación: los eventos privados cargados, en orden. Tienen que ser 19.
+-- Verificación: los eventos privados cargados, en orden. Tienen que ser 15.
 SELECT to_char(e.fecha, 'DD/MM/YYYY') AS fecha,
        e.comida,
        coalesce(to_char(e.hora, 'HH24:MI') || coalesce(' a ' || to_char(e.hora_fin, 'HH24:MI'), ''), 'sin hora') AS horario,

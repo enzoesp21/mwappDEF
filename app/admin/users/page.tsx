@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote, KeyRound, CalendarHeart } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, ShieldCheck, User, Loader2, UserPlus, Check, X, AlertCircle, UserMinus, Trash2, RotateCcw, Pencil, Wand2, GraduationCap, Sprout, Banknote, KeyRound, CalendarHeart, BellRing } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { PUESTOS } from '@/lib/types'
 import type { Profile, ExamResult } from '@/lib/types'
 import { cn, formatDate, formatDateTime } from '@/lib/utils'
-import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setVeEventosAction, setUserPuestoAction } from '@/app/actions/users'
+import { setUserStatusAction, deleteUserAction, updateUserNameAction, setUserExperienceAction, setCargaPropinasAction, setVeEventosAction, setAvisosPedidosAction, setUserPuestoAction } from '@/app/actions/users'
 import { formatearNombre, necesitaFormato } from '@/lib/nombres'
 import { buscarPuesto } from '@/lib/puestos'
 import CambiarClaveUsuario from '@/components/admin/CambiarClaveUsuario'
@@ -148,6 +148,21 @@ export default function UsersPage() {
     setCambiandoEventos(null)
     if (res.ok) {
       setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, ve_eventos: destino } : u)))
+    } else {
+      setStatusError(res.error)
+    }
+  }
+
+  const [cambiandoAvisos, setCambiandoAvisos] = useState<string | null>(null)
+
+  async function cambiarAvisos(user: UserWithResults) {
+    const destino = !user.avisos_pedidos
+    setCambiandoAvisos(user.id)
+    setStatusError(null)
+    const res = await setAvisosPedidosAction(user.id, destino)
+    setCambiandoAvisos(null)
+    if (res.ok) {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, avisos_pedidos: destino } : u)))
     } else {
       setStatusError(res.error)
     }
@@ -556,6 +571,34 @@ export default function UsersPage() {
                         <>
                           <Banknote className="w-3.5 h-3.5" />
                           {user.carga_propinas ? 'Carga propinas' : 'Propinas'}
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {/* Solo encargados: recibir cada pedido de cambio de horario (Facu). */}
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={() => cambiarAvisos(user)}
+                      disabled={cambiandoAvisos === user.id}
+                      aria-pressed={Boolean(user.avisos_pedidos)}
+                      title={
+                        user.avisos_pedidos
+                          ? 'Le llega cada pedido de cambio de horario. Tocá para sacárselo.'
+                          : 'Que le llegue cada pedido de cambio de horario (campanita y teléfono).'
+                      }
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer min-h-[36px] whitespace-nowrap disabled:opacity-50',
+                        user.avisos_pedidos
+                          ? 'bg-brand-accent text-white hover:bg-brand-accent-hover'
+                          : 'bg-brand-card-hover text-brand-muted hover:text-brand-accent hover:bg-brand-accent/10'
+                      )}
+                    >
+                      {cambiandoAvisos === user.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" />
+                      ) : (
+                        <>
+                          <BellRing className="w-3.5 h-3.5" />
+                          {user.avisos_pedidos ? 'Recibe avisos' : 'Avisos'}
                         </>
                       )}
                     </button>
