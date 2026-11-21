@@ -254,6 +254,8 @@ export function armarTurnos(leidas: FichadaLeida[], ahora: number, turnoLargo: n
     })
 
   for (const f of leidas) {
+    // Una fichada de más no abre ni cierra nada.
+    if (f.sobra) continue
     const previa = abierta.get(f.userid)
     if (f.sentido === 'entrada') {
       if (previa) cerrarSinSalida(previa, false)

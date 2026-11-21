@@ -176,3 +176,43 @@ describe('Bruno Molina y Brisa Di Scala, 11/11 a la 01:15 (en Ahora figuraban ad
     assert.deepEqual(presentes(leerFichadas([...bruno, ...brisa], DESDE), new Map(), AHORA), [])
   })
 })
+
+describe('Laureano, 20/11: una Entrada de más al mediodía', () => {
+  // Entró 10:09 (y 10:13, doble), volvió a apretar Entrada a las 13:15 y se fue
+  // 16:59 con Salida. Figuraba adentro desde las 16:59: la cuenta suponía dos
+  // teclas mal en vez de una fichada de más.
+  const DESDE = ['2026-11-19T00:00:00.000Z']
+  const laureano = [
+    fichada('611', '2026-11-20 10:09', ENTRADA),
+    fichada('611', '2026-11-20 10:13', ENTRADA),
+    fichada('611', '2026-11-20 13:15', ENTRADA),
+    fichada('611', '2026-11-20 16:59', SALIDA),
+  ]
+
+  test('la de las 13:15 sobra: entró 10:09 y salió 16:59', () => {
+    const leidas = leerFichadas(laureano, DESDE)
+    assert.deepEqual(
+      leidas.map((f) => (f.sobra ? 'sobra' : f.sentido)),
+      ['entrada', 'sobra', 'salida']
+    )
+  })
+
+  test('a la noche ya no figura adentro', () => {
+    assert.deepEqual(presentes(leerFichadas(laureano, DESDE), new Map(), Date.parse('2026-11-21T01:00:00Z')), [])
+  })
+
+  test('una Entrada al día siguiente nunca sobra (sería quedarse adentro 24 h)', () => {
+    const f = [fichada('9', '2026-11-19 09:00', ENTRADA), fichada('9', '2026-11-20 09:05', ENTRADA)]
+    assert.equal(leerFichadas(f, DESDE).some((x) => x.sobra), false)
+  })
+
+  test('un corte real con las teclas bien no cambia', () => {
+    const f = [
+      fichada('8', '2026-11-20 09:00', ENTRADA),
+      fichada('8', '2026-11-20 13:00', SALIDA),
+      fichada('8', '2026-11-20 14:00', ENTRADA),
+      fichada('8', '2026-11-20 18:00', SALIDA),
+    ]
+    assert.deepEqual(sentidos(f, DESDE), ['entrada', 'salida', 'entrada', 'salida'])
+  })
+})

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import InstallPrompt from '@/components/InstallPrompt'
 import FaltasGraves from '@/components/FaltasGraves'
-import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp, CalendarHeart } from 'lucide-react'
+import { Utensils, ChevronRight, BookOpen, Banknote, TrendingUp, CalendarHeart, Printer } from 'lucide-react'
 import TarjetaCharla from '@/components/capacitacion/TarjetaCharla'
 import { createClient } from '@/lib/supabase/server'
 import { getNextWeekDates, isSignupOpen, SIGNUP_CUTOFF_LABEL } from '@/lib/meals-utils'
@@ -273,6 +273,23 @@ export default async function DashboardPage() {
                 <p className="text-xs text-brand-muted">El reparto de cada día</p>
               </>
             )}
+          </div>
+          <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
+        </Link>
+      )}
+
+      {/* Las cajeras: la hoja de plazas de los mozos, para imprimir (Enzo, 21/11). */}
+      {cargaPropinas && (
+        <Link
+          href="/dashboard/plazas"
+          className="flex items-center gap-3 bg-brand-card border border-brand-border rounded-2xl p-4 hover:border-brand-accent/50 transition-colors cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-brand-accent/10 flex items-center justify-center flex-shrink-0">
+            <Printer className="w-5 h-5 text-brand-accent" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-brand-text">Hoja de plazas</p>
+            <p className="text-xs text-brand-muted">Sumá o sacá mozos e imprimila</p>
           </div>
           <ChevronRight className="w-4 h-4 text-brand-muted flex-shrink-0" />
         </Link>

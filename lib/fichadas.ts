@@ -66,6 +66,13 @@ export type Sentido = 'entrada' | 'salida'
 
 export interface FichadaLeida extends Fichada {
   sentido: Sentido
+  /**
+   * Fichada de más: estaba adentro y volvió a apretar Entrada
+   * (Laureano, 20/11: 10:09 entrada, 13:15 entrada otra vez, 16:59 salida). No
+   * cambia nada: `sentido` es 'entrada' (seguía adentro) y no cuenta ni
+   * para quién está adentro ni para los turnos.
+   */
+  sobra?: boolean
 }
 
 function sentidoDeTecla(tipo: number): Sentido | null {
@@ -87,6 +94,12 @@ const COSTO_TURNO_DOBLE = 2 // de 14 a 16 horas pasa muy poco (dobles): ahí des
 const COSTO_TURNO_EXTRA = 2.5
 const COSTO_IMPOSIBLE = 10 // un turno de más de 18 horas no existe: se olvidó de fichar
 const COSTO_EMPIEZA_SALIENDO = 1 // sin nada antes para comparar, lo primero suele ser una entrada
+// Una fichada de más: estaba adentro y volvió a apretar Entrada. Más barato que dos teclas mal (2,1) y que un olvido (3). Laureano el
+// 20/11 (10:09, 13:15 y 16:59, las dos primeras con Entrada) figuraba adentro
+// desde las 16:59: la cuenta suponía dos teclas mal en vez de una de más.
+const COSTO_SOBRA = 1.5
+/** Como mucho dos de más seguidas: si no, es otra cosa. */
+const SOBRAS_SEGUIDAS = 2
 /** Ningún turno dura más que esto. */
 const TURNO_MAXIMO = 18 * HORA
 
@@ -166,9 +179,33 @@ function deducirSentidos(lista: Fichada[], cortes: number[]): FichadaLeida[] {
     return corte === null || ms - corte <= TURNO_MAXIMO ? COSTO_EMPIEZA_SALIENDO : COSTO_OLVIDO
   }
 
-  // costos[i][s]: lo mínimo que cuesta explicar hasta la fichada i terminando en s.
+  // Lo que cuesta un turno abierto de tantas horas (para las de más mientras
+  // está adentro: no puede quedar adentro más de 18 horas).
+  const costoAbierto = (horas: number) => costoPaso('entrada', 'salida', horas)
+  // Lo que cuestan las fichadas de `desde` a `hasta` (sin incluir) como de más,
+  // estando en `estado` desde la fichada `base`. Infinity si alguna no puede serlo.
+  // Solo estando adentro: volver a apretar Entrada (al volver del almuerzo, por
+  // las dudas). Una Salida de más estando afuera, no: así se leía mal a Miguel
+  // Sachett el 03/11, que llegó apretando Salida y se fue apretando Entrada.
+  const costoSobras = (base: number, estado: Sentido, desde: number, hasta: number) => {
+    if (hasta - desde > SOBRAS_SEGUIDAS || estado !== 'entrada') return Infinity
+    let total = 0
+    const msBase = Date.parse(lista[base].fecha_hora)
+    for (let x = desde; x < hasta; x++) {
+      const ms = Date.parse(lista[x].fecha_hora)
+      const tecla = sentidoDeTecla(lista[x].tipo)
+      const corte = corteAntes(ms)
+      // Solo la misma tecla de cómo estaba, y sin un corte de lo pedido en el medio.
+      if ((tecla && tecla !== estado) || (corte !== null && corte > msBase)) return Infinity
+      total += COSTO_SOBRA + (estado === 'entrada' ? costoAbierto((ms - msBase) / HORA) : 0)
+    }
+    return total
+  }
+
+  // costos[i][s]: lo mínimo que cuesta explicar hasta la fichada i, si i es de
+  // verdad y termina en s (las del medio desde la anterior de verdad, de más).
   const costos: number[][] = []
-  const desde: number[][] = []
+  const desde: [number, number][][] = []
   lista.forEach((f, i) => {
     costos.push([])
     desde.push([])
@@ -176,34 +213,62 @@ function deducirSentidos(lista: Fichada[], cortes: number[]): FichadaLeida[] {
     SENTIDOS.forEach((s, j) => {
       if (i === 0) {
         costos[i][j] = costoTecla(f, s) + costoEmpezar(s, ms)
+        desde[i][j] = [-1, -1]
         return
       }
-      const antes = Date.parse(lista[i - 1].fecha_hora)
-      const horas = (ms - antes) / HORA
-      // Entre las dos hay un corte de lo pedido (otro mes y las de ahora): no se
-      // sabe qué pasó en el medio, así que se vuelve a empezar.
-      const corte = corteAntes(ms)
-      const reinicio = corte !== null && corte > antes
       let mejor = Infinity
-      SENTIDOS.forEach((previo, k) => {
-        const costo = costos[i - 1][k] + (reinicio ? costoEmpezar(s, ms) : costoPaso(previo, s, horas))
-        // A igual costo, se prefiere alternar.
-        if (costo < mejor || (costo === mejor && previo !== s)) {
-          mejor = costo
-          desde[i][j] = k
-        }
-      })
+      for (let k = i - 1; k >= Math.max(0, i - 1 - SOBRAS_SEGUIDAS); k--) {
+        const antes = Date.parse(lista[k].fecha_hora)
+        const horas = (ms - antes) / HORA
+        // Entre las dos hay un corte de lo pedido (otro mes y las de ahora): no se
+        // sabe qué pasó en el medio, así que se vuelve a empezar.
+        const corte = corteAntes(ms)
+        const reinicio = corte !== null && corte > antes
+        SENTIDOS.forEach((previo, p) => {
+          const sobras = k === i - 1 ? 0 : costoSobras(k, previo, k + 1, i)
+          if (sobras === Infinity) return
+          const costo = costos[k][p] + sobras + (reinicio ? costoEmpezar(s, ms) : costoPaso(previo, s, horas))
+          // A igual costo, se prefiere alternar y sin fichadas de más.
+          const actual = desde[i][j]
+          const mejora =
+            costo < mejor - 1e-9 ||
+            (Math.abs(costo - mejor) < 1e-9 && actual && (k > actual[0] || (k === actual[0] && previo !== s)))
+          if (mejora) {
+            mejor = costo
+            desde[i][j] = [k, p]
+          }
+        })
+      }
       costos[i][j] = mejor + costoTecla(f, s)
     })
   })
 
-  const sentidos: Sentido[] = []
-  let j = costos[lista.length - 1][0] <= costos[lista.length - 1][1] ? 0 : 1
-  for (let i = lista.length - 1; i >= 0; i--) {
-    sentidos[i] = SENTIDOS[j]
-    j = desde[i][j]
+  // El final: la última de verdad, y las que siguen (si las hay) de más.
+  const n = lista.length
+  let fin: [number, number] = [n - 1, costos[n - 1][0] <= costos[n - 1][1] ? 0 : 1]
+  let mejorFin = costos[n - 1][fin[1]]
+  for (let k = n - 2; k >= Math.max(0, n - 1 - SOBRAS_SEGUIDAS); k--) {
+    SENTIDOS.forEach((s, j) => {
+      const costo = costos[k][j] + costoSobras(k, s, k + 1, n)
+      if (costo < mejorFin - 1e-9) {
+        mejorFin = costo
+        fin = [k, j]
+      }
+    })
   }
-  return lista.map((f, i) => ({ ...f, sentido: sentidos[i] }))
+
+  const leidas: FichadaLeida[] = lista.map((f) => ({ ...f, sentido: 'entrada' as Sentido }))
+  let [i, j] = fin
+  // Las de más del final siguen como quedó la última de verdad.
+  for (let x = i + 1; x < n; x++) leidas[x] = { ...lista[x], sentido: SENTIDOS[j], sobra: true }
+  while (i >= 0) {
+    leidas[i] = { ...lista[i], sentido: SENTIDOS[j] }
+    const [k, p] = desde[i][j]
+    for (let x = k + 1; x < i; x++) leidas[x] = { ...lista[x], sentido: SENTIDOS[p], sobra: true }
+    i = k
+    j = p
+  }
+  return leidas
 }
 
 export type Situacion = 'adentro' | 'sin-salida'
@@ -261,7 +326,8 @@ export function presentes(
 ): Presente[] {
   const ultima = new Map<string, FichadaLeida>()
   for (const f of leidas) {
-    if (Date.parse(f.fecha_hora) <= ahora + 5 * MINUTO) ultima.set(f.userid, f)
+    // Las de más no cambian nada: vale la última de verdad (su hora de entrada).
+    if (!f.sobra && Date.parse(f.fecha_hora) <= ahora + 5 * MINUTO) ultima.set(f.userid, f)
   }
 
   const resultado: Presente[] = []

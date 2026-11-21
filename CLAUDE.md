@@ -445,6 +445,35 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
 - Pantallas compartidas en `components/propinas/`, montadas en `/admin/propinas` y
   `/dashboard/propinas` (los admin no pueden entrar a `/dashboard`).
 
+## Hoja de plazas de los mozos (para imprimir)
+
+- La hoja que se imprime todos los días para armar las plazas y anotar las horas (Enzo, 21/11,
+  "Plazas Mozos 2.pdf"). Facu la completa con lapicera después de imprimirla.
+- La editan las cajeras con permiso de propinas y los encargados (`puede_cargar_propinas()`).
+  Los mozos no la ven.
+  - Se agrega al mozo que entra, se saca al que se va y se cambia el orden.
+  - Cada sección puede llevar más o menos filas (0 a 30; en 0 no sale).
+  - Se guarda al momento y las otras cajeras lo ven: la pantalla se refresca cada 15 s.
+- Tablas `plazas_mozos` (nombre y orden) y `plazas_secciones` (filas por sección; en el Almuerzo
+  y en las horas son las filas en blanco de más). SQL: `add_plazas_mozos.sql`, que arranca con la
+  lista y las filas del PDF. Para mover a alguien se usa la RPC `plazas_mover`.
+- Cómo es la hoja (`HojaPlazas`), en milímetros:
+  - logo y "Fecha de hoy";
+  - a la izquierda, Almuerzo (con los mozos) y Merienda;
+  - a la derecha, los dos Desayunos y la Cena;
+  - abajo, "Horas del día", con un recuadro por mozo (horas y firma) y los vacíos de más.
+- Siempre entra en una A4 (`armarHoja`, `lib/plazas.ts`, con pruebas):
+  - todas las filas miden lo mismo, hasta 7 mm, y se achican si hay muchas;
+  - debajo de 5 mm avisa que quedan chicas y debajo de 3,6 mm que no entra;
+  - los bordes van adentro del alto de cada fila (`box-sizing`), y hay 4 mm de resguardo.
+  - Probado imprimiendo a PDF A4: una sola página con la lista de hoy y con 20 mozos, Cena 16 y
+    Merienda 16.
+- Pantallas:
+  - `/admin/plazas` y `/dashboard/plazas` (`EditorPlazas`, con vista previa);
+  - se llega desde una tarjeta en Propinas y otra en el Inicio de las cajeras;
+  - "Imprimir" abre `/plazas/imprimir?fecha=` (fuera de los layouts, sin menú), que abre el cuadro
+    de imprimir solo.
+
 ## Progresión de mozos
 
 - Tres niveles = tres de los grupos de propinas: 1 · 50 % ("prueba"), 2 · 75 % ("reducido"),
@@ -509,6 +538,14 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     entrada del 9/11: un olvido (3) empataba con tres teclas mal (3) y ganaba lo segundo. Por
     eso el tope pasó a 18 h y la tecla a 1,05. Con todo noviembre (894 fichadas) cambiaron 16,
     de cuatro personas, y todas pasaron a coincidir con la tecla apretada.
+- **Fichada de más** (Laureano, 20/11): entró 10:09, volvió a apretar Entrada a las 13:15 y se
+  fue 16:59 con Salida, y figuraba adentro desde las 16:59.
+  - Ahora una Entrada apretada estando adentro puede "sobrar" (costo 1,5, menos que dos teclas
+    mal), como mucho dos seguidas y sin dejarlo adentro más de 18 h.
+  - Solo estando adentro: una Salida de más estando afuera, no, porque leía mal a Miguel Sachett.
+  - La fichada que sobra queda con `sobra: true` y no cuenta en `presentes` ni en `armarTurnos`.
+  - Con todo noviembre cambiaron 3 fichadas: las dos de mediodía de Laureano (18 y 20/11) y una
+    del 125 (18/11).
 - Empezar saliendo cuesta 1 solo si la primera fichada de alguien está a menos de 18 h del
   principio de lo pedido. Ese principio son los `inicios` que la página le pasa a
   `leerFichadas`; ahí la entrada pudo quedar antes. Si está más lejos, cuesta como un olvido
@@ -594,6 +631,17 @@ que Enzo corre a mano en Supabase → SQL Editor. Reglas para esos archivos:
     - rehace los totales.
   - Cada pasada recalcula hoy, la jornada anterior y 3 días más. Un mes que nunca se
     calculó se calcula entero (así se arma octubre).
+  - **Fichadas atrasadas** (`fix_planilla_fichadas_atrasadas.sql`; Enzo, 17/11):
+    - El trigger `planilla_recalcular_atrasadas` recalcula en el momento cuando llega una
+      tanda con fichadas de hace más de 30 min. Pasa cuando la PC de la caja estuvo apagada o sin
+      red y manda todo junto. Va una vez por tanda, sobre `fichadas`.
+    - Le pide a la app que recalcule desde la jornada de la más vieja (como mucho 55 días)
+      hasta hoy.
+    - Si el pedido falla, las fichadas se guardan igual y queda la pasada de cada 2 horas.
+    - Caso: el 16/11 la PC se apagó a las 21. La salida de Ariana Mastrella de las 21:12 llegó
+      el 17/11 a las 12:01, después de la pasada de las 11:20, y el día siguió "incompleto".
+      La planilla guarda el día con lo que había a esa hora y no mira de nuevo hasta la pasada
+      siguiente.
   - "Actualizar ahora" es `actualizarPlanillaAction`; con un mes, lo recalcula entero.
   - Para ver si anda: `select status_code, content from net._http_response order by created desc`.
   - Recién corrido el SQL, la primera llamada puede contestar "Falta correr el SQL": Supabase
